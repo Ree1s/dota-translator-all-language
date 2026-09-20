@@ -100,14 +100,58 @@ loop over 4 GB never finishes.
 window, no per-frame API cost, no free-tier limit, resolution-independent,
 no calibration. It removes every blocker found today.
 
+**Done since, in `src/memscan.ps1` + `src/chatmem.js`:**
+
+- **Polling is cheap.** The first sweep learns which REGIONS held a hit
+  and after that only those are read. Measured on the stand-in below: a
+  full sweep 244ms over 170 MB, a poll 40ms over 7 MB.
+- **The sweep is one pass, not seven.** It scanned every byte once per
+  anchor. Gated on a `bool[256]` of bytes that can start one, it is six
+  times faster and steady: on a 1 GB process, 10.6/8.5/6.0s before,
+  1.46/1.47/1.48s after - about **1.5 seconds per gigabyte**. The old and
+  new scanners were run against the same live process and returned byte
+  for byte the same ten strings, so this is proved equal rather than
+  assumed.
+- **Nothing is swept when there is nothing to find.** Two faults did the
+  opposite: an empty hot set fell through the region filter and read the
+  WHOLE process (a "quick" scan costing 8.3s over 1 GB), and
+  `$hot.Count -eq 0` forced a full sweep every turn - so the menu, the
+  loading screen and a match before anyone speaks each kept a core busy
+  for as long as they lasted. Fruitless sweeps back off 1s to 10s now.
+- **A freed or half-overwritten line is rejected, not trusted.**
+  `chatmem.js` takes only what parses as a line, printable, under the
+  length caps, with a channel tag it knows; the tracker dedups by content
+  so the same line in three buffers is one message.
+
 **Not yet done:**
 
-- Finding new lines efficiently. An 11s full scan is far too slow to poll.
-  Hits cluster in a few allocation ranges, so the next step is to locate
-  the chat log container once and read it directly, or narrow scanning to
-  those regions.
-- Telling a live line from a freed one.
+- **The whole chain has never run against a real game.** Every
+  measurement above is from the stand-in or from another process. What it
+  cannot answer: whether a new chat line ever lands OUTSIDE the regions
+  the sweep found (if it does, it waits for the next full sweep -
+  `fullRescanMs`, 60s), and what a real poll costs over Dota's hot
+  regions rather than a 7 MB toy.
+- Replacing the text in place. See the decision above; the overlay is
+  first and is built.
 - Everything downstream is already built and source-agnostic.
+
+## Testing the reader with no Dota running: a stand-in process
+
+The trick that found all three faults above, and worth reusing. Copy
+`node.exe` to `fakedota.exe`, run a script that holds the chat strings -
+**verbatim, in both forms** - in buffers and says a new one every few
+seconds, then point the scanner at `-ProcessName fakedota`. The scanner,
+the parsers, the tracker and the Cyrillic gate all run exactly as they
+would; `startMemorySource` takes a `spawnImpl`, so the process name can
+be added there without a setting nobody needs. Confirmed this way: the
+backlog is primed away, a new all-chat markup line and a new tagged team
+line are both shown, and an English line is left alone.
+
+`npm test` also parses every `.ps1` in `src` through PowerShell's own
+parser, with a deliberately broken script as a control first. The scanner
+is one file nothing else would notice being broken: a syntax error there
+is not an error anybody sees, it is a tool that silently never reads a
+line.
 
 ## Why the old tools died: maintenance, NOT bans (researched, sourced)
 
