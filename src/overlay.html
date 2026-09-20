@@ -3,12 +3,19 @@
 <head>
 <meta charset="utf-8">
 <style>
+  /* A second chat box, drawn over the game: the same lines Dota's own
+     chat shows, in English. Made to look like it belongs there - dark,
+     square, names in the players' own colours - and to cost nothing
+     while nothing is being said: no blur, no animation that runs on its
+     own, and an empty box is not drawn at all. */
   :root {
-    --ink: #f4f7fa;
-    --dim: rgba(244, 247, 250, 0.62);
-    --name: #7fd4ff;
-    --panel: rgba(8, 14, 20, 0.72);
-    --edge: rgba(255, 255, 255, 0.10);
+    --ink: #e8e6df;
+    --dim: rgba(232, 230, 223, 0.55);
+    --allies: #a5d67a;
+    --all: #c9c9c9;
+    --panel-top: rgba(14, 17, 22, 0.78);
+    --panel-bot: rgba(14, 17, 22, 0.62);
+    --edge: rgba(255, 255, 255, 0.07);
     --warn: #ffb454;
     --size: 16px;
   }
@@ -17,51 +24,38 @@
     height: 100%;
     background: transparent;
     overflow: hidden;
-    font-family: "Segoe UI", Roboto, system-ui, sans-serif;
+    font-family: "Radiance", "Segoe UI", Roboto, system-ui, sans-serif;
     -webkit-user-select: none;
     cursor: default;
   }
-  #list {
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    gap: 6px;
-    padding: 4px;
-  }
-  .row {
-    background: var(--panel);
+  body { display: flex; flex-direction: column; }
+  body.bottom { justify-content: flex-end; }
+  #box {
+    background: linear-gradient(var(--panel-top), var(--panel-bot));
     border: 1px solid var(--edge);
-    border-left: 3px solid var(--name);
-    border-radius: 8px;
-    padding: 7px 10px;
+    border-left: 2px solid rgba(165, 214, 122, 0.55);
+    padding: 6px 10px 7px;
     color: var(--ink);
     font-size: var(--size);
-    line-height: 1.35;
+    line-height: 1.32;
     /* The game is behind this, so the text needs its own contrast. */
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
-    backdrop-filter: blur(3px);
-    animation: in 140ms ease-out;
-    transition: opacity 600ms ease;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95), 0 0 1px rgba(0, 0, 0, 0.9);
   }
+  #box:empty { display: none; }
+  .row { padding: 1px 0; transition: opacity 500ms linear; }
   .row.out { opacity: 0; }
-  .row.plain { border-left-color: var(--warn); }
-  .name { color: var(--name); font-weight: 600; margin-right: 6px; }
-  .plain .name { color: var(--warn); }
-  .orig { display: block; color: var(--dim); font-size: 0.82em; margin-top: 2px; }
-  .status {
-    background: var(--panel);
-    border: 1px solid var(--edge);
-    border-radius: 8px;
-    padding: 6px 10px;
-    color: var(--warn);
-    font-size: 13px;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
-  }
-  @keyframes in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+  .tag { color: var(--all); margin-right: 5px; }
+  .team .tag { color: var(--allies); }
+  .name { font-weight: 600; margin-right: 5px; }
+  .pending .say { color: var(--dim); font-style: italic; }
+  .plain .say { color: var(--dim); }
+  .orig { display: block; color: var(--dim); font-size: 0.8em; padding-left: 2px; }
+  .status { color: var(--warn); font-size: 13px; padding: 1px 0; transition: opacity 500ms linear; }
+  .status.out { opacity: 0; }
 </style>
 </head>
 <body>
-  <div id="list"></div>
+  <div id="box"></div>
   <script src="overlay.js"></script>
 </body>
 </html>

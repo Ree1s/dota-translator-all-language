@@ -50,13 +50,23 @@ export const DEFAULTS = {
   scripts: ['cyrillic'],    // which writing systems to translate
   // Lines said in the same breath go in one call. 400 was chosen before
   // anybody had played with it; in a fight every tenth of a second shows.
-  batchMs: 150,             // how long to gather lines before one call
+  // 80 since calls run three at a time: a burst no longer has to share
+  // one call to be quick, so the wait only needs to catch lines said in
+  // the same instant.
+  batchMs: 80,             // how long to gather lines before one call
   holdSeconds: 14,          // how long a line stays on the overlay
   maxLines: 6,
   showOriginal: true,
   fontSize: 16,
   opacity: 0.92,
-  position: 'top-left',     // top-left, top-right, bottom-left, bottom-right
+  // chat = directly above the game's own chat; or a corner: top-left,
+  // top-right, bottom-left, bottom-right
+  position: 'chat',
+  // Where the chat box goes, as fractions of the screen from its top-left
+  // (0.02, 0.55 is low on the left). -1 leaves it in the `position` corner.
+  boxX: -1,
+  boxY: -1,
+  boxWidth: 520,
   clickThrough: true,
   learn: false,             // log unmatched lines to learn.log
 };

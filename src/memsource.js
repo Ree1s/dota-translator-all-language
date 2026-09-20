@@ -211,7 +211,7 @@ export function startMemorySource({
         // own chat-wheel lines are already in the reader's language
         // ("Pushing mid"), and translating those would be noise.
         if (!needsTranslation(line.text, scripts)) continue;
-        onMessage({ name: line.name, text: line.text, channel: line.channel });
+        onMessage({ name: line.name, text: line.text, channel: line.channel, slot: line.slot });
       }
     }
   }

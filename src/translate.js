@@ -21,6 +21,7 @@ export const SYSTEM = [
   '- Translate insults and swearing as they are. Do not soften, censor or explain them.',
   '- Transliterated Russian typed in Latin letters is still Russian: translate it.',
   '- If a line is already English, or is only emotes, numbers or punctuation, return it unchanged.',
+  '- Numbers, timings and item counts stay exactly as typed.',
   '- Never add commentary, notes or quotation marks. Use "-" instead of a dash character.',
 ].join('\n');
 
@@ -113,24 +114,47 @@ export async function askGemini({ apiKey, model = MODEL, request, fetchImpl = gl
 // another one.
 const WORTH_RETRYING = ['the model took too long', 'could not reach the model'];
 
-// How long the FIRST try is given. MEASURED, six single-line calls to
-// gemini-3.5-flash-lite: five answered in 0.7-1.0s and one never answered
-// at all. A call is therefore either quick or lost, and waiting 12s to
-// find out which put a line on the overlay 14 seconds after it was said -
-// in a fight, that is never. Given 2.5s, a lost call costs 2.5s plus one
-// ordinary call. The second try gets longer, because by then a slow
-// answer is better than none.
-export const FIRST_TRY_MS = 2500;
-export const SECOND_TRY_MS = 8000;
+// A call is quick or it is lost, so a slow one is not waited for: it is
+// RACED. MEASURED, single-line calls to gemini-3.5-flash-lite: 0.7-1.0s,
+// or no answer at all - about one in six. It used to be given 2.5s and
+// then tried again for 8, and on the live game one line lost BOTH and
+// went up untranslated 10.6 seconds after it was said. Now, if nothing
+// has come back by HEDGE_AFTER_MS, the same request goes out again
+// beside the first, and once more after that; whichever answers first
+// is the answer. A lost call costs about a second instead of ten, and
+// the price is one extra call for roughly every sixth line.
+//
+// An attempt that FAILS outright (unreachable, timed out) is replaced at
+// once rather than at the next hedge. An attempt that is ANSWERED with a
+// refusal ends the whole thing: that is the model's word, see above.
+export const HEDGE_AFTER_MS = 1300;
+export const ATTEMPT_MS = 6000;
+export const MAX_ATTEMPTS = 3;
 
-export async function askGeminiTwice(opts) {
-  try {
-    return await askGemini({ timeoutMs: FIRST_TRY_MS, ...opts });
-  } catch (err) {
-    const why = String((err && err.message) || err);
-    if (!WORTH_RETRYING.includes(why)) throw err;
-    return askGemini({ ...opts, timeoutMs: Math.max(SECOND_TRY_MS, opts.timeoutMs || 0) });
-  }
+export function askGeminiHedged(opts, { hedgeAfterMs = HEDGE_AFTER_MS, attempts = MAX_ATTEMPTS, ask = askGemini } = {}) {
+  return new Promise((resolve, reject) => {
+    let started = 0, failed = 0, settled = false, timer = null, lastError = null;
+    const finish = (fn, value) => { if (settled) return; settled = true; clearTimeout(timer); fn(value); };
+    const launch = () => {
+      if (settled || started >= attempts) return;
+      started++;
+      clearTimeout(timer);
+      if (started < attempts) timer = setTimeout(launch, hedgeAfterMs);
+      ask({ timeoutMs: ATTEMPT_MS, ...opts }).then(
+        (text) => finish(resolve, text),
+        (err) => {
+          lastError = err;
+          failed++;
+          const why = String((err && err.message) || err);
+          if (!WORTH_RETRYING.includes(why)) return finish(reject, err);
+          if (failed >= attempts) return finish(reject, lastError);
+          launch();
+          if (failed >= started) finish(reject, lastError);      // nothing left to launch, nothing in flight
+        },
+      );
+    };
+    launch();
+  });
 }
 
 // The whole round trip. Answers one entry per input line, falling back to
@@ -138,7 +162,7 @@ export async function askGeminiTwice(opts) {
 // never silently lost.
 export async function translateBatch(items, opts = {}) {
   const numbered = items.map((it, n) => ({ ...it, i: n }));
-  const text = await askGeminiTwice({ ...opts, request: buildRequest(numbered, opts) });
+  const text = await askGeminiHedged({ ...opts, request: buildRequest(numbered, opts) });
   const map = translationsFrom(text);
   return numbered.map(({ i, ...it }) => ({
     // Everything the caller handed in is carried through - the channel

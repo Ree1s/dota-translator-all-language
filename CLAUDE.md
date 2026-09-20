@@ -42,6 +42,52 @@ BelowNormal), and fragility: seven hard-coded offsets. The scanner is
 still there underneath and takes over by itself when the panel cannot be
 found or stops validating. Details under "THE CONTAINER" below.
 
+**And the whole chain, reader + model + chat box, MEASURED end to end
+(`tools/e2e.mjs`, two bot matches, 2026-09-20 19:11 and 19:22):**
+
+| | lines | said -> SHOWN in the box | said -> ENGLISH |
+|---|---|---|---|
+| match 1, calls one at a time, retry after 2.5s | 9/9 | median 196ms, worst 294ms | median 1216ms, worst 1381ms |
+| match 2, three calls at once, hedged | 15/15 | median 187ms, worst 295ms | median 1114ms, worst 1337ms |
+
+- **A line is shown TWICE**: at once as `pending` (as said, dimmed,
+  italic), then the English replaces it in the same row, by `id`. The
+  reader is 0.2s and the model 1s, so this is what makes the box keep
+  pace with the game. `memwatcher` gives every line an id; the pipeline
+  carries it through; `overlay.js` swaps the row.
+- **Calls run three at a time and a slow one is RACED, not retried**
+  (`askGeminiHedged`: a second identical call after 1.3s, a third after
+  2.6s, first answer wins). Why: in the overlay's first live run one
+  line lost BOTH tries and went up untranslated at +10.6s. With one call
+  at a time that would also have held every line behind it; it did not,
+  the other three came through in ~1s each while it hung.
+- **A repeat is answered from a cache** (text -> English, 500 entries):
+  55ms and 283ms measured, no call.
+- **The chat box** (`overlay.html/js`): one dark panel, `[Allies]`/`[All]`,
+  names in Dota's slot colours (dark ones lifted to be readable), original
+  beneath. `position: "chat"` (default) puts it directly above the game's
+  own chat, growing upwards. MEASURED on 5120x1440: Dota lays its HUD out
+  in a centred 16:9 area; chat starts 0.31 across that area, 0.64-0.70
+  down the screen. **NOT checked at 16:9/16:10/4:3 or with a flipped HUD**
+  - `boxX`/`boxY`/`boxWidth` are the escape. Seen over the game by
+  screenshot (`CopyFromScreen` does capture it), aligned with the game's
+  chat; nobody has PLAYED with it there.
+- **Cost, MEASURED** (12s windows, share of ONE core): idle with a panel
+  found - overlay 0.0-1.0%, reader **0.3%** (it was 3.3% until the helper
+  stopped calling `Get-Process -Name` every poll: that walks every
+  process on the machine, and the reads themselves were "0ms"). Four
+  lines in 10s - overlay 5.8%, reader 0.2%. Electron holds ~315-340 MB.
+  Scanning was 46-63% of a core.
+- **The match boundary, SEEN once:** the bot match ended while testing.
+  On the dashboard there were 3 panels, not 4 - the HUD's was gone - and
+  the next match had new addresses for all of DotaHud's. So panels are
+  per match, as assumed. What was NOT seen is the reader living THROUGH
+  it: each time it was a fresh start that found 3 panels within 8.6-12.8s.
+- **`saychat.ps1` types wherever Dota is.** After the match ended, 15
+  test lines went into the DASHBOARD's party chat (a party of one, so to
+  nobody). It cannot tell a match from a menu. Look at the screen first.
+- `DT_DEBUG=1 npm start` prints every row sent to the chat box.
+
 ## Open issues, in the order they matter
 
 ### 0. What the panel reader has NOT been through
@@ -446,7 +492,7 @@ npm start        # the overlay (Electron)
 npm run watch    # the same chain in a terminal - use this first
 npm run demo     # drives the chain from a fake source, no Dota needed
 npm run doctor   # no-key diagnostic
-npm test         # 75 tests, plain node assert, no runner
+npm test         # 78 tests, plain node assert, no runner
 ```
 
 Keep `npm test` green. It needs no game running and no API key.
@@ -458,8 +504,9 @@ Keep `npm test` green. It needs no game running and no API key.
   found, and processor use), `whereis.mjs` (where every copy of a line
   is), `fakechat.ps1` (native stand-in with a real chat container),
   `ptrscan.ps1` + `ptrview.mjs` (what points at a chat line; `-Dump`,
-  `-Parents`), `panelwatch.mjs` (the reader with no model, to the ms).
-  saychat, latency, whereis, ptrscan and panelwatch touch the live game: bot matches, with
+  `-Parents`), `panelwatch.mjs` (the reader with no model, to the ms), `e2e.mjs` (the
+  whole chain with the real model: said -> shown -> English).
+  saychat, latency, whereis, ptrscan, panelwatch and e2e touch the live game: bot matches, with
   say-so.
 - **PowerShell variables ignore case**: `$targets` IS the `[string]$Targets`
   parameter, and assigning an array to it joins it into one string. Cost

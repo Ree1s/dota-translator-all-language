@@ -6,7 +6,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
 import { parseChatLine, chatToTranslate, needsTranslation, libraryPaths, logCandidates, LogTail, findDotaLog } from './src/chatlog.js';
-import { buildRequest, replyTextFrom, translationsFrom, translateBatch, FIRST_TRY_MS, SECOND_TRY_MS } from './src/translate.js';
+import { buildRequest, replyTextFrom, translationsFrom, translateBatch, askGeminiHedged, HEDGE_AFTER_MS, ATTEMPT_MS } from './src/translate.js';
 import { createPipeline } from './src/pipeline.js';
 import { parseMemoryChatLine, parseMarkupChatLine, createLineTracker, readMemoryFindings, unknownChannelTag, PERSONA, MAX_LINE, MAX_NAME } from './src/chatmem.js';
 import { parseEvent, scannerArgs, nearestDistance, POWERSHELL, startMemorySource } from './src/memsource.js';
@@ -683,7 +683,7 @@ await okAsync('the first try is given seconds, not twelve, and the second is giv
     if (given.length === 1) { const e = new Error('x'); e.name = 'AbortError'; throw e; }
     return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: '[{"i":0,"en":"gg"}]' }] } }] }) };
   };
-  assert.ok(FIRST_TRY_MS <= 3000 && SECOND_TRY_MS > FIRST_TRY_MS);
+  assert.ok(HEDGE_AFTER_MS <= 1500 && ATTEMPT_MS > HEDGE_AFTER_MS);
   const rows = await translateBatch([{ name: 'A', text: 'гг' }], { apiKey: 'k', fetchImpl: hangsOnce });
   assert.equal(given.length, 2);
   assert.equal(rows[0].en, 'gg');
@@ -708,6 +708,51 @@ await okAsync('a call that never arrived is made once more, an answered one is n
   assert.equal(tries, 2, 'the timed-out call was not tried again');
   assert.equal(rows[0].en, 'go mid');
   assert.equal(rows[0].translated, true);
+});
+
+await okAsync('a call that hangs is raced, not waited for', async () => {
+  // The live game lost one line's call on both of its tries and showed it
+  // untranslated 10.6s late. A second call beside a silent first one is
+  // an answer in about a second.
+  let asked = 0;
+  const ask = () => {
+    asked++;
+    if (asked === 1) return new Promise(() => {});          // never answers
+    return Promise.resolve('[{"i":0,"en":"gg"}]');
+  };
+  const t0 = Date.now();
+  const text = await askGeminiHedged({}, { hedgeAfterMs: 20, ask });
+  assert.equal(text, '[{"i":0,"en":"gg"}]');
+  assert.equal(asked, 2);
+  assert.ok(Date.now() - t0 < 500, 'the hedge waited for the hung call');
+});
+
+await okAsync('every attempt lost is an error, and no more than three are made', async () => {
+  let asked = 0;
+  const ask = async () => { asked++; throw new Error('could not reach the model'); };
+  await assert.rejects(() => askGeminiHedged({}, { hedgeAfterMs: 5, ask }), /could not reach/);
+  assert.equal(asked, 3);
+});
+
+await okAsync('a line is shown at once and its English fills the same row', async () => {
+  // memwatcher's contract with the chat box: pending first, then a result
+  // with the SAME id; a repeat comes from the cache with no call at all.
+  const { startWatchingMemory } = await import('./src/memwatcher.js');
+  let say = null, calls = 0;
+  const events = [];
+  const w = startWatchingMemory({ ...mergeConfig({}), batchMs: 1 }, {
+    startSource: (opts) => { say = opts.onMessage; return { stop() {} }; },
+    translate: async (batch) => { calls++; return batch.map((b) => ({ ...b, en: 'go mid', translated: true })); },
+    onPending: (row) => events.push(['pending', row.id, row.text]),
+    onResult: (row) => events.push(['line', row.id, row.en, Boolean(row.cached)]),
+  });
+  say({ name: 'A', text: 'иди мид', channel: 'team', slot: 2 });
+  await tick(30);
+  say({ name: 'B', text: 'иди мид', channel: 'all', slot: 3 });
+  await tick(10);
+  w.stop();
+  assert.deepEqual(events, [['pending', 1, 'иди мид'], ['line', 1, 'go mid', false], ['line', 2, 'go mid', true]]);
+  assert.equal(calls, 1, 'the repeat cost a call');
 });
 
 await okAsync('a refusal is the answer and is not asked twice', async () => {

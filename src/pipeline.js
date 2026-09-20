@@ -2,19 +2,24 @@
 // into one call, keep the order, and never let a failed translation take
 // the line with it.
 
-export function createPipeline({ translate, onResult, onError = () => {}, batchMs = 400, maxBatch = 12 }) {
+export function createPipeline({ translate, onResult, onError = () => {}, batchMs = 400, maxBatch = 12, maxInFlight = 3 }) {
   let queue = [];
   let timer = null;
   let due = 0;
-  let running = false;
+  // How many calls are out. It was one at a time, and MEASURED a call is
+  // either quick (0.7-1.0s) or lost (2.5s, then a retry of up to 8s): one
+  // lost call held every line said after it for ten seconds. Rows carry
+  // an id, and the chat box fills each in where it already stands, so
+  // answers arriving out of order cost nothing.
+  let running = 0;
 
   async function flush() {
     timer = null;
     due = 0;
-    if (running || !queue.length) return;
+    if (running >= maxInFlight || !queue.length) return;
     const batch = queue.slice(0, maxBatch);
     queue = queue.slice(maxBatch);
-    running = true;
+    running++;
     try {
       const out = await translate(batch);
       for (const row of out) onResult(row);
@@ -24,7 +29,7 @@ export function createPipeline({ translate, onResult, onError = () => {}, batchM
       // show what was said, untranslated, rather than nothing.
       for (const it of batch) onResult({ ...it, en: it.text, translated: false, error: String(err && err.message || err) });
     } finally {
-      running = false;
+      running--;
       if (queue.length) schedule(0);
     }
   }

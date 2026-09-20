@@ -14,27 +14,49 @@ import { createPipeline } from './pipeline.js';
 import { translateBatch } from './translate.js';
 import { ROOT } from './config.js';
 
-export function startWatchingMemory(cfg, { onResult, onStatus = () => {}, translate } = {}) {
+export function startWatchingMemory(cfg, { onResult, onPending = () => {}, onStatus = () => {}, translate, startSource = startMemorySource } = {}) {
   const doTranslate = translate || ((batch) => translateBatch(batch, {
     apiKey: cfg.geminiApiKey,
     model: cfg.model,
   }));
 
+  // What has been translated already. Chat repeats itself - "gg", the
+  // same insult, the chat wheel in Russian - and a repeat answered from
+  // here is on screen at once and costs no call.
+  const cache = new Map();
+  const remember = (row) => {
+    if (!row.translated) return;
+    cache.set(row.text, row.en);
+    if (cache.size > 500) cache.delete(cache.keys().next().value);
+  };
+  let nextId = 1;
+
   const pipe = createPipeline({
     translate: doTranslate,
     batchMs: cfg.batchMs,
-    onResult,
+    onResult: (row) => { remember(row); onResult(row); },
     onError: (err) => onStatus({ kind: 'error', text: String((err && err.message) || err) }),
   });
 
   const learnPath = path.join(ROOT, 'learn.log');
 
-  const source = startMemorySource({
+  const source = startSource({
     scripts: cfg.scripts,
     intervalMs: cfg.scanIntervalMs,
     fullRescanMs: cfg.fullRescanMs,
     onStatus,
-    onMessage: (msg) => pipe.push(msg),
+    onMessage: (msg) => {
+      // Every line gets an id and is announced AT ONCE, untranslated: the
+      // chat box shows it as said and fills the English in when it comes.
+      // The reader finds a line in ~0.2s and the model takes ~1s, so this
+      // is the difference between a box that keeps up with the game and
+      // one that is always a second behind it.
+      const item = { ...msg, id: nextId++ };
+      const known = cache.get(msg.text);
+      if (known) { onResult({ ...item, en: known, translated: true, cached: true }); return; }
+      onPending(item);
+      pipe.push(item);
+    },
     windowMb: cfg.scanWindowMb,
     wideEvery: cfg.scanWideEvery,
     wideCapMb: cfg.scanWideCapMb,

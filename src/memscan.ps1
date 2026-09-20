@@ -621,6 +621,7 @@ $winBytes = 0
 $polls = 0
 $lastFull = [DateTime]::MinValue
 $lastPid = 0
+$proc = $null
 
 # How long to wait before sweeping the whole process AGAIN when the last
 # sweep found no chat at all. There is plenty of time with nothing to
@@ -648,7 +649,13 @@ Emit @{ t = 'status'; state = 'waiting'; detail = 'looking for Dota' }
 
 while ($true) {
   if (ParentGone) { exit 0 }
-  $proc = Get-Process -Name $ProcessName -ErrorAction SilentlyContinue | Select-Object -First 1
+  # Looked up once and then only asked whether it is still there. Finding
+  # a process by name walks every process on the machine, and at four
+  # panel polls a second that walk was most of what this helper cost:
+  # MEASURED 3.3% of a core idle, with the reads themselves at "0ms".
+  if ($null -eq $proc -or $proc.HasExited) {
+    $proc = Get-Process -Name $ProcessName -ErrorAction SilentlyContinue | Select-Object -First 1
+  }
   if (-not $proc) {
     if ($lastPid -ne 0) {
       # Dota closed: the addresses we learned mean nothing for the next one.

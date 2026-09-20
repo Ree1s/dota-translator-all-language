@@ -13,13 +13,16 @@
   "scripts": [
     "cyrillic"
   ],
-  "batchMs": 150,
+  "batchMs": 80,
   "holdSeconds": 14,
   "maxLines": 6,
   "showOriginal": true,
   "fontSize": 16,
   "opacity": 0.92,
-  "position": "top-left",
+  "position": "chat",
+  "boxX": -1,
+  "boxY": -1,
+  "boxWidth": 520,
   "clickThrough": true,
   "learn": false
 }
