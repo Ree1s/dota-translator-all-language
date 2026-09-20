@@ -343,12 +343,42 @@ permission rule) or run the probe themselves.
   but the FIND is 9-13s of sweeping, and if it lands in a fight it may
   be felt. It should land in the loading screen. Frame time is still the
   measurement that decides, and has still never been taken.
-- **A patch.** The offsets are from one build (2026-09-20), and are now
-  fixed by a commit to `offsets.json` (see "Offsets come from the repo").
-  The day they move, `find` reports 0 panels and the scanner carries on; `npm run
-  watch` prints both. Re-derive with `tools/ptrscan.ps1`: the chain is
-  string -> text object -> client panel -> UI panel, and `-Parents`
-  prints the tree above any panel once +0x10/+0x18/+0x28 are right.
+- **WHEN A DOTA PATCH BREAKS IT** (the user asked for this to be in the
+  notes; it has NOT happened yet, so everything below is design, not
+  experience):
+  - **What breaks:** the fast reader depends on seven memory offsets and
+    four layout numbers, measured on ONE game build (2026-09-20). They
+    belong to Dota's UI ENGINE (Panorama), not to gameplay: a balance patch
+    should not touch them, an engine update could. **How often is
+    UNKNOWN** - there is one build's worth of data. Do not guess a rate.
+  - **What the player sees until it is fixed:** the app does not go dark.
+    `find` reports 0 panels, and because the panel reader has then never
+    worked in that game, the old SCANNER takes over: it needs no offsets,
+    but lines arrive in seconds rather than 0.2s, it costs half a core
+    rather than 0.3% of one, and a repeated line is shown once. With no
+    layout from the game, the translations move to the dark box in a
+    corner (`above` and `cover` both need the same offsets). No hero
+    portraits either: the scanner cannot see them.
+  - **The fix is ONE COMMIT, not a new version:** re-derive the offsets -
+    about an hour with `tools/ptrscan.ps1` (the chain is string -> text
+    object -> client panel -> UI panel; `-Parents` prints the tree above
+    any panel once +0x10/+0x18/+0x28 are right) and
+    `tools/panellayout.ps1` for the layout fields - then change
+    `offsets.json` AND the matching constants in `memscan.ps1` (a test
+    fails if they differ), bump its `version`, push to master. Every copy
+    of the app fetches that file at startup, so players get the fix at
+    their next launch with NOTHING to reinstall.
+  - **When one commit is not enough:** if a patch changes the SHAPE and
+    not just the numbers - the text more hops away, the children no longer
+    an array - the reader's code has to change, and that is a new release.
+    Installed copies then update themselves (see "Releases, auto-update").
+  - **How anyone would know:** nothing reports it. `npm run watch` prints
+    `looked for the chat panel: 0 found`, and a player notices the dark
+    box and the delay. A way for the app to SAY "the fast reader is not
+    working on this Dota build" is not built.
+  - Self-calibration (the app re-deriving the offsets by itself) would
+    remove the manual hour entirely: noted as LATER, under "Offsets come
+    from the repo".
 - Identical lines: FIXED for the panel reader (see "It worked at start,
   then stopped"); still shown once under the scanner fallback, which has
   no chat list to ask.

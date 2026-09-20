@@ -232,6 +232,30 @@ The first sweep of a match only **primes**: it remembers what has already
 been said without showing it, so starting the app mid-game does not dump the
 whole match onto your screen at once.
 
+## When a Dota update breaks it
+
+It has not happened yet, so this is the plan rather than a record.
+
+The quick way of reading chat depends on a handful of numbers that say where
+Dota keeps its chat in memory. They belong to Dota's interface engine, not to
+gameplay, so an ordinary balance patch should leave them alone; a bigger engine
+update might move them. How often that will be, nobody knows yet.
+
+If it happens, the app does not stop. It falls back to a slower way of finding
+chat that needs none of those numbers: translations arrive a few seconds late
+instead of at once, it uses noticeably more processor, and they appear in a
+dark box in the corner rather than above Dota's chat, without hero portraits.
+
+The fix is usually one small file, [`offsets.json`](offsets.json), which the
+app downloads from this repository every time it starts. Once it is corrected
+here, everybody has the fix the next time they open the app, with nothing to
+reinstall. If a Dota update changes more than the numbers, the fix is a new
+version instead, and an installed copy updates itself.
+
+If you see the dark box and the delay after a Dota update,
+[open an issue](https://github.com/sc0rebreaker/dota-translator/issues) - that
+is currently the only way anybody finds out.
+
 ## If chat is not picked up
 
 Set `"learn": true` in `config.json` and play a game. An unrecognised chat
