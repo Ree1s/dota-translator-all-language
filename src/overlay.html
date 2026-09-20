@@ -50,12 +50,39 @@
   .pending .say { color: var(--dim); font-style: italic; }
   .plain .say { color: var(--dim); }
   .orig { color: var(--dim); font-size: 0.86em; }
+  /* COVER mode: a strip over each translated line of the game's own
+     chat, in that line's exact slot. Dark and nearly opaque, because
+     the Russian is still being drawn underneath it. */
+  #cover { position: absolute; left: 0; right: 0; bottom: 0; top: 0; pointer-events: none; }
+  .strip {
+    position: absolute;
+    display: flex; align-items: center;
+    white-space: nowrap; overflow: hidden;
+    /* Only as dark as hiding the line underneath needs, fading out to the
+       right so it does not read as a box with an edge. */
+    background: linear-gradient(90deg, rgba(12, 15, 19, 0.9) 0, rgba(12, 15, 19, 0.9) calc(100% - 28px), rgba(12, 15, 19, 0) 100%);
+    padding-right: 30px;
+    border-radius: 3px 0 0 3px;
+    transition: background 700ms linear;
+    color: #fff; font-weight: 700;
+    /* Outlined as well as shadowed, as the game's chat is: once the box
+       has gone this is all that stands between the text and the terrain. */
+    text-shadow: 1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000, 0 2px 3px rgba(0, 0, 0, 0.9);
+  }
+  /* The game's own line has faded: nothing left to hide, so no box -
+     bare text with a shadow, which is all Dota's chat is. */
+  .strip.bare { background: none; }
+  .strip.bare .orig { color: rgba(232, 230, 223, 0.8); }
+  .strip .tag { color: #fff; }
+  .strip .orig { font-weight: 400; margin-left: 0.4em; }
+  .strip.wrap { white-space: normal; align-items: flex-start; line-height: 1.25; }
   .status { color: var(--warn); font-size: 13px; padding: 1px 0; transition: opacity 500ms linear; }
   .status.out { opacity: 0; }
 </style>
 </head>
 <body>
   <div id="box"></div>
+  <div id="cover"></div>
   <script src="overlay.js"></script>
 </body>
 </html>

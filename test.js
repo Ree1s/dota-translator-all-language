@@ -603,6 +603,35 @@ ok('the chat panel is on unless somebody turns it off', () => {
   assert.equal(args[args.indexOf('-PanelIntervalMs') + 1], '100');
 });
 
+ok('the layout says where the chat is and what is stacked in it', () => {
+  const ev = parseEvent(JSON.stringify({ t: 'layout', x: 2026, y: 827, s: 1.333, rows: [{ a: 5850418734336, h: 34, w: 696 }, { a: 0, h: 68, w: 1000 }] }));
+  assert.equal(ev.kind, 'layout');
+  assert.deepEqual([ev.x, ev.y, ev.scale], [2026, 827, 1.333]);
+  assert.deepEqual(ev.rows[0], { addr: 5850418734336, height: 34, width: 696 });
+  assert.equal(ev.rows[1].addr, 0);            // a row with no chat line in it still takes its place in the stack
+  assert.equal(parseEvent(JSON.stringify({ t: 'layout', x: 1, y: 2 })), null);
+});
+
+ok('every sighting of a line is reported, even one already shown', () => {
+  // The game makes all its chat lines again when it trims them, at new
+  // addresses. The tracker drops those as seen - rightly - but the cover
+  // has to learn where each line lives now, or it loses every strip at
+  // the first trim.
+  const child = new EventEmitter();
+  child.stdout = new EventEmitter(); child.stdout.setEncoding = () => {};
+  child.stderr = new EventEmitter(); child.stderr.setEncoding = () => {};
+  child.kill = () => {};
+  const seen = [], said = [];
+  const src = startMemorySource({ spawnImpl: () => child, onSeen: (s) => seen.push(s.addr), onMessage: (m) => said.push(m.text) });
+  const line = (addr) => JSON.stringify({ t: 'line', a: addr, w: 1, r: 0, rs: 0, ab: 0, p: 1, b64: Buffer.from('[Allies] a: гг', 'utf8').toString('base64') }) + '\n';
+  child.stdout.emit('data', JSON.stringify({ t: 'stat', mode: 'panel' }) + '\n');      // priming over
+  child.stdout.emit('data', line(100));
+  child.stdout.emit('data', line(200));
+  src.stop();
+  assert.deepEqual(seen, [100, 200]);
+  assert.equal(said.length, 1);
+});
+
 ok('a search for the chat panel is not a stat', () => {
   // A stat says a read is over, and the first one ends priming. A search
   // that arrived as one would end it BEFORE the panel had been read, and

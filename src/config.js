@@ -63,7 +63,11 @@ export const DEFAULTS = {
   // game's memory, and the one experiment that says whether the chat even
   // redraws has not been allowed to run. Until it exists, "replace" falls
   // back to the box and says so once.
-  display: 'box',
+  // "cover" is the read-only way to the same look, and IS built: the
+  // English is laid over each line of the game's own chat, in its exact
+  // place, read from where the game says the chat is. It needs the chat
+  // panel; with the scanner fallback, or before a match, it is the box.
+  display: 'cover',
   showOriginal: true,
   fontSize: 16,
   opacity: 0.92,

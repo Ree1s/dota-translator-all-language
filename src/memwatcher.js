@@ -14,7 +14,7 @@ import { createPipeline } from './pipeline.js';
 import { translateBatch } from './translate.js';
 import { ROOT } from './config.js';
 
-export function startWatchingMemory(cfg, { onResult, onPending = () => {}, onStatus = () => {}, translate, startSource = startMemorySource } = {}) {
+export function startWatchingMemory(cfg, { onResult, onPending = () => {}, onStatus = () => {}, onLayout = () => {}, onSeen = () => {}, translate, startSource = startMemorySource } = {}) {
   const doTranslate = translate || ((batch) => translateBatch(batch, {
     apiKey: cfg.geminiApiKey,
     model: cfg.model,
@@ -62,6 +62,8 @@ export function startWatchingMemory(cfg, { onResult, onPending = () => {}, onSta
     wideCapMb: cfg.scanWideCapMb,
     panel: cfg.chatPanel,
     panelIntervalMs: cfg.panelIntervalMs,
+    onLayout,
+    onSeen,
     onFind: (find) => onStatus({ kind: 'find', text: '', find }),
     onPlacement: (p) => {
       // The measurement that says whether scan windows are any good and

@@ -70,7 +70,80 @@ function build(row, state) {
   return el;
 }
 
+// ---- COVER mode -----------------------------------------------------
+// The game says where its chat lines are (`layout`: the stack of rows,
+// newest first, each with the address of its text) and which line lives
+// at which address (`seen`). A translated line is drawn as a strip over
+// its own row - after the hero portrait, which is left showing - and
+// stays for holdSeconds, which is longer than the game keeps its own
+// line up (MEASURED: about 5 seconds), so the English outlasts the
+// Russian it covers. A faded line keeps its slot in the game, so the
+// strip stays where it was.
+const cover = document.getElementById('cover');
+const keyOf = (r) => r.channel + '|' + r.name + '|' + r.text;
+const addrKey = new Map();       // address of a line's text -> key
+const english = new Map();       // key -> { row, until }
+let layout = null;
+const firstSeen = new Map();     // key -> when the line first appeared in the game
+// How long the game keeps its own line up. MEASURED with timed
+// screenshots: there at 4s, gone by 7s. Until then the strip has to hide
+// it; after that there is nothing under the English but the game.
+const GAME_SHOWS_MS = 6000;
+// In the 1080-high units the game lays out in: where a line's text starts
+// (after the 7 of padding and the portrait), MEASURED on one screen.
+const TEXT_LEFT = 49, PAD = 4, FONT = 18;
+
+function covering() { return cfg.display === 'cover' && layout; }
+
+function renderCover() {
+  cover.textContent = '';
+  if (!covering()) return;
+  const s = layout.scale, now = Date.now();
+  let bottom = 0, next = Infinity;
+  for (const r of layout.rows) {
+    const t = english.get(addrKey.get(r.addr));
+    if (t && t.until > now && r.height > 0) {
+      next = Math.min(next, t.until);
+      const bareAt = (firstSeen.get(addrKey.get(r.addr)) || 0) + GAME_SHOWS_MS;
+      if (bareAt > now) next = Math.min(next, bareAt);
+      const el = document.createElement('div');
+      el.className = 'strip' + (bareAt <= now ? ' bare' : '') + (t.row.channel === 'team' ? ' team' : '') + (r.height > 40 * s ? ' wrap' : '');
+      el.style.left = (TEXT_LEFT * s) + 'px';
+      el.style.bottom = bottom + 'px';
+      el.style.height = r.height + 'px';
+      el.style.minWidth = Math.max(0, r.width - (TEXT_LEFT - 7) * s) + 'px';
+      el.style.maxWidth = 'calc(100% - ' + (TEXT_LEFT * s) + 'px)';
+      el.style.paddingLeft = (PAD * s) + 'px';
+      el.style.fontSize = (FONT * s) + 'px';
+      if (t.row.channel === 'team') el.appendChild(span('tag', TAGS.team));
+      const name = span('name', t.row.name + ':');
+      name.style.color = readable(SLOT_COLOURS[t.row.slot] || '#7fd4ff');
+      el.appendChild(name);
+      el.appendChild(span('say', t.row.en));
+      if (cfg.showOriginal && t.row.text.trim().toLowerCase() !== t.row.en.trim().toLowerCase()) el.appendChild(span('orig', '(' + t.row.text + ')'));
+      cover.appendChild(el);
+    }
+    bottom += r.height;
+  }
+  clearTimeout(renderCover.timer);
+  if (next !== Infinity) renderCover.timer = setTimeout(renderCover, next - now + 20);
+}
+
+/// True when the line has a row in the game's chat to be laid over.
+function coverLine(row) {
+  if (!covering() || !row.translated) return false;
+  const k = keyOf(row);
+  if (![...addrKey.values()].includes(k)) return false;
+  english.set(k, { row, until: Date.now() + cfg.holdSeconds * 1000 });
+  if (english.size > 100) english.delete(english.keys().next().value);
+  renderCover();
+  return true;
+}
+
 function addPending(row) {
+  // Over the game's own chat there is nothing to show yet: the line is
+  // already on the screen, in Russian, exactly where the English will go.
+  if (covering()) return;
   const el = build(row, 'pending');
   rows.set(row.id, el);
   box.appendChild(el);
@@ -79,6 +152,10 @@ function addPending(row) {
 }
 
 function addLine(row) {
+  if (coverLine(row)) return;
+  // A line that could not be translated is already on the screen as it
+  // was said; over the game's chat there is nothing to add to that.
+  if (covering() && !row.translated) return;
   const el = build(row, row.translated ? 'done' : 'plain');
   const was = row.id ? rows.get(row.id) : null;
   if (was && was.isConnected) {
@@ -111,6 +188,13 @@ window.dt.onConfig((next) => {
   document.body.style.opacity = String(cfg.opacity);
   // Anchored to the bottom, the box grows UPWARDS, as a chat does.
   document.body.classList.toggle('bottom', String(cfg.position).startsWith('bottom') || cfg.position === 'chat');
+});
+window.dt.onLayout((l) => { layout = l; renderCover(); });
+window.dt.onSeen((s) => {
+  addrKey.set(s.addr, keyOf(s));
+  if (!firstSeen.has(keyOf(s))) firstSeen.set(keyOf(s), Date.now());
+  if (firstSeen.size > 200) firstSeen.delete(firstSeen.keys().next().value);
+  if (addrKey.size > 200) addrKey.delete(addrKey.keys().next().value);
 });
 window.dt.onPending(addPending);
 window.dt.onLine(addLine);

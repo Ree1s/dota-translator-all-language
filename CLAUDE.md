@@ -88,6 +88,62 @@ found or stops validating. Details under "THE CONTAINER" below.
   nobody). It cannot tell a match from a menu. Look at the screen first.
 - `DT_DEBUG=1 npm start` prints every row sent to the chat box.
 
+**COVER MODE: BUILT, and seen working over the live game (2026-09-20,
+19:40). `display: "cover"` is now the DEFAULT.** The read-only route was
+tried first, as the user chose, and it was enough: the English is laid
+over each line of the game's own chat, in that line's exact slot, as
+`[Allies] name: english (original)`, portrait left showing. A screenshot
+of three lines (team, all, team) shows every strip on its row.
+
+- **Where the chat is comes from the game, not from constants per
+  screen** (`tools/panellayout.ps1` found the fields): a UI panel keeps
+  its size at +0x50/+0x54 and its position in its parent at
+  +0x1b0/+0x1b4, in SCREEN PIXELS, and the UI scale at +0x1e0 (1.33 =
+  1440/1080). Up the chat's ancestors only `HudChat` has a position,
+  (2026, 827); the rest are 0,0. A line's panel has its height at +0x54
+  (34; more when wrapped) and its TEXT width at +0x1a0. **A line's own y
+  is not kept anywhere found** (0, with FLT_MAX beside it, even while
+  visible): lines are simply stacked, newest lowest, so the overlay
+  stacks them itself from the heights.
+- **Two calibration constants, from ONE screenshot on ONE screen**
+  (`main.js`): the line box starts 31.5 units right of HudChat's x and
+  the newest line ends 140 units below HudChat's y, in 1080-high layout
+  units, times the scale the game reports. Text starts 49 units into the
+  line (7 padding + the portrait). That these are layout constants that
+  hold at 16:9 / 16:10 / 4:3 / a flipped HUD is a BET, not a measurement.
+  If strips are off on another screen, these three numbers are why.
+- The helper sends `{"t":"layout", x, y, s, rows:[{a,h,w}]}` - newest
+  first, 10 rows, `a` = address of the row's text (0 for a row that is
+  not a chat line: it still takes its place) - when the stack changes and
+  for two polls after, because a line's width is not there until the game
+  has laid it out. Before the lines of the same poll, not after.
+- `memsource` reports EVERY sighting of a line (`onSeen`), repeats too:
+  the panel remakes all its children at new addresses when it trims, the
+  tracker rightly drops those, and without the sightings the cover would
+  lose every strip at the first trim. The overlay keys English by
+  channel|name|text and maps address -> key. NOT yet seen across a trim.
+- **The game shows a chat line for about 5 seconds** (strip of timed
+  screenshots: there at 4s, gone by 7s), and a faded line KEEPS ITS SLOT
+  (the next line appears at the bottom with the gap above it). So a strip
+  stays put and outlasts the Russian under it, for `holdSeconds`.
+- **The dark strip is only there while it has something to hide.** The
+  user asked for no box, as Dota's chat has none; but without a write to
+  the game the Russian is still drawn under the English, so for the
+  game's own ~5s (`GAME_SHOWS_MS` 6000 from first sighting) there is a
+  soft strip fading out to the right, and after that bare outlined text.
+  SEEN in two screenshots 7s apart: strip then bare; a bot's English line
+  between two translated ones left alone in its slot; and the strips moved
+  up a row with the game's stack when a new line arrived. A chat with no
+  box at all from the first moment needs replace-in-place (below).
+- Pending rows are not drawn in cover mode (the line is already on
+  screen, in Russian, where the English will go), nor are lines that
+  failed to translate. With no layout - scanner fallback, no match yet -
+  cover mode IS the box.
+- NOT handled: the chat OPENED (Enter) shows the scrollable history, where
+  this stacking is wrong; a wrapped line's strip (`.wrap`) has never been
+  seen; the electron window is 1333x453 over the middle of the game and
+  click-through, which has not been played with.
+
 ## REPLACE IN PLACE: asked for as the DEFAULT, not built, one experiment blocked
 
 **What the user asked for (2026-09-20, during the second bot match):**
@@ -538,7 +594,7 @@ npm start        # the overlay (Electron)
 npm run watch    # the same chain in a terminal - use this first
 npm run demo     # drives the chain from a fake source, no Dota needed
 npm run doctor   # no-key diagnostic
-npm test         # 78 tests, plain node assert, no runner
+npm test         # 80 tests, plain node assert, no runner
 ```
 
 Keep `npm test` green. It needs no game running and no API key.

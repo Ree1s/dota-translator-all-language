@@ -110,6 +110,17 @@ the memory reading runs through PowerShell, which Windows already has.
 - `npm run demo` - drives the whole chain from a fake source, with no Dota
   running at all.
 
+## In the game's own chat
+
+By default the English goes where the line already is: over each line of
+Dota's own chat, as `name: english (what was said)`, with the hero portrait
+left showing. Lines that were English already are left alone. Nothing in the
+game is changed to do this - it is still a window drawn over the game; it
+reads where Dota has put its chat and lays each strip on its line. Dota
+fades a chat line after about five seconds; the English stays for
+`holdSeconds`. Measured on one screen (5120x1440). If the strips sit
+slightly off on yours, set `"display": "box"` and say so in an issue.
+
 ## The chat box
 
 A second chat box, drawn over the game right above Dota's own: the same
@@ -147,7 +158,7 @@ no processor time, and reading the chat costs about 0.3% of one core.
 | `holdSeconds` | how long a line stays on screen (14) |
 | `maxLines` | how many lines the overlay holds (6) |
 | `showOriginal` | show what was actually said, in brackets after the English: `go mid (иди мид)`. Nothing is added when the line was English already (true) |
-| `display` | `box` draws the second chat box. `replace` - the English written into Dota's own chat line - is planned and not built; it falls back to the box |
+| `display` | `cover` (the default) lays the English over each line of Dota's own chat, exactly where the line is: `go mid (иди мид)`. It reads where the chat is from the game, so there is nothing to position. `box` draws a separate chat box instead (see `position`). `replace` - the English written into Dota's own chat line - is planned and not built; it falls back to the box |
 | `position` | where the chat box goes. `chat` (the default) is directly above Dota's own chat, growing upwards; or a corner: `top-left`, `top-right`, `bottom-left`, `bottom-right` |
 | `boxX`, `boxY` | put the box anywhere instead: fractions of the screen from its top-left, e.g. `0.02` and `0.5`. `-1` (the default) leaves it to `position` |
 | `boxWidth` | how wide the box is, in pixels (520) |

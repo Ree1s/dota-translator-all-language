@@ -417,7 +417,37 @@ public static class DotaMem {
   static HashSet<long> InMatch = new HashSet<long>();
   static readonly byte[] HUD_ROOT = Encoding.UTF8.GetBytes("DotaHud\0");
 
-  public static void ForgetPanels() { Panels.Clear(); LastStr.Clear(); Tries.Clear(); InMatch.Clear(); Settled = false; }
+  // WHERE the chat is drawn. MEASURED (tools/panellayout.ps1, 5120x1440):
+  // a UI panel keeps its size at +0x50/+0x54 and its position within its
+  // parent at +0x1b0/+0x1b4, both in SCREEN PIXELS, and the UI scale
+  // (1.33 = 1440/1080) at +0x1e0. Of the chat's ancestors only HudChat
+  // has a position - (2026, 827) - the rest are 0,0 and placed by margins
+  // that are not in these fields. A line's panel has its height at +0x54
+  // (34, more when wrapped) and the width of its TEXT at +0x1a0; its own
+  // y is NOT kept - lines are simply stacked in order, newest lowest.
+  public static int UI_H = 0x54, UI_TEXT_W = 0x1a0, UI_POS = 0x1b0, UI_SCALE = 0x1e0;
+  const int LAYOUT_ROWS = 10;
+  static readonly byte[] HUD_CHAT = Encoding.UTF8.GetBytes("HudChat\0");
+  static Dictionary<long, long> HudChatOf = new Dictionary<long, long>();     // chat panel -> its HudChat ancestor
+  static int LayoutDirty = 0, LayoutCount = -1;
+  /// Set by ReadPanels when there is a layout to report; the caller
+  /// prints it and clears it.
+  public static string LayoutJson = null;
+
+  public static void ForgetPanels() { Panels.Clear(); LastStr.Clear(); Tries.Clear(); InMatch.Clear(); HudChatOf.Clear(); LayoutCount = -1; LayoutDirty = 0; LayoutJson = null; Settled = false; }
+
+  static long HudChatAbove(IntPtr h, long p) {
+    var q = new byte[8]; var id = new byte[HUD_CHAT.Length];
+    for (int depth = 0; depth < 16; depth++) {
+      p = RQ(h, p + UI_PARENT, q);
+      if (p == 0) return 0;
+      if (!Rd(h, RQ(h, p + UI_ID, q), id, id.Length)) continue;
+      bool same = true;
+      for (int i = 0; i < id.Length; i++) if (id[i] != HUD_CHAT[i]) { same = false; break; }
+      if (same) return p;
+    }
+    return 0;
+  }
 
   static bool UnderHud(IntPtr h, long p) {
     var q = new byte[8]; var id = new byte[HUD_ROOT.Length];
@@ -527,6 +557,8 @@ public static class DotaMem {
           if (!Valid(h, c, out count, out kids)) continue;
           Panels.Add(c);
           if (UnderHud(h, c)) InMatch.Add(c);
+          long hudChat = HudChatAbove(h, c);
+          if (hudChat != 0) HudChatOf[c] = hudChat;
         }
       }
       LastBytes = bytes;
@@ -558,10 +590,14 @@ public static class DotaMem {
         var arr = new byte[count * 8];
         if (!Rd(h, kids, arr, arr.Length)) continue;        // the array moved under us: next poll
         bytes += arr.Length;
+        long hud; bool wantLayout = HudChatOf.TryGetValue(Panels[pi], out hud);
+        var strs = new long[count];
+        int foundBefore = found.Count;
         for (int k = 0; k < count; k++) {
           long c = BitConverter.ToInt64(arr, k * 8);
           live.Add(c);
           long str = RQ(h, RQ(h, RQ(h, c + UI_CLIENT, q) + CLIENT_TEXT, q) + TEXT_STR, q);
+          strs[k] = str;
           bytes += 24;
           long was;
           if (str == 0 || (LastStr.TryGetValue(c, out was) && was == str)) continue;
@@ -588,6 +624,34 @@ public static class DotaMem {
           }
           found.Add(new Hit { S = s, A = str, W = true, P = true });
           LastStr[c] = str; Tries.Remove(c);
+        }
+
+        // WHERE the lines are on the screen, for laying the English over
+        // them. Said when the stack changes and for two polls after: a
+        // line's width is not there until the game has laid it out.
+        if (wantLayout) {
+          if (found.Count > foundBefore || count != LayoutCount) LayoutDirty = 3;
+          LayoutCount = count;
+          if (LayoutDirty > 0) {
+            LayoutDirty--;
+            var f = new byte[8]; var sc = new byte[4];
+            if (Rd(h, hud + UI_POS, f, 8) && Rd(h, hud + UI_SCALE, sc, 4)) {
+              var inv = System.Globalization.CultureInfo.InvariantCulture;
+              var sb = new StringBuilder("{\"t\":\"layout\",\"x\":");
+              sb.Append(BitConverter.ToSingle(f, 0).ToString("0.##", inv)).Append(",\"y\":").Append(BitConverter.ToSingle(f, 4).ToString("0.##", inv))
+                .Append(",\"s\":").Append(BitConverter.ToSingle(sc, 0).ToString("0.###", inv)).Append(",\"rows\":[");
+              // Newest first, and only as many as the game ever shows.
+              for (int k = count - 1, n = 0; k >= 0 && n < LAYOUT_ROWS; k--, n++) {
+                long c = BitConverter.ToInt64(arr, k * 8);
+                float rh = Rd(h, c + UI_H, sc, 4) ? BitConverter.ToSingle(sc, 0) : 0;
+                float rw = Rd(h, c + UI_TEXT_W, sc, 4) ? BitConverter.ToSingle(sc, 0) : 0;
+                if (n > 0) sb.Append(',');
+                sb.Append("{\"a\":").Append(strs[k]).Append(",\"h\":").Append(rh.ToString("0.##", inv)).Append(",\"w\":").Append(rw.ToString("0.##", inv)).Append('}');
+                bytes += 8;
+              }
+              LayoutJson = sb.Append("]}").ToString();
+            }
+          }
         }
       }
       // An address is reused: a panel that has gone must be forgotten, or
@@ -713,6 +777,12 @@ while ($true) {
       }
       if ([DotaMem]::Panels.Count -gt 0) {
         $lines = [DotaMem]::ReadPanels($proc.Id)
+        # The layout BEFORE the lines: whoever lays English over a line
+        # has to know where the line is by the time it hears of it.
+        if ($null -ne [DotaMem]::LayoutJson) {
+          [Console]::Out.WriteLine([DotaMem]::LayoutJson); [Console]::Out.Flush()
+          [DotaMem]::LayoutJson = $null
+        }
         foreach ($h in $lines) {
           $b64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($h.S))
           Emit @{ t = 'line'; b64 = $b64; a = $h.A; w = 1; r = 0; rs = 0; ab = 0; p = 1 }

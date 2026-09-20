@@ -83,6 +83,7 @@ function createWindow() {
       fontSize: cfg.fontSize,
       opacity: cfg.opacity,
       position: cfg.position,
+      display: cfg.display,
     });
     start();
   });
@@ -92,8 +93,40 @@ function createWindow() {
 // nothing and the question is whether it was ever told anything.
 const DEBUG = Boolean(process.env.DT_DEBUG);
 
+// COVER mode: the window is laid exactly over the game's own chat lines,
+// from where the GAME says they are. MEASURED on 5120x1440 (scale 1.33):
+// the line box begins 42px right of HudChat's x and the newest line ends
+// 187px below HudChat's y - 31.5 and 140 in the 1080-high units Dota's
+// layout is written in, which is why they are multiplied by the scale
+// the game reports rather than kept as pixels. NOT checked on any other
+// screen; that they are layout constants is the bet.
+const CHAT_LEFT = 31.5, CHAT_BOTTOM = 140, LINE_BOX = 1000, ROWS_HIGH = 340;
+let coverAt = '';
+
+function coverBounds(l) {
+  const px = {
+    x: Math.round(l.x + CHAT_LEFT * l.scale),
+    y: Math.round(l.y + (CHAT_BOTTOM - ROWS_HIGH) * l.scale),
+    width: Math.round(LINE_BOX * l.scale),
+    height: Math.round(ROWS_HIGH * l.scale),
+  };
+  // The game speaks in screen pixels and Electron in scaled ones; they
+  // differ whenever Windows display scaling is not 100%.
+  return screen.screenToDipRect ? screen.screenToDipRect(null, px) : px;
+}
+
+function onLayout(l) {
+  if (cfg.display !== 'cover' || !win || win.isDestroyed()) return;
+  const b = coverBounds(l);
+  const key = [b.x, b.y, b.width, b.height].join();
+  if (key !== coverAt) { coverAt = key; win.setBounds(b); }
+  // The renderer works in ITS pixels: the scale it needs is the game's
+  // scale shrunk by whatever Windows scaling stretched the window by.
+  send('layout', { rows: l.rows, scale: l.scale * (b.width / Math.round(LINE_BOX * l.scale)) });
+}
+
 function send(channel, payload) {
-  if (DEBUG && (channel !== 'status' || payload.text)) console.log(new Date().toISOString().slice(11, 23), channel, JSON.stringify(payload));
+  if (DEBUG && channel !== 'seen' && (channel !== 'status' || payload.text)) console.log(new Date().toISOString().slice(11, 23), channel, JSON.stringify(payload));
   if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
 }
 
@@ -111,6 +144,8 @@ function start() {
   watcher = start(cfg, {
     onStatus: (s) => send('status', s),
     onPending: (row) => send('pending', row),
+    onLayout,
+    onSeen: (s) => { if (cfg.display === 'cover') send('seen', s); },
     onResult: (row) => send('line', row),
   });
 }

@@ -93,6 +93,12 @@ export function parseEvent(raw) {
   // A search for the chat panel: what it cost and whether it found one.
   // NOT a stat - a stat says a read is over, which ends priming.
   if (o.t === 'find') return { kind: 'find', panels: o.panels, ms: o.ms, mb: o.mb };
+  // Where the game draws its chat, and the stack of rows in it, newest
+  // first: what laying the English OVER a line needs to know.
+  if (o.t === 'layout') {
+    if (!Array.isArray(o.rows) || !Number.isFinite(o.x) || !Number.isFinite(o.y)) return null;
+    return { kind: 'layout', x: o.x, y: o.y, scale: Number.isFinite(o.s) && o.s > 0 ? o.s : 1, rows: o.rows.map((r) => ({ addr: r.a, height: r.h, width: r.w })) };
+  }
   if (o.t === 'error') return { kind: 'error', detail: o.detail };
   return null;
 }
@@ -115,6 +121,8 @@ export function startMemorySource({
   onUnknownTag = () => {},
   onPlacement = () => {},
   onFind = () => {},
+  onLayout = () => {},
+  onSeen = () => {},
   panel,
   panelIntervalMs,
   windowMb,
@@ -182,6 +190,7 @@ export function startMemorySource({
       return;
     }
     if (ev.kind === 'find') { onFind(ev); return; }
+    if (ev.kind === 'layout') { onLayout(ev); return; }
     if (ev.kind === 'error') { onStatus({ kind: 'error', text: ev.detail }); return; }
 
     if (ev.kind === 'line') {
@@ -196,6 +205,11 @@ export function startMemorySource({
         seenUnknown.add(tag);
         onUnknownTag(tag);
       }
+      // Every sighting, repeats included: the game makes all its chat lines
+      // again when it trims them, at NEW addresses, and the tracker rightly
+      // drops those as already shown - but whoever is drawing over a line
+      // needs to know where it lives now.
+      if (Number.isFinite(ev.addr)) for (const line of lines) onSeen({ addr: ev.addr, channel: line.channel, name: line.name, text: line.text });
       for (const line of tracker.accept(lines)) {
         if (priming) continue;        // remembered, deliberately not shown
         // Every NEW line counts here, English ones too: where the game
