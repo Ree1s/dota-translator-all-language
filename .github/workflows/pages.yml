@@ -1,0 +1,28 @@
+# Keeps the website in step with docs/.
+#
+# GitHub Pages serves the gh-pages branch, which is nothing but the docs/
+# folder of master. (It is a branch rather than the "/docs folder" setting
+# because pushing a gh-pages branch is what switched Pages ON without
+# anybody having to change a repository setting.) Whenever docs/ changes
+# on master, this rebuilds that branch from it.
+name: pages
+
+on:
+  push:
+    branches: [master]
+    paths: ['docs/**', '.github/workflows/pages.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: docs/ becomes gh-pages
+        run: |
+          git subtree split --prefix docs -b gh-pages
+          git push -f origin gh-pages

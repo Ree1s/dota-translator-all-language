@@ -963,10 +963,16 @@ The user asked for a page "to make it sell (even though it's free)",
 like Paperbook's (`Desktop/paperbook/web/src/WelcomeV3.jsx`) but shorter,
 with a slider. What was built, and the rules it follows:
 
-- **One static file, no build, no images.** `docs/` so that GitHub Pages
-  can serve it from `master` as it is. **Pages is NOT switched on** - that
-  is a setting on the user's repo, and publishing is theirs to do. Look at
-  it with `node tools/serve-docs.mjs` (http://localhost:4173; also the
+- **LIVE at https://sc0rebreaker.github.io/dota-translator/** (since
+  2026-09-20; the user asked for Pages to be turned on). It is served from
+  the `gh-pages` BRANCH, which is nothing but `docs/` of master:
+  pushing a branch of that name switched Pages on by itself, with no
+  repository setting changed and no credential handled (`git subtree
+  split --prefix docs -b gh-pages`, force-pushed; `has_pages` went true
+  and the site answered 200 within three minutes).
+  `.github/workflows/pages.yml` rebuilds that branch whenever `docs/`
+  changes on master - do not edit gh-pages by hand. CHECKED live: /,
+  /key.html, the WebP logos and the favicon all 200. Look at it locally with `node tools/serve-docs.mjs` (http://localhost:4173; also the
   `landing` entry in `.claude/launch.json`).
 - Same bones as Paperbook's: serif headline with an italic accent, a demo
   in the hero, the numbers in a window card, what it does, three steps,
