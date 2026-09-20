@@ -364,3 +364,26 @@ the current account of it; what belongs here is what was measured.
 - **Parent pid:** a scanner watching a 4-second process was gone by 10s,
   the control with no pid was not. The original stray could not be
   reproduced from a node parent in this harness, with or without a game.
+
+## First live run of windowed polls (bot match, 18:01-18:03)
+
+Summary and reading in CLAUDE.md open issue 1. The raw placement rows:
+
+```
+placement 2026-09-20T15:01:45.579Z mode=win inWindow=1 distance=2599316 channel=team
+placement 2026-09-20T15:01:49.859Z mode=win inWindow=1 distance=1111344 channel=team
+placement 2026-09-20T15:02:00.044Z mode=win inWindow=1 distance=1472 channel=team
+placement 2026-09-20T15:02:04.296Z mode=win inWindow=1 distance=6496 channel=team
+placement 2026-09-20T15:02:04.296Z mode=win inWindow=1 distance=428752 channel=team
+placement 2026-09-20T15:02:08.032Z mode=wide inWindow=0 distance=98820280 channel=all
+placement 2026-09-20T15:02:12.495Z mode=win inWindow=1 distance=4096 channel=team
+placement 2026-09-20T15:02:12.495Z mode=win inWindow=1 distance=1522 channel=team
+placement 2026-09-20T15:02:20.472Z mode=wide inWindow=1 distance=503712 channel=team
+placement 2026-09-20T15:02:27.116Z mode=win inWindow=1 distance=8288 channel=team
+placement 2026-09-20T15:02:29.332Z mode=win inWindow=1 distance=46048 channel=team
+placement 2026-09-20T15:02:32.886Z mode=wide inWindow=0 distance=14670134 channel=all
+placement 2026-09-20T15:02:47.420Z mode=win inWindow=1 distance=3408 channel=team
+```
+
+Scan lines from the same run: full 6611ms 7533MB 7955 regions, 5 hot;
+wide 1478-1737ms 1166-1348MB ~370 regions; win 97-244ms 48-182MB 7-33 regions.

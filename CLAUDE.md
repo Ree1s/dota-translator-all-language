@@ -29,7 +29,7 @@ retry described below is for.
 
 ## Open issues, in the order they matter
 
-### 1. THE READER COSTS THE GAME FRAMES - a fix is BUILT, and is NOT yet measured in a game
+### 1. THE READER COSTS THE GAME FRAMES - a fix is BUILT and has read one live match; frame time is NOT measured
 
 User-reported the first time the overlay was ever left running while
 actually playing: *"my game seems laggy"*. Believe it; it is not
@@ -73,6 +73,32 @@ perfect). Read it like this:
 - rows mostly `mode=wide inWindow=0` -> the distances say how big a
   window would have to be. If that is hundreds of MB, windows are dead
   for Dota: write that down here and go to option 2 below.
+
+**FIRST LIVE RESULT (bot match, 2026-09-20 18:01, 90 seconds, 12 new
+lines). Team chat: windows work. All chat: they do not, on two samples.**
+
+| | found by | inside a window | distance from nearest earlier hit |
+|---|---|---|---|
+| team chat, 10 lines | windowed poll (9), wide (1) | 10 of 10 | 1.5 KB to 2.6 MB, most under 50 KB |
+| all chat, 2 lines | wide poll only | 0 of 2 | 98.8 MB and 14.7 MB |
+
+- Team lines came up on the next windowed poll. All-chat lines waited
+  for the wide poll, so they are up to `scanWideEvery` polls late.
+- The second all-chat line was 14.7 MB from everything, INCLUDING the
+  window the first all-chat line had just made. So all chat is not
+  simply "a second place" that one hit teaches. Two samples is not
+  enough to size anything on; the raw rows are in the notes.
+- **Costs in this match were higher than the table below:** 5 hot
+  allocations, not 2. Wide poll 1,170-1,350 MB in 1.5-1.7s on one
+  thread. Windowed poll 50 MB / 100ms at first, growing to 145 MB /
+  200ms as windows pile up until the next full sweep clears them.
+  Full sweep 6.6s / 7,533 MB on two threads.
+- **The helper died with its parent against the real game**: node was
+  force-killed and the scanner was gone within 5 seconds.
+- Two translations took 6s and 14s to appear after the line was FOUND.
+  That is the model (a timeout and its retry), not the reader.
+- **How the game FELT was not reported**, and that is still the
+  measurement that decides this.
 
 **Then measure frame time in the game**, windows on against
 `scanWindowMb: 0`, before believing any of it.
