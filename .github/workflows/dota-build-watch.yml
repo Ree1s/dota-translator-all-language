@@ -1,0 +1,44 @@
+# Tells the maintainer when Dota has been updated.
+#
+# The fast chat reader depends on memory offsets measured on one Dota build
+# (offsets.json). A patch CAN move them, and nothing in the app reports
+# home - by design, it has no analytics - so without this the first sign of
+# a break is a stranger's complaint. A few times a day this asks a public
+# mirror of Steam's app info for Dota's build number, and when it is one
+# there is no issue for yet, opens one. GitHub emails the owner.
+#
+# Most patches will not move anything. The issue is a prompt for a
+# two-minute check (start a bot match, `npm run watch`, look for
+# "looked for the chat panel: 0 found"), not a sign of a break.
+name: dota build watch
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Ask for Dota's build, open an issue if it is new
+        shell: bash
+        run: |
+          set -euo pipefail
+          build=$(curl -fsS -m 30 https://api.steamcmd.net/v1/info/570 | jq -r '.data["570"].depots.branches.public.buildid // empty')
+          # No answer is not news. Only digits go any further: this ends up in a title.
+          if ! [[ "$build" =~ ^[0-9]{5,12}$ ]]; then echo "no build number (got: '${build:0:40}')"; exit 0; fi
+          echo "Dota build $build"
+          if [ "$(gh issue list --state all --search "\"Dota build $build\" in:title" --json number --jq length)" != "0" ]; then echo "already noted"; exit 0; fi
+          # The very first run has nothing to compare with: note the build, closed.
+          first=$(gh issue list --state all --search '"Dota build" in:title' --json number --jq length)
+          body=$'Steam reports a new public build of Dota 2.\n\nMost patches do not move the chat offsets. To check: start a bot match, run `npm run watch`, and look for `looked for the chat panel: 0 found`. If it finds the panel, close this.\n\nIf it does not: re-derive with `tools/ptrscan.ps1` and `tools/panellayout.ps1`, change `offsets.json` AND the constants in `src/memscan.ps1`, bump `version`, push. Every copy of the app fetches the file at its next start. (CLAUDE.md, "WHEN A DOTA PATCH BREAKS IT".)'
+          url=$(gh issue create --title "Dota build $build - check the chat offsets" --body "$body")
+          echo "$url"
+          if [ "$first" = "0" ]; then gh issue close "$url" --comment "The build this watch started on; the offsets were measured on it or one like it. Nothing to check."; fi

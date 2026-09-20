@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { loadConfig, saveConfig, onDisk, CONFIG_PATH } from './config.js';
 import { faces } from './heroface.js';
+import { createPatchWatch, SLOW_TEXT } from './patchwatch.js';
 import { uiSettings, settingsPatch, LANGUAGES } from './settings.js';
 import { checkKey, tidyKey } from './keycheck.js';
 import updater from 'electron-updater';
@@ -107,6 +108,13 @@ let lastFonts = '';
 // The game's own hero portraits, from the player's install (src/heroface.js).
 // Until the game's folder is known, and for any hero it cannot give, the
 // overlay uses the picture on Valve's web server - which is NOT the same one.
+const patchWatch = createPatchWatch({
+  onSlow: () => {
+    send('status', { kind: 'error', text: SLOW_TEXT });
+    if (tray) tray.setToolTip('Dota Translator ' + app.getVersion() + ' - slow mode: waiting for a fix for the new Dota build');
+  },
+  onFast: () => { if (tray) tray.setToolTip('Dota Translator ' + app.getVersion()); },
+});
 let faceOf = () => null;
 const withFace = (row) => (cfg.showHeroes && row && row.hero ? { ...row, face: faceOf(row.hero) } : row);
 
@@ -200,7 +208,13 @@ async function start() {
   // actually is; 'log' is the old console.log reader, kept as a fallback.
   const start = cfg.source === 'log' ? startWatching : startWatchingMemory;
   watcher = start(cfg, {
-    onStatus: (s) => send('status', s),
+    onStatus: (s) => {
+      // The one thing about how the app is getting on that IS the player's
+      // business: a Dota patch has put it into slow mode (src/patchwatch.js).
+      if (s && s.kind === 'find' && s.find) patchWatch.find(s.find.panels);
+      if (s && s.kind === 'waiting') patchWatch.reset();
+      send('status', s);
+    },
     onPending: (row) => send('pending', withFace(row)),
     onLayout,
     onSeen: (s) => { if (cfg.display === 'cover') send('seen', s); },

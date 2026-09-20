@@ -424,7 +424,17 @@ permission rule) or run the probe themselves.
     not just the numbers - the text more hops away, the children no longer
     an array - the reader's code has to change, and that is a new release.
     Installed copies then update themselves (see "Releases, auto-update").
-  - **How anyone would know:** nothing reports it. `npm run watch` prints
+  - **How anyone would know (built 2026-09-21, v0.2.14; the user had
+    thought it already was):** the PLAYER is told - `src/patchwatch.js`:
+    two searches in a row that find no panel, in a game where none was
+    ever found, put one line on the overlay ("Dota was updated ... slow
+    mode ... Nothing to do") and in the tray tooltip; any panel found
+    later takes it back. The MAINTAINER is told -
+    `.github/workflows/dota-build-watch.yml` asks api.steamcmd.net for
+    Dota's public build number every six hours and opens an issue for a
+    build it has no issue for (GitHub emails the owner); most will need
+    nothing. Logic tested; NEITHER has met a real patch, and the notice
+    has not been seen on screen. Before that: nothing reported it. `npm run watch` prints
     `looked for the chat panel: 0 found`, and a player notices the dark
     box and the delay. A way for the app to SAY "the fast reader is not
     working on this Dota build" is not built.

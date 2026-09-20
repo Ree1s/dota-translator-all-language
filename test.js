@@ -1201,4 +1201,34 @@ await okAsync('the game\'s own hero portraits: a pak is indexed, a texture decod
   assert.equal(faces(path.join(dir, 'nowhere'))('furion'), null, 'no game folder must not throw');
 });
 
+await okAsync('a Dota patch that breaks the fast reader is SAID, once, and taken back when it is fixed', async () => {
+  const { createPatchWatch, SLOW_TEXT } = await import('./src/patchwatch.js');
+  const said = [];
+  const w = createPatchWatch({ onSlow: () => said.push('slow'), onFast: () => said.push('fast') });
+  // One empty search can be Dota still starting up: not yet.
+  w.find(0);
+  assert.deepEqual(said, []);
+  w.find(0);
+  assert.deepEqual(said, ['slow']);
+  w.find(0); w.find(0);
+  assert.deepEqual(said, ['slow'], 'said once, not on every search');
+  // The fix arrives (new offsets at the next start, or the game loads on): taken back.
+  w.find(3);
+  assert.deepEqual(said, ['slow', 'fast']);
+  // Panels that WERE found and have gone are a match ending, never a patch.
+  w.find(0); w.find(0); w.find(0);
+  assert.deepEqual(said, ['slow', 'fast']);
+  // A healthy game never says anything.
+  const quiet = [];
+  const h = createPatchWatch({ onSlow: () => quiet.push(1) });
+  h.find(0); h.find(4); h.find(0); h.find(0);
+  assert.deepEqual(quiet, []);
+  // A restarted game starts the count again.
+  w.reset(); w.find(0);
+  assert.equal(w.slow, false);
+  // It reassures, and asks nothing of the player.
+  assert.match(SLOW_TEXT, /slow mode/);
+  assert.match(SLOW_TEXT, /Nothing to do/);
+});
+
 console.log('\n' + passed + ' passed');
