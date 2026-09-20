@@ -99,6 +99,7 @@ export function parseEvent(raw) {
     if (!Array.isArray(o.rows) || !Number.isFinite(o.x) || !Number.isFinite(o.y)) return null;
     return { kind: 'layout', x: o.x, y: o.y, scale: Number.isFinite(o.s) && o.s > 0 ? o.s : 1, rows: o.rows.map((r) => ({ addr: r.a, height: r.h, width: r.w })) };
   }
+  if (o.t === 'focus') return { kind: 'focus', on: o.on === 1 };
   if (o.t === 'error') return { kind: 'error', detail: o.detail };
   return null;
 }
@@ -123,6 +124,7 @@ export function startMemorySource({
   onFind = () => {},
   onLayout = () => {},
   onSeen = () => {},
+  onFocus = () => {},
   panel,
   panelIntervalMs,
   windowMb,
@@ -191,6 +193,7 @@ export function startMemorySource({
     }
     if (ev.kind === 'find') { onFind(ev); return; }
     if (ev.kind === 'layout') { onLayout(ev); return; }
+    if (ev.kind === 'focus') { onFocus(ev.on); return; }
     if (ev.kind === 'error') { onStatus({ kind: 'error', text: ev.detail }); return; }
 
     if (ev.kind === 'line') {

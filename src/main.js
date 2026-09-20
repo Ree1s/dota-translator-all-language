@@ -15,6 +15,7 @@ const cfg = loadConfig();
 let win = null;
 let watcher = null;
 let hidden = false;
+let inFront = true;
 
 // Where the chat box goes. A corner by default; boxX / boxY, as fractions
 // of the screen (0-1) from its top-left, put it anywhere - which is what
@@ -101,12 +102,22 @@ const DEBUG = Boolean(process.env.DT_DEBUG);
 // the game reports rather than kept as pixels. NOT checked on any other
 // screen; that they are layout constants is the bet.
 const CHAT_LEFT = 31.5, CHAT_BOTTOM = 140, LINE_BOX = 1000, ROWS_HIGH = 340;
+// ABOVE mode: the same place, one chat-height higher. The game draws its
+// chat in a window 216px high at scale 1.33 (162 units: six lines, which
+// is also what it shows when the chat is OPENED), so a box that ends
+// where that window begins has nothing of the game's under it, ever -
+// which is the whole reason for it. Laying English OVER the lines worked
+// but needed a strip to hide the Russian, a guess at when the game's line
+// fades (wrong once already), and a signal for the opened chat that was
+// not found.
+const CHAT_HIGH = 162, GAP = 4;
 let coverAt = '';
 
 function coverBounds(l) {
+  const lift = cfg.display === 'above' ? CHAT_HIGH + GAP : 0;
   const px = {
     x: Math.round(l.x + CHAT_LEFT * l.scale),
-    y: Math.round(l.y + (CHAT_BOTTOM - ROWS_HIGH) * l.scale),
+    y: Math.round(l.y + (CHAT_BOTTOM - ROWS_HIGH - lift) * l.scale),
     width: Math.round(LINE_BOX * l.scale),
     height: Math.round(ROWS_HIGH * l.scale),
   };
@@ -116,13 +127,14 @@ function coverBounds(l) {
 }
 
 function onLayout(l) {
-  if (cfg.display !== 'cover' || !win || win.isDestroyed()) return;
+  if ((cfg.display !== 'cover' && cfg.display !== 'above') || !win || win.isDestroyed()) return;
   const b = coverBounds(l);
   const key = [b.x, b.y, b.width, b.height].join();
   if (key !== coverAt) { coverAt = key; win.setBounds(b); }
   // The renderer works in ITS pixels: the scale it needs is the game's
   // scale shrunk by whatever Windows scaling stretched the window by.
-  send('layout', { rows: l.rows, scale: l.scale * (b.width / Math.round(LINE_BOX * l.scale)) });
+  const dip = b.width / Math.round(LINE_BOX * l.scale);
+  send('layout', { rows: l.rows.map((r) => ({ ...r, height: r.height * dip, width: r.width * dip })), scale: l.scale * dip });
 }
 
 function send(channel, payload) {
@@ -146,6 +158,12 @@ function start() {
     onPending: (row) => send('pending', row),
     onLayout,
     onSeen: (s) => { if (cfg.display === 'cover') send('seen', s); },
+    // Up only while the game is the window in front.
+    onFocus: (on) => {
+      inFront = on;
+      if (!win || win.isDestroyed() || hidden) return;
+      if (on) win.showInactive(); else win.hide();
+    },
     onResult: (row) => send('line', row),
   });
 }
@@ -156,7 +174,7 @@ app.whenReady().then(() => {
   globalShortcut.register('Alt+D', () => {
     if (!win || win.isDestroyed()) return;
     hidden = !hidden;
-    if (hidden) win.hide(); else win.showInactive();
+    if (hidden) win.hide(); else if (inFront) win.showInactive();
   });
   globalShortcut.register('Alt+Shift+D', () => app.quit());
 });

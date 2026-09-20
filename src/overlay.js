@@ -192,7 +192,22 @@ window.dt.onConfig((next) => {
   // Anchored to the bottom, the box grows UPWARDS, as a chat does.
   document.body.classList.toggle('bottom', String(cfg.position).startsWith('bottom') || cfg.position === 'chat');
 });
-window.dt.onLayout((l) => { layout = l; renderCover(); });
+window.dt.onLayout((l) => {
+  layout = l;
+  if (cfg.display === 'above') {
+    // Sized and indented as the game's lines are, and growing upwards
+    // from just above them, so it reads as the same chat carrying on.
+    document.body.classList.add('bare', 'bottom');
+    document.documentElement.style.setProperty('--size', (FONT * l.scale) + 'px');
+    // The game's own row pitch, which it reports in SCREEN pixels (34 at
+    // scale 1.33) - scaling it again spread the lines a third too far apart.
+    const pitch = Math.min(...l.rows.map((r) => r.height).filter((h) => h > 0));
+    if (Number.isFinite(pitch)) box.style.lineHeight = pitch + 'px';
+    box.style.paddingLeft = (TEXT_LEFT * l.scale) + 'px';
+    return;
+  }
+  renderCover();
+});
 window.dt.onSeen((s) => {
   addrKey.set(s.addr, keyOf(s));
   if (!firstSeen.has(keyOf(s))) firstSeen.set(keyOf(s), Date.now());

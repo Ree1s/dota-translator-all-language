@@ -88,8 +88,33 @@ found or stops validating. Details under "THE CONTAINER" below.
   nobody). It cannot tell a match from a menu. Look at the screen first.
 - `DT_DEBUG=1 npm start` prints every row sent to the chat box.
 
+**ABOVE MODE is the DEFAULT now (`display: "above"`, 2026-09-20 20:05).**
+The user watched cover mode on their own chat and said overlapping was
+"maybe not the best idea ... your choice". The choice: the same lines as
+BARE OUTLINED TEXT (no panel - the user had asked for no black box, and
+with nothing of the game's underneath none is needed), in a window that
+ENDS where the game's chat window BEGINS: one chat-height (162 units =
+the 216px the game shows, six lines, also when the chat is opened) above
+the newest line. Placed from the game's own HudChat position and scale,
+as cover is, so there is still nothing to position. Text starts where the
+game's text starts; rows use the game's own row pitch. A line shows at
+once, as said, italic, and turns into `english (original)`.
+
+- SEEN over the live match in two screenshots 2s apart: three lines, the
+  third still pending in the first and English in the second. Row spacing
+  was a third too loose (a height already in screen pixels was scaled
+  again); fixed after the screenshots and NOT seen since.
+- What it gives up: the English is up to six rows above the line it
+  translates when the chat is nearly empty. What it avoids is everything
+  that went wrong with cover: the strip, the guess at when the game's
+  line fades, the opened chat.
+- **The overlay hides when Dota is not the window in front** (helper sends
+  `{"t":"focus","on":0|1}` on change; Electron cannot see other apps'
+  windows). Built for every display mode. NOT yet seen working.
+- `cover` and `box` remain as settings.
+
 **COVER MODE: BUILT, and seen working over the live game (2026-09-20,
-19:40). `display: "cover"` is now the DEFAULT.** The read-only route was
+19:40). It was the default for half an hour; see ABOVE MODE.** The read-only route was
 tried first, as the user chose, and it was enough: the English is laid
 over each line of the game's own chat, in that line's exact slot, as
 `[Allies] name: english (original)`, portrait left showing. A screenshot

@@ -96,6 +96,17 @@ public static class DotaMem {
   [DllImport("kernel32.dll", SetLastError=true)] static extern bool ReadProcessMemory(IntPtr h, IntPtr addr, byte[] buf, IntPtr size, out IntPtr read);
   [DllImport("kernel32.dll")] static extern int VirtualQueryEx(IntPtr h, IntPtr addr, out MBI mbi, int len);
   [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr h);
+  [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] static extern int GetWindowThreadProcessId(IntPtr hwnd, out int pid);
+
+  /// Is the game the window in front? SEEN while watching the user's own
+  /// chat: they alt-tabbed and the English stayed up, drawn over their
+  /// browser. The overlay cannot ask this itself - Electron knows only
+  /// its own windows - and it is never in front, being unfocusable.
+  public static bool InFront(int pid) {
+    int owner; GetWindowThreadProcessId(GetForegroundWindow(), out owner);
+    return owner == pid;
+  }
 
   [StructLayout(LayoutKind.Sequential)]
   struct MBI {
@@ -686,6 +697,7 @@ $polls = 0
 $lastFull = [DateTime]::MinValue
 $lastPid = 0
 $proc = $null
+$wasFront = $null
 
 # How long to wait before sweeping the whole process AGAIN when the last
 # sweep found no chat at all. There is plenty of time with nothing to
@@ -743,6 +755,10 @@ while ($true) {
   # of private memory, so a miss (the menu, a loading screen) is asked
   # again on a backoff, 15s to 2 minutes, and the scanner below carries
   # on meanwhile exactly as it did before there was a panel reader.
+  # Said when it changes, and once to begin with.
+  $front = [DotaMem]::InFront($proc.Id)
+  if ($front -ne $wasFront) { $wasFront = $front; Emit @{ t = 'focus'; on = [int]$front } }
+
   if ($Panel -gt 0) {
     try {
       # No panel, or none that belongs to a match yet: look (again) - but

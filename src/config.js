@@ -67,7 +67,12 @@ export const DEFAULTS = {
   // English is laid over each line of the game's own chat, in its exact
   // place, read from where the game says the chat is. It needs the chat
   // panel; with the scanner fallback, or before a match, it is the box.
-  display: 'cover',
+  // "above" is the default since the user watched "cover" on their own
+  // chat and chose against overlapping: the same lines, as bare outlined
+  // text like the game's own, in a box that ENDS where the game's chat
+  // begins - placed from where the game says its chat is, so there is
+  // still nothing to position. "box" is the old panel in a corner.
+  display: 'above',
   showOriginal: true,
   fontSize: 16,
   opacity: 0.92,
