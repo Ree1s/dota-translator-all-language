@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; img-src 'self'">
 <title>Dota Translator</title>
 <style>
   /* The setup window: where a player who has never opened a config file
@@ -19,7 +19,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; }
   body { background: radial-gradient(700px 360px at 85% -10%, rgba(240, 180, 76, 0.12), transparent 60%), var(--bg); color: var(--text); font-family: var(--sans); font-size: 15.5px; line-height: 1.5; padding: 30px 34px 26px; display: flex; flex-direction: column; -webkit-user-select: none; user-select: none; }
-  .brand { font-family: var(--serif); font-size: 19px; color: var(--dim); }
+  .brand { font-family: var(--serif); font-size: 19px; color: var(--dim); display: flex; align-items: center; gap: 10px; }
   .brand b { color: var(--accent); font-weight: 500; font-style: italic; }
   h1 { font-family: var(--serif); font-weight: 500; font-size: 36px; line-height: 1.08; margin-top: 18px; letter-spacing: -0.01em; }
   h1 span { color: var(--accent); font-style: italic; }
@@ -52,7 +52,7 @@
 </style>
 </head>
 <body>
-  <div class="brand">Dota <b>Translator</b></div>
+  <div class="brand"><img src="logo.webp" width="28" height="28" alt=""><span>Dota <b>Translator</b></span></div>
   <h1>One thing first: <span>your key</span></h1>
   <p class="sub">The translating is done by Google's Gemini, on a free key that is yours. There is no account to make here and nothing to pay.</p>
 

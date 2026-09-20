@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { loadConfig, saveConfig, onDisk } from './config.js';
 import { checkKey, tidyKey } from './keycheck.js';
+import updater from 'electron-updater';
 import { startWatching } from './watcher.js';
 import { startWatchingMemory } from './memwatcher.js';
 import { loadOffsets, bundledOffsets } from './offsets.js';
@@ -214,8 +215,28 @@ async function start() {
   });
 }
 
+// ---- UPDATES ---------------------------------------------------------
+// The INSTALLED app keeps itself up to date from the project's GitHub
+// releases (the user asked: "the app should auto update when start"). It
+// looks once at startup, downloads a newer version quietly in the
+// background and installs it when the app is next closed - never in the
+// middle of a match, and never with a dialog over the game. Run from
+// source there is nothing to update and nothing is asked.
+function checkForUpdates() {
+  if (!app.isPackaged || cfg.autoUpdate === false) return;
+  const { autoUpdater } = updater;
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.on('error', (err) => { if (DEBUG) console.log('update:', String((err && err.message) || err)); });
+  autoUpdater.on('update-downloaded', (info) => {
+    if (tray) tray.setToolTip('Dota Translator - version ' + info.version + ' installs when you quit');
+  });
+  autoUpdater.checkForUpdates().catch(() => { /* offline, or no release yet: next time */ });
+}
+
 app.whenReady().then(() => {
   createWindow();
+  checkForUpdates();
   // Alt+D hides and shows it, for a screenshot or a clear view of a fight.
   globalShortcut.register('Alt+D', toggleHidden);
   makeTray();
@@ -255,21 +276,15 @@ function openSetup() {
 }
 
 function makeTray() {
-  // Drawn here, 16x16, so the app needs no image file: an amber square
-  // with a dark "T". BGRA, as createFromBitmap wants it.
-  const n = 16, px = Buffer.alloc(n * n * 4);
-  for (let y = 0; y < n; y++) {
-    for (let x = 0; x < n; x++) {
-      const ink = (y >= 3 && y <= 5 && x >= 3 && x <= 12) || (x >= 7 && x <= 8 && y >= 3 && y <= 12);
-      const [b, g, r] = ink ? [0x03, 0x17, 0x23] : [0x4c, 0xb4, 0xf0];
-      px.set([b, g, r, 0xff], (y * n + x) * 4);
-    }
-  }
-  tray = new Tray(nativeImage.createFromBitmap(px, { width: n, height: n }));
+  // The app's own icon: two chat bubbles, what was said behind what you
+  // read. Drawn for this project (build/icon-source.html) - NOT Dota's
+  // logo, which is Valve's trademark and not ours to use.
+  tray = new Tray(nativeImage.createFromPath(path.join(here, 'tray.png')).resize({ width: 16, height: 16 }));
   tray.setToolTip('Dota Translator');
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Settings and key...', click: openSetup },
     { label: 'Hide or show the translations (Alt+D)', click: toggleHidden },
+    { label: 'Version ' + app.getVersion(), enabled: false },
     { type: 'separator' },
     { label: 'Quit', click: () => app.quit() },
   ]));

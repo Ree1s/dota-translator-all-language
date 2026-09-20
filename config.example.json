@@ -29,6 +29,7 @@
   "boxX": -1,
   "boxY": -1,
   "boxWidth": 520,
+  "autoUpdate": true,
   "clickThrough": true,
   "learn": false
 }

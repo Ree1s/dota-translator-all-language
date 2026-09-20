@@ -127,6 +127,10 @@ export const DEFAULTS = {
   boxY: -1,
   boxWidth: 520,
   clickThrough: true,
+  // The installed app updates itself from the project's GitHub releases:
+  // checked at startup, installed when the app is next closed. false
+  // never checks.
+  autoUpdate: true,
   learn: false,             // log unmatched lines to learn.log
 };
 

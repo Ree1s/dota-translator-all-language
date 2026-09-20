@@ -1,0 +1,38 @@
+# Builds the Windows installer and publishes it as a GitHub release.
+#
+# Push a tag that matches the version in package.json:
+#
+#   npm version patch        (bumps package.json, commits, tags vX.Y.Z)
+#   git push origin master --follow-tags
+#
+# electron-builder uploads the installer AND latest.yml, which is the file
+# the installed app reads to find out that there is a newer version. The
+# only credential involved is the token GitHub gives this workflow itself.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: The tag must be the version being built
+        shell: bash
+        run: |
+          want="v$(node -p "require('./package.json').version")"
+          if [ "$want" != "$GITHUB_REF_NAME" ]; then echo "tag $GITHUB_REF_NAME, package.json $want"; exit 1; fi
+      - run: npm run release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

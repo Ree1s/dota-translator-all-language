@@ -749,6 +749,37 @@ and there is no installer. Auto-update wants a packaged build first
 (electron-builder or similar), which is also what the landing page is
 missing for players who are not developers. Do the two together.
 
+## Releases, auto-update and the icon (2026-09-20, v0.2.0)
+
+- **A release is a TAG.** `.github/workflows/release.yml` runs on any
+  `v*` tag: windows-latest, `npm ci`, `npm test`, checks the tag equals
+  `package.json`'s version, then `npm run release` (electron-builder
+  `--publish always`), which uploads the installer, its blockmap and
+  **`latest.yml`** to a GitHub release. The only credential is the
+  workflow's own `GITHUB_TOKEN` - chosen over driving the API with the
+  user's stored git credential, which would have meant handling their
+  token. To cut one: `npm version patch` then
+  `git push origin master --follow-tags`.
+  `package-lock.json` is COMMITTED now (it was gitignored; `npm ci` needs it).
+- **The installed app updates itself** (`electron-updater`, GitHub
+  provider, `checkForUpdates` in `main.js`): once at startup, downloads
+  in the background, installs when the app is next CLOSED - never a
+  dialog over a match. `autoUpdate: false` never checks; run from source
+  it never checks. The tray tooltip says when a version is waiting, and
+  the tray menu shows the running version. SEEN in the packaged build:
+  it reached GitHub and answered "No published versions", which was true.
+  **NOT seen: an actual update** - that needs two releases. Unsigned
+  builds update fine on Windows (no publisherName is set to verify).
+- **The icon is ours**: two chat bubbles, a grey "Я" behind an amber "A"
+  (`build/icon-source.html` is the drawing; `build/icon.ico` 16-256,
+  `src/tray.png`, `docs/logo-{64,192,512}.webp`, `docs/logo.svg`,
+  `docs/favicon.ico`). The user asked for "something with dota logo (if
+  they allow it)": they do not - it is Valve's trademark - so nothing of
+  Valve's is in it. On the site's nav, as favicon and og:image, in the
+  setup window, the tray, the exe and the installer. The WebP files were
+  encoded by a headless browser's canvas (`toDataURL('image/webp')` read
+  back with `--dump-dom`): there is no image tool on this machine.
+
 ## The installer (2026-09-20)
 
 The user: "too complicated for non techie users ... pretty much plug and
@@ -782,8 +813,7 @@ play, except for adding the api key ... download -> installs the app".
   exe to a GitHub release (`gh` is not installed here, and publishing a
   binary under their name is theirs to do). Until then those buttons lead
   to an empty page.
-- Auto-update is still "later": electron-updater against GitHub releases
-  is the obvious route now that there is an installer to update.
+- Auto-update and releases: see "Releases, auto-update and the icon".
 
 ## The setup window: the key goes in through the app (2026-09-20)
 

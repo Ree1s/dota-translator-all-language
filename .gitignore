@@ -2,7 +2,6 @@ node_modules/
 config.json
 learn.log
 demo-console.log
-package-lock.json
 whereis.log
 said.log
 ptrscan.log

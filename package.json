@@ -1,6 +1,6 @@
 {
   "name": "dota-translator",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Russian Dota 2 chat, in English, live, above the game's own chat.",
   "type": "module",
@@ -11,7 +11,8 @@
     "test": "node test.js",
     "demo": "node src/demo.js",
     "doctor": "node src/doctor.js",
-    "dist": "electron-builder --win nsis --publish never"
+    "dist": "electron-builder --win nsis --publish never",
+    "release": "electron-builder --win nsis --publish always"
   },
   "devDependencies": {
     "electron": "^33.0.0",
@@ -25,12 +26,14 @@
     "files": [
       "src/**/*",
       "offsets.json",
-      "docs/key.html",
       "LICENSE.md",
       "package.json",
       "!src/demo.js",
       "!src/doctor.js",
-      "!src/watch.js"
+      "!src/watch.js",
+      "docs/key.html",
+      "docs/logo-64.webp",
+      "docs/favicon.ico"
     ],
     "asarUnpack": [
       "src/*.ps1",
@@ -48,7 +51,8 @@
           ]
         }
       ],
-      "artifactName": "Dota-Translator-Setup-${version}.${ext}"
+      "artifactName": "Dota-Translator-Setup-${version}.${ext}",
+      "icon": "build/icon.ico"
     },
     "nsis": {
       "oneClick": true,
@@ -57,7 +61,20 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Dota Translator",
-      "deleteAppDataOnUninstall": false
-    }
+      "deleteAppDataOnUninstall": false,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "sc0rebreaker",
+        "repo": "dota-translator",
+        "releaseType": "release"
+      }
+    ]
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
   }
 }
