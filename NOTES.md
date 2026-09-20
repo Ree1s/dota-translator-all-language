@@ -149,3 +149,12 @@ npm run demo       # fake log feeder, drives the overlay with no game
 npm run watch      # the whole chain in a terminal
 npm start          # the overlay (Electron)
 ```
+
+---
+
+**2026-09-20, later the same day: THE BLOCKER IS GONE.** Memory reading
+works - chat sits in Dota's memory as complete, pre-formatted UTF-8 strings,
+found in a 11s scan with no offsets, schema or injection. Sections 2 and 4
+above are superseded in their CONCLUSION (every measurement still stands).
+See **`NOTES-2026-09-20-memory.md`**, which also records the accepted ban
+risk, why the old tools really died, and the vision/OCR results.
