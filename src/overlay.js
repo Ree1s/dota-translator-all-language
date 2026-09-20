@@ -233,9 +233,11 @@ function addStatus(s) {
   // it. "Finding the chat in memory..." over the main menu told the user
   // nothing they wanted to know: how the app is getting on is for
   // `npm run watch` and DT_DEBUG, not for the screen they are playing on.
-  if (s.kind !== 'error' || !s.text) return;
+  // And one thing the player ASKED for: what they wanted to say is on the
+  // clipboard (kind 'note').
+  if ((s.kind !== 'error' && s.kind !== 'note') || !s.text) return;
   const el = document.createElement('div');
-  el.className = 'status';
+  el.className = 'status' + (s.kind === 'note' ? ' note' : '');
   el.textContent = s.text;
   box.appendChild(el);
   trim();

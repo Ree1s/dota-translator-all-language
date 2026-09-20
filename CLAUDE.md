@@ -336,6 +336,64 @@ of three lines (team, all, team) shows every strip on its row.
   seen; the electron window is 1333x453 over the middle of the game and
   click-through, which has not been played with.
 
+## SAYING SOMETHING BACK (v0.3.0, 2026-09-21): ON BRANCH `say-back`, NOT RELEASED
+
+Asked for by the first strangers who saw the app (a Reddit thread:
+"no point in receiving messages in English if he says he doesnt
+understand me"). The user: "build it as v0.3 with clipboard only", then
+"hold on before pushing this to production - another branch. I will test
+later". **So: do not merge to master, tag or release it until the user has
+tried it in a game and said so.** master is still v0.2.14.
+
+- **What it is:** `Ctrl+Enter` in Dota (`sayHotkey`) opens one line over
+  the game (`src/say.html/js`, `say-preload.cjs`); Enter translates it
+  (`src/outgoing.js`), puts it on the CLIPBOARD, closes the window, and
+  the overlay says `Copied: ... - now Enter, Ctrl+V, Enter` (a `status`
+  of kind `note`, the one non-error the overlay shows). Also in the tray
+  menu. **The app types nothing into the game and writes nothing to it**;
+  `npm test` fails if anything that sends keys turns up in the app.
+  Auto-typing (what `tools/saychat.ps1` does) was offered as a later
+  opt-in and NOT built: automated input into a match is a different kind
+  of risk from reading memory.
+- **Which language** is not a guess: the app reads what the others type,
+  so the script most recently seen decides (`createLanguageTracker`, fed
+  from every pending and translated row), Russian until anything is seen.
+  `replyLanguage` overrides by name; only letters of it reach the prompt.
+- **The hotkey exists only while Dota is in front** (registered on the
+  helper's `focus` event, unregistered when it goes). Ctrl+Enter is "send"
+  in half the programs on a PC and a global shortcut swallows the key.
+  The say window taking focus makes the helper report focus OFF; the
+  overlay stays up for that (`sayOpen()`), and hides 1.5s after the window
+  closes if the game did not get the keyboard back. Blur closes the
+  window; a line already sent is still translated and copied.
+- **REAL OUTPUT** (gemini-3.5-flash-lite, 11 calls, **0.56-0.93s each**):
+  "buy wards please" -> "купите варды плз"; "smoke gank mid at 10:30" ->
+  "смок в мид на 10:30 давай"; "you are trash, uninstall" -> "ты мусор,
+  удаляй игру"; "gg wp" -> "гг вп"; "pudge missing, care bot" -> "пудж
+  мисс, осторожно бот". FIXED from it: "i'm going top" came back as "иду
+  хард" (the hard lane - wrong for half the players), so the prompt now
+  says top/mid/bot are places; after: "иду топ, помогите". Nobody who
+  speaks Russian has read these. "play safe" comes out oddly ("играйте
+  сейвовенько").
+- A repeat is answered from a cache (200 lines, per language): no call.
+  A new line is ONE call, two tries at most, made directly - NOT through
+  the pipeline's 15-a-minute governor, which keeps one call back but does
+  not know about these. In a loud minute an outgoing line can be the call
+  that gets "quota exceeded". Not seen; if it is, route it through the
+  pipeline's budget.
+- SEEN: the window, by its own snapshot (`DT_SAY=1 DT_SHOT=<file>` opens
+  it at startup and photographs it; DT_SAY also skips the single-instance
+  lock, because the installed copy is usually running and swallows the
+  dev one - it did, once). **NOT seen, any of it, over the game:** that
+  the window can take the keyboard from a borderless Dota; that the game
+  gets it back when the window closes (Windows should hand it to the
+  window that had it; if not, the player clicks the game); that Ctrl+Enter
+  is free in Dota (believed unbound by default, NOT checked); that the
+  hotkey comes and goes with focus; the note on the overlay; pasting with
+  Ctrl+V into Dota's chat field (`saychat.ps1` pastes, so it works).
+- NOT done: a setting for it in the setup window; the landing page and
+  key guide do not mention it (they are served from master's `docs/`).
+
 ## REPLACE IN PLACE: asked for as the DEFAULT, not built, one experiment blocked
 
 **What the user asked for (2026-09-20, during the second bot match):**
@@ -1199,7 +1257,7 @@ npm start        # the overlay (Electron)
 npm run watch    # the same chain in a terminal - use this first
 npm run demo     # drives the chain from a fake source, no Dota needed
 npm run doctor   # no-key diagnostic
-npm test         # 100 tests, plain node assert, no runner
+npm test         # 108 tests, plain node assert, no runner
 ```
 
 Keep `npm test` green. It needs no game running and no API key.

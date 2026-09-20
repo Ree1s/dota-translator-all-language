@@ -151,6 +151,27 @@ no processor time, and reading the chat costs about 0.3% of one core.
 
 - `Alt+D` hides and shows the overlay.
 - `Alt+Shift+D` quits.
+- `Ctrl+Enter`, in Dota, opens a line to say something back (below).
+
+## Saying something back
+
+Press `Ctrl+Enter` in Dota, type what you want to say in English, press
+Enter. About a second later the translation is on your clipboard and the
+overlay says so; then, in the game: `Enter` (or `Shift+Enter` for all
+chat), `Ctrl+V`, `Enter`.
+
+- **The app does not type into the game and does not write to it.** It
+  puts text on the clipboard; you paste it. That is deliberate.
+- The language is whatever the others were last seen typing in - the app
+  reads their chat, so it knows - and Russian until anybody has typed.
+  `replyLanguage` in `config.json` fixes it (`"Ukrainian"`).
+- The key only exists while Dota is the window in front; `sayHotkey`
+  changes it, and `""` turns it off. It is also in the tray menu.
+- It takes the keyboard from the game while it is open, and the model
+  needs most of a second: it is for "buy wards" and "I'm going top", not
+  for a call in the middle of a fight.
+- Each new line is one call on the same free 15 a minute as the incoming
+  chat. A line you have said before costs nothing.
 
 ## Settings (`config.json`)
 

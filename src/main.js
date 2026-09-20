@@ -3,7 +3,7 @@
 // show above it: an exclusive fullscreen game owns the screen and no
 // window can sit on it.
 
-import { app, BrowserWindow, screen, ipcMain, globalShortcut, safeStorage, shell, Tray, Menu, nativeImage } from 'electron';
+import { app, BrowserWindow, screen, ipcMain, globalShortcut, safeStorage, shell, Tray, Menu, nativeImage, clipboard } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -16,6 +16,7 @@ import updater from 'electron-updater';
 import { startWatching } from './watcher.js';
 import { startWatchingMemory } from './memwatcher.js';
 import { loadOffsets, bundledOffsets } from './offsets.js';
+import { createOutgoing, createLanguageTracker, targetLanguage } from './outgoing.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const cfg = loadConfig();
@@ -215,7 +216,7 @@ async function start() {
       if (s && s.kind === 'waiting') patchWatch.reset();
       send('status', s);
     },
-    onPending: (row) => send('pending', withFace(row)),
+    onPending: (row) => { spoken.saw(row.text); send('pending', withFace(row)); },
     onLayout,
     onSeen: (s) => { if (cfg.display === 'cover') send('seen', s); },
     // The game's chat is set in Valve's Radiance, which is not on anybody's
@@ -229,13 +230,93 @@ async function start() {
     },
     // Up only while the game is the window in front.
     onFocus: (on) => {
+      gameInFront = on;
+      setSayHotkey(on);
+      // Our own say window took the keyboard, not another app: stay up.
+      if (!on && sayOpen()) return;
       inFront = on;
       if (!win || win.isDestroyed() || hidden) return;
       if (on) win.showInactive(); else win.hide();
     },
-    onResult: (row) => send('line', withFace(row)),
+    onResult: (row) => { spoken.saw(row.text); send('line', withFace(row)); },
   });
 }
+
+// ---- SAYING SOMETHING BACK -------------------------------------------
+// Asked for by the first players who saw the app: their own English, in
+// the language the others type in (src/outgoing.js). A hotkey opens one
+// line over the game; Enter translates it and puts it on the CLIPBOARD;
+// the player pastes it into the game's chat themselves (Enter, Ctrl+V,
+// Enter). The app types nothing into the game and writes nothing to it -
+// the user's decision, 2026-09-21: "clipboard only".
+//
+// The hotkey exists ONLY while Dota is the window in front. Ctrl+Enter is
+// "send" in half the programs on a PC, and a global shortcut swallows the
+// key from whatever has the keyboard.
+const spoken = createLanguageTracker();
+const sayIt = createOutgoing({ apiKey: () => cfg.geminiApiKey, model: cfg.model });
+let sayWin = null;
+let gameInFront = false;
+let sayKeyOn = false;
+const sayOpen = () => Boolean(sayWin && !sayWin.isDestroyed());
+
+function setSayHotkey(on) {
+  if (!cfg.sayHotkey || on === sayKeyOn) return;
+  try {
+    if (on) sayKeyOn = globalShortcut.register(cfg.sayHotkey, openSay);
+    else { globalShortcut.unregister(cfg.sayHotkey); sayKeyOn = false; }
+  } catch { sayKeyOn = false; /* not a key Electron knows: no hotkey, and nothing else breaks */ }
+}
+
+function openSay() {
+  if (!cfg.geminiApiKey) cfg.geminiApiKey = storedKey();
+  if (!cfg.geminiApiKey) { openSetup(); return; }
+  if (sayOpen()) { sayWin.show(); sayWin.focus(); return; }
+  const area = screen.getPrimaryDisplay().bounds;
+  const width = 600, height = 84;
+  sayWin = new BrowserWindow({
+    x: area.x + Math.round((area.width - width) / 2), y: area.y + Math.round(area.height * 0.56),
+    width, height, frame: false, transparent: true, resizable: false, skipTaskbar: true, alwaysOnTop: true, show: false,
+    webPreferences: { preload: path.join(here, 'say-preload.cjs'), contextIsolation: true, sandbox: true },
+  });
+  sayWin.setAlwaysOnTop(true, 'screen-saver');
+  sayWin.loadFile(path.join(here, 'say.html'));
+  sayWin.once('ready-to-show', () => {
+    if (!sayOpen()) return;
+    sayWin.show(); sayWin.focus();
+    if (process.env.DT_SHOT) setTimeout(async () => { try { fs.writeFileSync(process.env.DT_SHOT, (await sayWin.webContents.capturePage()).toPNG()); } catch { /* closed */ } }, 600);
+  });
+  sayWin.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  sayWin.webContents.on('will-navigate', (e) => e.preventDefault());
+  // Clicked back into the game, or alt-tabbed: it is in the way. A line
+  // already sent off is still translated and copied.
+  sayWin.on('blur', () => { if (sayOpen() && !process.env.DT_SHOT) sayWin.close(); });
+  sayWin.on('closed', () => {
+    sayWin = null;
+    // The keyboard should go back to the game. If it went somewhere else,
+    // the overlay has no business staying up over it.
+    setTimeout(() => {
+      if (gameInFront || sayOpen()) return;
+      inFront = false;
+      if (win && !win.isDestroyed()) win.hide();
+    }, 1500);
+  });
+}
+
+ipcMain.handle('say:state', () => ({ language: targetLanguage(cfg.replyLanguage, spoken) }));
+ipcMain.handle('say:close', () => { if (sayOpen()) sayWin.close(); });
+ipcMain.handle('say:send', async (_e, text) => {
+  try {
+    const r = await sayIt(text, targetLanguage(cfg.replyLanguage, spoken));
+    clipboard.writeText(r.out);
+    if (DEBUG) console.log('say', JSON.stringify({ text, ...r }));
+    send('status', { kind: 'note', text: 'Copied: ' + r.out + '  -  now Enter, Ctrl+V, Enter' });
+    if (sayOpen()) sayWin.close();
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: String((err && err.message) || err) + '. Enter tries again, Esc closes.' };
+  }
+});
 
 // ---- UPDATES ---------------------------------------------------------
 // The INSTALLED app keeps itself up to date from the project's GitHub
@@ -265,7 +346,9 @@ function checkForUpdates() {
 // One copy only: two would translate every line twice on one key (the
 // 15-a-minute limit), and a player who cannot find the tray icon starts
 // the app again - which should show them the window, not a second app.
-const onlyCopy = app.requestSingleInstanceLock();
+// (DT_SAY, which only opens the say window to be looked at, skips the lock:
+// the installed copy is usually running, and would swallow the dev one.)
+const onlyCopy = process.env.DT_SAY ? true : app.requestSingleInstanceLock();
 if (!onlyCopy) app.quit();
 app.on('second-instance', openSetup);
 
@@ -277,6 +360,8 @@ app.whenReady().then(() => {
   globalShortcut.register('Alt+D', toggleHidden);
   makeTray();
   globalShortcut.register('Alt+Shift+D', () => app.quit());
+  // DT_SAY=1 opens the say window at startup: the way to look at it with no game.
+  if (process.env.DT_SAY) openSay();
 });
 
 // ---- THE SETUP WINDOW ------------------------------------------------
@@ -342,6 +427,7 @@ function makeTray() {
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Settings and key...', click: openSetup },
     { label: 'Hide or show the translations (Alt+D)', click: toggleHidden },
+    { label: 'Say something in their language' + (cfg.sayHotkey ? ' (' + cfg.sayHotkey.replace('Control', 'Ctrl') + ' in Dota)' : ''), click: openSay },
     { label: 'Support the developer (Ko-fi)', click: () => shell.openExternal('https://ko-fi.com/sc0rebreaker') },
     { label: 'Version ' + app.getVersion(), enabled: false },
     { type: 'separator' },

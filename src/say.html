@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'self'">
+<title>Dota Translator - say</title>
+<style>
+  /* One line over the game: type English, Enter, and the translation is on
+     the clipboard. As small and as quick as it can be - it takes the
+     keyboard away from a match for as long as it is open. */
+  :root { --bg: #0a0d10; --panel: #11161b; --line: rgba(200, 215, 230, 0.24); --text: #f4f6f8; --faint: #8b95a3; --accent: #f0b44c; --warn: #e58b6b; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { overflow: hidden; height: 100%; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; border: 1px solid var(--accent); border-radius: 10px; padding: 10px 12px 8px; display: flex; flex-direction: column; gap: 6px; }
+  .row { display: flex; align-items: center; gap: 10px; }
+  .to { color: var(--accent); font-weight: 600; font-size: 12.5px; white-space: nowrap; }
+  input { flex: 1; min-width: 0; background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; font: inherit; font-size: 15px; outline: none; }
+  input:focus { border-color: var(--accent); }
+  input:disabled { opacity: 0.6; }
+  #hint { color: var(--faint); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #hint.bad { color: var(--warn); }
+</style>
+</head>
+<body>
+  <div class="row">
+    <span class="to" id="to">EN &rarr; Russian</span>
+    <input id="text" type="text" maxlength="200" spellcheck="false" autocomplete="off" placeholder="Type in English...">
+  </div>
+  <div id="hint">Enter translates and copies it. Then in Dota: Enter, Ctrl+V, Enter. Esc closes.</div>
+  <script src="say.js"></script>
+</body>
+</html>

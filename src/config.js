@@ -131,6 +131,15 @@ export const DEFAULTS = {
   // checked at startup, installed when the app is next closed. false
   // never checks.
   autoUpdate: true,
+  // Saying something BACK: this key, pressed in Dota, opens one line to
+  // type English into; its translation goes on the clipboard, to be pasted
+  // into the game's chat by the player (src/outgoing.js). The key exists
+  // only while Dota is the window in front. "" turns it off.
+  sayHotkey: 'Control+Enter',
+  // What to translate it into. "auto" is whatever the others were last
+  // seen typing in, Russian until anything has been seen; or a language by
+  // name ("Russian", "Ukrainian", "Chinese").
+  replyLanguage: 'auto',
   learn: false,             // log unmatched lines to learn.log
 };
 

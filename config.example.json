@@ -30,6 +30,8 @@
   "boxY": -1,
   "boxWidth": 520,
   "autoUpdate": true,
+  "sayHotkey": "Control+Enter",
+  "replyLanguage": "auto",
   "clickThrough": true,
   "learn": false
 }
