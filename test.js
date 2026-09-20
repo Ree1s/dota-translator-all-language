@@ -623,11 +623,11 @@ ok('a new line is measured against where chat WAS, not against its own second co
   line('[Allies] Иван: далеко', 9300, 0);                        // its second copy
   assert.deepEqual(placed, [], 'a placement waits for its scan to end');
   feed({ t: 'stat', full: false, mode: 'wide', ms: 1 });
-  assert.deepEqual(placed, [{ inWindow: false, distance: 8000, channel: 'team', mode: 'wide' }]);
+  assert.deepEqual(placed, [{ inWindow: false, distance: 8000, channel: 'team', text: 'далеко', mode: 'wide' }]);
 
   line('[Allies] Pernille: Pushing mid', 9400, 1);               // English counts too
   feed({ t: 'stat', full: false, mode: 'win', ms: 1 });
-  assert.deepEqual(placed[1], { inWindow: true, distance: 100, channel: 'team', mode: 'win' });
+  assert.deepEqual(placed[1], { inWindow: true, distance: 100, channel: 'team', text: 'Pushing mid', mode: 'win' });
   source.stop();
 });
 
@@ -641,7 +641,7 @@ ok('a placement carries the region and allocation the line was in', () => {
   feed({ t: 'line', b64: Buffer.from('[Allies] Иван: гг', 'utf8').toString('base64'), a: 5000, w: 0, r: 4096, rs: 8192, ab: 4096 });
   feed({ t: 'stat', full: false, mode: 'wide', ms: 1 });
   assert.deepEqual(placed, [{
-    inWindow: false, distance: null, channel: 'team', addr: 5000, region: 4096, regionSize: 8192, alloc: 4096, mode: 'wide',
+    inWindow: false, distance: null, channel: 'team', text: 'гг', addr: 5000, region: 4096, regionSize: 8192, alloc: 4096, mode: 'wide',
   }]);
   source.stop();
 });

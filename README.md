@@ -125,6 +125,7 @@ the memory reading runs through PowerShell, which Windows already has.
 | `scanIntervalMs` | how often to re-read the chat (1000) |
 | `fullRescanMs` | how often to sweep the whole process again (120000) |
 | `scanWindowMb` | most re-reads only look this many MB either side of where chat was last seen; 0 reads everything every time (4) |
+| `scanWideCapMb` | the biggest memory region the look-everywhere re-read will open, in MB; 0 opens them all, 64 is lighter on the PC and can miss an all-chat line for a long time (0) |
 | `scanWideEvery` | every Nth re-read looks everywhere chat has ever been, to catch a line written somewhere new (5) |
 | `scripts` | which writing systems to translate. `["cyrillic"]` by default; `greek`, `han`, `hangul`, `arabic`, `thai` are also known |
 | `batchMs` | how long to gather lines before one call (150) |

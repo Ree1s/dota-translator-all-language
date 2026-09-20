@@ -24,6 +24,7 @@ export function scannerArgs(script = SCRIPT, {
   parentPid = process.pid,
   windowMb,
   wideEvery,
+  wideCapMb,
   processName,
 } = {}) {
   const args = [
@@ -41,6 +42,7 @@ export function scannerArgs(script = SCRIPT, {
   // Left to the script's own defaults unless somebody has an opinion.
   if (Number.isFinite(windowMb)) args.push('-WindowMb', String(windowMb));
   if (Number.isFinite(wideEvery)) args.push('-WideEvery', String(wideEvery));
+  if (Number.isFinite(wideCapMb)) args.push('-WideCapMb', String(wideCapMb));
   if (processName) args.push('-ProcessName', processName);
   return args;
 }
@@ -107,6 +109,7 @@ export function startMemorySource({
   onPlacement = () => {},
   windowMb,
   wideEvery,
+  wideCapMb,
   processName,
 } = {}) {
   const tracker = createLineTracker();
@@ -188,7 +191,7 @@ export function startMemorySource({
         // puts a line does not depend on what language it is in.
         if (Number.isFinite(ev.addr)) {
           pendingPlacements.push({
-            inWindow: ev.inWindow, distance: nearestDistance(ev.addr, known), channel: line.channel,
+            inWindow: ev.inWindow, distance: nearestDistance(ev.addr, known), channel: line.channel, text: line.text,
             ...(Number.isFinite(ev.region)
               ? { addr: ev.addr, region: ev.region, regionSize: ev.regionSize, alloc: ev.alloc } : {}),
           });
@@ -204,7 +207,7 @@ export function startMemorySource({
 
   function start() {
     if (stopped) return;
-    child = spawnImpl(POWERSHELL, scannerArgs(SCRIPT, { intervalMs, fullRescanMs, windowMb, wideEvery, processName }), {
+    child = spawnImpl(POWERSHELL, scannerArgs(SCRIPT, { intervalMs, fullRescanMs, windowMb, wideEvery, wideCapMb, processName }), {
       windowsHide: true,
       stdio: ['ignore', 'pipe', 'pipe'],
     });

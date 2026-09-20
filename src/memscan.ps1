@@ -45,6 +45,8 @@ param(
   # somewhere new is late by at most N polls rather than lost until the
   # next full sweep.
   [int]$WideEvery = 5,
+  # The biggest region a WIDE poll will read, in MB; 0 reads them all.
+  [int]$WideCapMb = 64,
   [int]$PollThreads = 1,
   [int]$SweepThreads = 2,
   [string]$Priority = 'BelowNormal'
@@ -106,7 +108,17 @@ public static class DotaMem {
   // short string is written. This is a heuristic, not a law, and it is
   // the FULL sweep's job to be the thing that has no heuristics in it:
   // that one reads every byte, giant regions included.
-  const long POLL_MAX_REGION = 64L * 1024 * 1024;
+  //
+  // AND IT WAS WRONG, for all chat. MEASURED with back-to-back full sweeps
+  // and lines typed at known times: a team line is in memory four or five
+  // times over and one copy usually lands somewhere small, but an all-chat
+  // line exists only as one or two markup copies, and two of three of
+  // those sat in regions of 64.8 MB and 160 MB. No poll ever saw them. The
+  // chat heap grows through the match and its regions merge past any cap.
+  // So the cap now binds only the WIDE poll, where it is what keeps 2 GB
+  // of pools out of a routine read. A WINDOWED poll reads a few MB of a
+  // region however big the region is, and has no use for a cap at all.
+  public static long POLL_MAX_REGION = 64L * 1024 * 1024;   // 0 = no cap
 
   // Panorama's markup wraps EVERY chat line whatever its channel, so it
   // is the one anchor that finds both. MEASURED: the plain pre-formatted
@@ -272,7 +284,7 @@ public static class DotaMem {
         if (size <= 0) break;
 
         bool want = m.State == COMMIT && Readable(m.Protect);
-        if (want && only != null && (!only.Contains(ab) || size > POLL_MAX_REGION)) want = false;
+        if (want && only != null && (!only.Contains(ab) || (!windowed && POLL_MAX_REGION > 0 && size > POLL_MAX_REGION))) want = false;
         long priv = m.Type == PRIVATE ? 1 : 0;
         if (want && !windowed) work.Add(new long[] { bas, size, ab, priv, 1, 1, bas, size });
         if (want && windowed) {
@@ -345,6 +357,8 @@ public static class DotaMem {
   }
 }
 "@
+
+[DotaMem]::POLL_MAX_REGION = [long]$WideCapMb * 1MB
 
 function Emit($obj) {
   # -Compress keeps it to one line, which is what the reader splits on.

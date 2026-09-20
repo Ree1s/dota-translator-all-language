@@ -29,7 +29,7 @@ retry described below is for.
 
 ## Open issues, in the order they matter
 
-### 1. THE READER: cheap enough now by feel, but it MISSES LINES when they are said (see "SECOND LIVE MATCH")
+### 1. THE READER finds every line now, but scanning cannot be both instant and light - the chat CONTAINER is next
 
 User-reported the first time the overlay was ever left running while
 actually playing: *"my game seems laggy"*. Believe it; it is not
@@ -154,7 +154,59 @@ something worse turned up - LINES ARE SOMETIMES NOT FOUND WHEN SAID.**
 - Cost at a 1s poll, 4 hot allocations: windowed 50-170 MB / 75-220ms,
   wide 760-970 MB / 0.9-1.3s, full sweep 4.4s. The model failed both
   tries once (2.5s + 8s) and the line went up untranslated at +10s.
-- How the game felt at the 1s poll: NOT yet reported.
+- How the game felt at the 1s poll, from the user: "ok I think".
+
+**THE CAUSE WAS THE 64 MB POLL CAP, and scanning has now shown its
+ceiling (2026-09-20, 18:18-18:32, four harness runs on a bot match).**
+
+Lines are typed INTO the game by `tools/saychat.ps1` now (focus, Enter or
+Shift+Enter, paste, Enter - input, not memory), so every line has a send
+time to the millisecond. `tools/latency.mjs` runs the real reader beside
+it and prints say -> found per line plus processor use;
+`tools/whereis.mjs` does back-to-back full sweeps and logs every copy.
+
+- **A team line is in memory 4-5 times over (plain and markup); an
+  all-chat line only once or twice, markup only.** Of three all-chat
+  lines, two had NO copy in any region under 64 MB, ever: they sat in
+  regions of 64.8 MB and 160 MB. Team lines always had one small copy.
+  That is the whole of "all chat is late", and the old note that "every
+  chat line yet measured was in a small region" is dead: the chat heap
+  grows through a match and its regions merge past any cap.
+- Windowed polls ignore the cap now (they read a few MB of a region
+  however big it is). The wide poll's cap is `scanWideCapMb`, default 0.
+
+| 10 lines, 7s apart, 1s poll | found | median | worst | windowed poll | wide poll |
+|---|---|---|---|---|---|
+| wide cap 64 MB, run 1 | 10/10 | 1.3s | 7.3s | 366 MB / 465ms | 1,064 MB / 1.4s |
+| wide cap 64 MB, run 2 | 10/10 | 2.5s | **23.0s** (and 18.7s) | 336 MB / 428ms | 1,035 MB / 1.3s |
+| no cap | 10/10 | 2.7s | 7.3s | 487 MB / 597ms | 2,758 MB / 3.3s |
+
+- Team lines: 0.4-2.7s. All chat: 0.7s when in a window, 5-7s when not.
+  About 3 lines in 10 are outside every window.
+- With no cap nothing is lost, but the 3.3s wide poll BLOCKS the windowed
+  polls behind it, which is why the median got worse.
+- **Windows are no longer small.** With giant regions included they add
+  up to 340-490 MB per poll, every second.
+- **Processor** (Ryzen 9 5900X, 12 cores / 24 threads, 32 GB at 3200):
+  the reader is 46-63% of ONE core. The game used 307% of a core with
+  the reader and 307% with no reader at all (the control run), so the
+  reader does not make the GAME work harder. The first two runs seemed
+  to show the game doubling; that was Dota waking up after being brought
+  to the front, which is why the control exists. Memory bandwidth is not
+  in any of these numbers.
+- **The user's requirement, stated this evening: it must feel fine on a
+  WORSE PC than this one, and chat must be near instant.** Half a core
+  and ~0.5-0.8 GB/s of reads is nothing here and is a real share of a
+  four-core laptop. Scanning cannot be both instant and light: every gain
+  in latency above was bought with more reading.
+
+**So the next piece of work is the chat container (option 2), not more
+tuning.** Read the chat log's own structure - a few KB per poll - and
+both problems go at once. The tools above make that tractable: type a
+line at a known time, find every copy, and look at what POINTS to them.
+The plain copies (team) and the markup copies sit in different places;
+the container is whatever holds the pointers, and `whereis.log` addresses
+are where to start looking for it.
 
 **Then measure frame time in the game**, windows on against
 `scanWindowMb: 0`, before believing any of it.
@@ -237,6 +289,10 @@ Keep `npm test` green. It needs no game running and no API key.
 
 - Commit trailer: `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`
 - Working branch is `master`, pushed to `KristjanRanna/dota-translator`.
+- `tools/` holds the test rig: `fakedota.js` (stand-in game),
+  `saychat.ps1` (types lines into the real game), `latency.mjs` (say ->
+  found, and processor use), `whereis.mjs` (where every copy of a line
+  is). The last three touch the live game: bot matches, with say-so.
 - Source files are LF. There is no build step and nothing compiled.
 - The Gemini key lives in `config.json` (gitignored) or `GEMINI_API_KEY`.
 

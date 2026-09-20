@@ -37,6 +37,7 @@ export function startWatchingMemory(cfg, { onResult, onStatus = () => {}, transl
     onMessage: (msg) => pipe.push(msg),
     windowMb: cfg.scanWindowMb,
     wideEvery: cfg.scanWideEvery,
+    wideCapMb: cfg.scanWideCapMb,
     onPlacement: (p) => {
       // The measurement that says whether scan windows are any good and
       // how big they must be. Only a live game can produce it, so it is

@@ -35,6 +35,13 @@ export const DEFAULTS = {
   // 4 is a guess, and learn.log's "placement" lines are what replace it.
   scanWindowMb: 4,
   scanWideEvery: 5,
+  // The biggest region a WIDE poll reads, in MB; 0 reads them all.
+  // MEASURED with lines typed at known times: at 64, two all-chat lines in
+  // ten were in regions no poll would read and turned up 19s and 23s late;
+  // at 0 the worst of ten was 7.3s, and the wide poll went from ~1.0 GB /
+  // 1.3s to ~2.8 GB / 3.3s. A line twenty seconds late is a line lost, so
+  // the default is the one that finds them. 64 is the lighter setting.
+  scanWideCapMb: 0,
   scripts: ['cyrillic'],    // which writing systems to translate
   // Lines said in the same breath go in one call. 400 was chosen before
   // anybody had played with it; in a fight every tenth of a second shows.
