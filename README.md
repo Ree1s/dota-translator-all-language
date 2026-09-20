@@ -37,9 +37,10 @@ What nobody can tell you:
 - The Steam Subscriber Agreement makes any third-party tool a violation
   whatever technique it uses.
 
-The honest comparison is **Overplus** - unsanctioned, widely used, works
-anyway, and its users accept the risk. It is *not* comparable to Overwolf,
-which Valve permits and which does not read memory.
+The honest way to think of it: an **unsanctioned third-party tool**, the
+kind that works, that plenty of people use, and whose users carry the risk
+themselves. It is *not* one of the overlays Valve permits - those do not
+read the game's memory, and this does.
 
 **Use it at your own risk, and not on an account you would mind losing.**
 
@@ -73,7 +74,9 @@ the memory reading runs through PowerShell, which Windows already has.
 1. **Run Dota borderless windowed.** Settings, Video, Display Mode. An
    exclusive fullscreen game owns the screen and no overlay can sit on it.
 
-2. **Get a Gemini key** at <https://aistudio.google.com/apikey> - the free
+2. **Get a Gemini key** at <https://aistudio.google.com/apikey> - there is a
+   [step-by-step guide with pictures](https://sc0rebreaker.github.io/dota-translator/key.html)
+   ([source](docs/key.html)). The free
    tier is plenty. Two traps, both of which cost an hour to find:
    - Make it in a project with **no billing enabled**. A project with prepay
      billing does *not* fall back to the free tier; it fails outright with
@@ -255,8 +258,8 @@ In plain terms:
 - **If you play Dota, it is yours.** Use it, change it, share it, fork it,
   build on it. You owe nothing and there is nothing to sign up for.
 - **If you sell software, you need permission.** A paid tool cannot bundle
-  this as a feature - not Overplus, not Overwolf, not anyone else charging
-  for it. Ask, and we can talk.
+  this as a feature - not a subscription app, not an overlay platform, not
+  anyone else charging for it. Ask, and we can talk.
 - Charities, schools, research and public bodies are covered as
   noncommercial, whatever funds them.
 

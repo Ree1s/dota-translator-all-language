@@ -742,6 +742,47 @@ of work (the chase needed a human to tell signal from noise at each
 level), and it must be proven against `tools/fakechat.ps1` with a
 DIFFERENT layout than the one it expects before it is trusted on the game.
 
+**LATER, NOT NOW (the user, 2026-09-20: "the app should auto update when
+start ... maybe work on it later ... but not now"): the app updating
+itself.** Today only `offsets.json` updates itself; the code does not,
+and there is no installer. Auto-update wants a packaged build first
+(electron-builder or similar), which is also what the landing page is
+missing for players who are not developers. Do the two together.
+
+## The key guide (`docs/key.html`, 2026-09-20)
+
+The user asked for "a guide how to get api key with pictures". Linked from
+the landing page's first step and from the README's setup.
+
+- **The pictures are DRAWINGS, made in HTML on the page, and say so.** A
+  real screenshot of Google AI Studio needs somebody's signed-in account
+  and shows a live key. Three browser-window drawings (the API keys page,
+  the create dialog with a no-billing project ringed, the copy button)
+  and one of `config.json` with the part to change highlighted.
+  `npm test` fails if anything shaped like a real Google key is on it.
+- The steps follow Google's own page, read 2026-09-20
+  (ai.google.dev/gemini-api/docs/api-key): a NEW user gets a default
+  project AND a key made for them on accepting the terms; everybody else
+  uses Create API key on Dashboard > API keys and picks a project.
+- **From that same page, and not yet dealt with:** since 2026-05-28 new
+  AI Studio keys are "authorization keys", and Google says the Gemini API
+  will REJECT the older "standard" keys "on September 2026". The user's
+  key was still working on 2026-09-20. If translation suddenly fails with
+  an auth error, a new key from AI Studio is the first thing to try. NOT
+  verified: that an authorization key works with the `x-goog-api-key`
+  header this app sends (it is still an API key, so it should).
+- Troubleshooting on the page is the two key traps this project hit (402
+  prepayment depleted, 403 denied on a brand-new project) plus quota and
+  a mistyped key.
+- **Borderless Window** (the user asked whether it is a hard requirement):
+  for the overlay, yes as far as is known - it is a separate window and
+  an exclusive-fullscreen game lets nothing on top of it; drawing inside
+  the game would mean injecting into its renderer, which this does not do.
+  Plain Windowed works too, and the memory reader does not care. ONLY
+  borderless has ever been tested. How Dota's "Exclusive Fullscreen"
+  behaves under Windows' fullscreen optimisations is NOT known, so the
+  page says "use Borderless" and does not claim the other is impossible.
+
 ## The landing page (`docs/index.html`, 2026-09-20)
 
 The user asked for a page "to make it sell (even though it's free)",
@@ -777,8 +818,8 @@ with a slider. What was built, and the rules it follows:
   they were designed, not seen: that the ten-second search lands in the
   loading screen, and the fallback after a patch.
 - `npm test` holds the page to the project's decisions: "at your own
-  risk" in so many words, never "safe"/"undetectable", Overplus not
-  Overwolf, source-available not open source, and no dead in-page links.
+  risk" in so many words, never "safe"/"undetectable", no other product named,
+  source-available not open source, and no dead in-page links.
 - SEEN: desktop (1280, headless Edge screenshots of every section) and a
   298px-wide phone view in the browser pane. Headless Edge will not go
   narrower than ~500px, so a "phone" screenshot from it is cropped, not
@@ -806,7 +847,7 @@ npm start        # the overlay (Electron)
 npm run watch    # the same chain in a terminal - use this first
 npm run demo     # drives the chain from a fake source, no Dota needed
 npm run doctor   # no-key diagnostic
-npm test         # 92 tests, plain node assert, no runner
+npm test         # 93 tests, plain node assert, no runner
 ```
 
 Keep `npm test` green. It needs no game running and no API key.
@@ -971,8 +1012,12 @@ you the first two are open questions, and they are not.
 
 - **Ban risk is accepted by the user, explicitly.** Ship at their own
   risk with a clear notice. Word it as *undocumented*, never *safe*.
-  Compare to **Overplus**; never to Overwolf, which Valve permits and
-  which does not read memory.
+  Describe it as an *unsanctioned third-party tool*, and NOT as one of the
+  overlays Valve permits, which do not read memory. **NAME NO OTHER
+  PRODUCT, anywhere public - the page, the README, the notes, this file**
+  (the user, 2026-09-20: "I dont want to promote it"). Two were named
+  everywhere until then, as the fair comparison and the unfair one;
+  `npm test` now fails if either name comes back.
 - **Licence is PolyForm Noncommercial 1.0.0** - free for players, a paid
   product may not bundle it. That makes this **source-available, not open
   source**; do not call it open source.

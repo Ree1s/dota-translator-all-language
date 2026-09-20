@@ -17,8 +17,8 @@ Reasons, so this is not re-argued later:
 - **Translation is free.** Anyone can make a Gemini API key in two minutes
   and run on the free tier. A subscription would sell convenience only.
 - **The market price is below the cost floor.** Dota Plus (Valve's own, full
-  feature set) is $3.99/mo; Overplus (unlocks every skin plus analytics) is
-  ~$2-3 per 30 days. A single-purpose chat translator is worth maybe
+  feature set) is $3.99/mo; the best-known third-party companion app (every
+  skin unlocked, plus analytics) is ~$2-3 per 30 days. A single-purpose chat translator is worth maybe
   EUR 1-1.50 - under both the card-fee floor (~EUR 2 before fees stop eating
   a fifth) and the API cost of a 10-games-a-day user (EUR 1.70-2.50/mo).
 - **Subscribers would be adversely selected.** Only heavy users ever hit a

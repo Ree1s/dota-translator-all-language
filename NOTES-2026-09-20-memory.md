@@ -7,20 +7,23 @@ superseded by this one.
 ## What was decided
 
 **Ban risk is accepted, by the user, explicitly.** Ship at the user's own
-risk with a clear notice, in the same category as Overplus. This reopens
+risk with a clear notice, in the same category as the unsanctioned
+third-party Dota tools people already use. This reopens
 the memory-reading route that `NOTES.md` section 5 had set aside on risk
 alone.
 
 Word the notice carefully:
 
-- **Do NOT cite Overwolf as precedent.** Overwolf is a sanctioned overlay
-  framework that games support and that does not read process memory.
-  Overplus is the fair comparison.
+- **Do NOT cite a sanctioned overlay platform as precedent.** Those are
+  frameworks that games support and that do not read process memory. An
+  unsanctioned memory-reading tool is the fair comparison. (No other
+  product is named, here or anywhere public: the user does not want to
+  promote any.)
 - Say the risk is **undocumented**, not **safe**. See the VAC section.
 
 **The licence is PolyForm Noncommercial 1.0.0** (the user's call): free for
-players, and a paid product may not bundle it - Overplus and Overwolf were
-named as exactly what this is meant to prevent. Three things follow:
+players, and a paid product may not bundle it - paid Dota companion apps
+and overlay platforms are exactly what this is meant to prevent. Three things follow:
 
 - **This is SOURCE-AVAILABLE, not open source.** Every OSI licence permits
   commercial use, so "free for everyone but not for paid products" cannot
@@ -31,13 +34,13 @@ named as exactly what this is meant to prevent. Three things follow:
   it only forces them to publish their changes - weak leverage over a
   bundled feature.
 - A licence only deters someone who cares about legal exposure. That is
-  exactly who Overplus and Overwolf are, which is why it is worth having.
+  exactly who the paid companion apps are, which is why it is worth having.
 
 **REPLACING the chat text in place is WANTED, as an option** (the user's
 preference over a second chat box). It was argued against once on risk -
 reading is passive, writing is what VAC scans for - and the user's answer
-stands and is reasonable: **Overplus writes to the client** (its Inventory
-Changer does exactly that), its users are broadly fine, and the last ban
+stands and is reasonable: **a widely used paid Dota tool already writes to
+the client** (to change what the inventory shows), its users are broadly fine, and the last ban
 wave was years ago. So this is a decision, not an open question. Default
 to the overlay, make replace opt-in.
 

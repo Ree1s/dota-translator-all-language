@@ -1026,20 +1026,38 @@ await okAsync('a newer offsets file on the repo wins, a bad or missing one chang
 
 console.log('landing page');
 
+ok('no other product is named anywhere the public can read', () => {
+  // The user does not want to promote any. Two were named all over the
+  // repo as comparisons; the names are spelt in halves here so that this
+  // file does not contain them either.
+  const names = ['over' + 'plus', 'over' + 'wolf'];
+  const files = ['README.md', 'CLAUDE.md', 'NOTES.md', 'NOTES-2026-09-20-memory.md', 'LICENSE.md', 'test.js', 'offsets.json',
+    ...['docs', 'src', 'tools'].flatMap((d) => fs.readdirSync(d).map((f) => path.join(d, f)))];
+  for (const f of files) {
+    const text = fs.readFileSync(f, 'utf8').toLowerCase();
+    for (const n of names) assert.ok(!text.includes(n), f + ' names another product');
+  }
+});
+
 ok('the landing page keeps the promises the project made about how it talks', () => {
   // docs/index.html sells, and selling is where "undocumented" drifts into
   // "safe". The decisions in CLAUDE.md, held to: at your own risk, said in
-  // so many words; never called safe; Overplus, never Overwolf, as the
-  // comparison; source-available, not open source.
+  // so many words; never called safe; an unsanctioned third-party tool,
+  // with no other product named; source-available, not open source.
   const html = fs.readFileSync(path.join('docs', 'index.html'), 'utf8');
   const text = html.replace(/<style[\s\S]*?<\/style>|<script[\s\S]*?<\/script>|<[^>]+>/g, ' ').replace(/\s+/g, ' ');
   assert.match(text, /at your own risk/i);
   assert.match(text, /not on an account you would mind losing/i);
-  assert.match(text, /Overplus, not Overwolf/);
+  assert.match(text, /unsanctioned third-party tool/);
   assert.match(text, /source-available rather than open source/);
   for (const claim of [/\bis safe\b/i, /\bcompletely safe\b/i, /\bundetectable\b/i, /\bban-?proof\b/i, /\bVAC[- ]safe\b/i]) {
     assert.doesNotMatch(text, claim, 'the landing page claims ' + claim);
   }
+  // The key guide: linked from the page, there, and showing no real key.
+  assert.ok(html.includes('href="key.html"'));
+  const guide = fs.readFileSync(path.join('docs', 'key.html'), 'utf8');
+  assert.doesNotMatch(guide, /AIza[0-9A-Za-z_-]{10,}/, 'something shaped like a real Google key is in the guide');
+  assert.match(guide, /not a screenshot/);
   // Every in-page link goes somewhere.
   for (const [, id] of html.matchAll(/href="#([a-z-]+)"/g)) assert.ok(html.includes(`id="${id}"`), 'no section #' + id);
 });
