@@ -241,7 +241,15 @@ function checkForUpdates() {
   setInterval(look, 4 * 60 * 60 * 1000).unref();
 }
 
+// One copy only: two would translate every line twice on one key (the
+// 15-a-minute limit), and a player who cannot find the tray icon starts
+// the app again - which should show them the window, not a second app.
+const onlyCopy = app.requestSingleInstanceLock();
+if (!onlyCopy) app.quit();
+app.on('second-instance', openSetup);
+
 app.whenReady().then(() => {
+  if (!onlyCopy) return;
   createWindow();
   checkForUpdates();
   // Alt+D hides and shows it, for a screenshot or a clear view of a fight.
@@ -318,6 +326,13 @@ function makeTray() {
     { label: 'Quit', click: () => app.quit() },
   ]));
   tray.on('click', openSetup);
+  // With a key there is no window at all at startup, and Windows hides a
+  // new tray icon behind the ^ arrow: say where the app went. A balloon
+  // takes no focus, and Windows holds it back itself over a fullscreen game.
+  if (storedKey()) {
+    tray.displayBalloon({ iconType: 'info', title: 'Dota Translator is running', content: 'It sits here by the clock (behind the ^ arrow) and shows translations above the chat in Dota. Click the icon for settings.' });
+    tray.on('balloon-click', openSetup);
+  }
 }
 
 function toggleHidden() {

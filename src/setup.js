@@ -62,7 +62,7 @@ save.addEventListener('click', async () => {
     $('have').style.display = 'block';
     save.textContent = 'Save';
     say('ok', r.checked
-      ? `<b>It works.</b> Google translated <code>${esc(r.sample)}</code> as <code>${esc(r.en)}</code>. Saved - start a match and the translations appear above the chat. You can close this window.`
+      ? `<b>It works.</b> Google translated <code>${esc(r.sample)}</code> as <code>${esc(r.en)}</code>. Saved - start a match and the translations appear above the chat. You can close this window: Dota Translator keeps running as the small icon by the clock (behind the ^ arrow), and clicking it brings this window back.`
       : '<b>Saved.</b> You can close this window.');
   } else {
     say('bad', '<b>Not saved.</b> ' + esc(r.why));

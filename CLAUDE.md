@@ -906,6 +906,26 @@ play, except for adding the api key ... download -> installs the app".
   to an empty page.
 - Auto-update and releases: see "Releases, auto-update and the icon".
 
+## A player who cannot find the app (v0.2.8, 2026-09-20)
+
+The user: with a key saved the app starts straight into the tray, "a non
+tech user may not find it", and the SmartScreen warning "might be scary".
+
+- **One copy only** (`requestSingleInstanceLock`). There was NO lock
+  before: starting it twice meant two readers and two consumers of one
+  key. Starting it again now opens the settings window of the copy that
+  is running - which is what somebody who cannot find the icon does.
+- **A tray balloon at startup when there is a key** says where it went
+  ("by the clock, behind the ^ arrow"); clicking it opens settings. The
+  setup window's "It works" message says the same. NOT seen: the balloon
+  itself, nor the second-launch path - neither was run here (the user's
+  installed copy was running, and a dev copy beside it is two consumers).
+- **`docs/install.html`**: the blue warning DRAWN twice (before and after
+  More info, the button ringed), why it appears (unsigned = no paid
+  certificate, not a finding; built on GitHub from public source), and a
+  drawing of the tray with the ^ flyout. Linked from the landing page's
+  steps. SEEN at phone width in the browser pane only.
+
 ## The setup window: the key goes in through the app (2026-09-20)
 
 The user: "simpler for non techie user to just enter api key in the ui ...
