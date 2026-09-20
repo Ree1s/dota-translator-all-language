@@ -1,0 +1,16 @@
+{
+  "name": "dota-translator",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Translates Russian Dota 2 chat into English on an overlay.",
+  "type": "module",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "watch": "node src/watch.js",
+    "test": "node test.js"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0"
+  }
+}

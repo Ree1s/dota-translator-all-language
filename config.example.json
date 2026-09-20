@@ -1,0 +1,14 @@
+{
+  "geminiApiKey": "PASTE_YOUR_KEY_HERE",
+  "model": "gemini-3.5-flash-lite",
+  "logPath": "",
+  "scripts": ["cyrillic"],
+  "holdSeconds": 14,
+  "maxLines": 6,
+  "showOriginal": true,
+  "fontSize": 16,
+  "opacity": 0.92,
+  "position": "top-left",
+  "clickThrough": true,
+  "learn": false
+}
