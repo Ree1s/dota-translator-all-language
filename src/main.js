@@ -86,6 +86,7 @@ function createWindow() {
       opacity: cfg.opacity,
       position: cfg.position,
       display: cfg.display,
+      fadeWithGame: cfg.fadeWithGame,
     });
     start();
   });

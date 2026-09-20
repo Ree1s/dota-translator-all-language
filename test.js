@@ -632,6 +632,25 @@ ok('every sighting of a line is reported, even one already shown', () => {
   assert.equal(said.length, 1);
 });
 
+ok('a line the chat list says was just appended is new, whatever its words', () => {
+  // The user pasted the same test line twice and the translator looked
+  // dead: the second one was dropped as already shown. Words alone cannot
+  // tell a repeat from a re-read; the game's own list of lines can.
+  const child = new EventEmitter();
+  child.stdout = new EventEmitter(); child.stdout.setEncoding = () => {};
+  child.stderr = new EventEmitter(); child.stderr.setEncoding = () => {};
+  child.kill = () => {};
+  const said = [];
+  const src = startMemorySource({ spawnImpl: () => child, onMessage: (m) => said.push(m.text) });
+  const b64 = Buffer.from('[Allies] a: гг', 'utf8').toString('base64');
+  const line = (n) => JSON.stringify({ t: 'line', a: 100, w: 1, r: 0, rs: 0, ab: 0, p: 1, n, b64 });
+  child.stdout.emit('data', JSON.stringify({ t: 'stat', mode: 'panel' }) + String.fromCharCode(10));
+  for (const n of [1, 0, 1]) child.stdout.emit('data', line(n) + String.fromCharCode(10));
+  src.stop();
+  // said, re-read (dropped), said again (shown)
+  assert.equal(said.length, 2);
+});
+
 ok('a search for the chat panel is not a stat', () => {
   // A stat says a read is over, and the first one ends priming. A search
   // that arrived as one would end it BEFORE the panel had been read, and
@@ -782,6 +801,33 @@ await okAsync('a line is shown at once and its English fills the same row', asyn
   w.stop();
   assert.deepEqual(events, [['pending', 1, 'иди мид'], ['line', 1, 'go mid', false], ['line', 2, 'go mid', true]]);
   assert.equal(calls, 1, 'the repeat cost a call');
+});
+
+await okAsync('a reply whose body never arrives is timed out like one that never came', async () => {
+  // Headers, then silence. The clock used to stop at the headers.
+  const stalls = async (url, init) => ({
+    ok: true,
+    json: () => new Promise((_, reject) => init.signal.addEventListener('abort', () => { const e = new Error('x'); e.name = 'AbortError'; reject(e); })),
+  });
+  const { askGemini } = await import('./src/translate.js');
+  await assert.rejects(() => askGemini({ apiKey: 'k', request: {}, fetchImpl: stalls, timeoutMs: 20 }), /took too long/);
+});
+
+await okAsync('a call that never settles does not keep its place in the pipeline', async () => {
+  // Three of these used to be the end of translation for the match.
+  const out = [];
+  let calls = 0;
+  const pipe = createPipeline({
+    batchMs: 1, maxInFlight: 1, callTimeoutMs: 30,
+    translate: (batch) => (++calls === 1 ? new Promise(() => {}) : Promise.resolve(batch.map((b) => ({ ...b, en: 'ok', translated: true })))),
+    onResult: (row) => out.push([row.text, row.translated]),
+  });
+  pipe.push({ name: 'a', text: 'one' });
+  await tick(10);
+  pipe.push({ name: 'a', text: 'two' });
+  await tick(120);
+  pipe.stop();
+  assert.deepEqual(out, [['one', false], ['two', true]]);
 });
 
 await okAsync('a refusal is the answer and is not asked twice', async () => {

@@ -113,6 +113,40 @@ once, as said, italic, and turns into `english (original)`.
   face as the game's lines below it, rows at the game's pitch. In this
   mode all chat carries no tag and names use Dota's exact slot colours,
   as the game does (the last of these changed after the screenshot).
+- **"It worked at start, then stopped" (the user, 20:08). What was found,
+  and what was NOT:**
+  - The app had not stopped: Electron and its reader were alive, the
+    window came back visible and topmost when Dota was brought to the
+    front, and a line typed then was translated on screen.
+  - **The likely cause is that the user re-pasted the same test lines.**
+    A line whose words had been shown before was dropped, by design, and
+    "gg" twice was one "gg". FIXED with the chat list itself: a child
+    APPENDED to the end of the panel's array since the last poll is new
+    whatever it says (the helper sends `n:1`, `memsource` lets it past
+    the tracker). After a trim nothing can be told apart, EXCEPT that the
+    newest line is still new if it is not the line that was newest
+    before - which matters, because a trim usually arrives WITH the line
+    that caused it, and a repeated line was lost exactly so. SEEN: the
+    same line twice, 4s apart, delivered twice. The trim case is NOT seen.
+  - **A WRONG DIAGNOSIS, written down so it is not believed later:** for
+    ten minutes the log seemed to show translations never coming back,
+    and that was reported to the user as a hang in the model call. They
+    were coming back. The grep was for `"line"` in quotes and the debug
+    log prints `line {` without them. Check the filter against a line
+    known to be there before believing an absence.
+  - What that goose chase left behind is still right and is tested: the
+    model call's clock now runs until the BODY is read (it stopped at the
+    headers, so a stalled body would have been waited for for ever), the
+    hedge has an overall deadline, and the pipeline gives a call 12s
+    before taking its place back. No hang was ever actually observed.
+- **The line goes when the game's line goes** (`fadeWithGame`, default
+  true, `above` mode only; the user asked for it). MEASURED with
+  half-second screenshots from the rig's Enter: the game's line is fully
+  there at 7.0s and gone at 7.5s - a cut, not a fade. Ours is held 7000ms
+  from when it was first SHOWN (as said, ~0.2s in), not from when the
+  English arrived, then 250ms of fade; a translation that arrives very
+  late still gets 2.5s. SEEN: at 7.2s the game's line half faded and ours
+  up, at 7.8s both gone. That leaves ~6s of English after a 1.1s model.
 - What it gives up: the English is up to six rows above the line it
   translates when the chat is nearly empty. What it avoids is everything
   that went wrong with cover: the strip, the guess at when the game's
@@ -260,9 +294,9 @@ permission rule) or run the probe themselves.
   watch` prints both. Re-derive with `tools/ptrscan.ps1`: the chain is
   string -> text object -> client panel -> UI panel, and `-Parents`
   prints the tree above any panel once +0x10/+0x18/+0x28 are right.
-- **Identical lines are still shown once** ("gg" twice is one "gg"):
-  the tracker dedups by content, and it has to, because the panel throws
-  all its children away and makes them again when it trims (below).
+- Identical lines: FIXED for the panel reader (see "It worked at start,
+  then stopped"); still shown once under the scanner fallback, which has
+  no chat list to ask.
 - A line whose text is REWRITTEN in place, same panel and same string
   address, would be missed. Not seen to happen.
 
@@ -646,7 +680,7 @@ npm start        # the overlay (Electron)
 npm run watch    # the same chain in a terminal - use this first
 npm run demo     # drives the chain from a fake source, no Dota needed
 npm run doctor   # no-key diagnostic
-npm test         # 80 tests, plain node assert, no runner
+npm test         # 83 tests, plain node assert, no runner
 ```
 
 Keep `npm test` green. It needs no game running and no API key.

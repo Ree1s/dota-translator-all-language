@@ -2,7 +2,7 @@
 // into one call, keep the order, and never let a failed translation take
 // the line with it.
 
-export function createPipeline({ translate, onResult, onError = () => {}, batchMs = 400, maxBatch = 12, maxInFlight = 3 }) {
+export function createPipeline({ translate, onResult, onError = () => {}, batchMs = 400, maxBatch = 12, maxInFlight = 3, callTimeoutMs = 12000 }) {
   let queue = [];
   let timer = null;
   let due = 0;
@@ -21,7 +21,13 @@ export function createPipeline({ translate, onResult, onError = () => {}, batchM
     queue = queue.slice(maxBatch);
     running++;
     try {
-      const out = await translate(batch);
+      // And a last line of defence here, because a call that never settles
+      // takes one of the three places for the rest of the match.
+      let watchdog;
+      const out = await Promise.race([
+        translate(batch),
+        new Promise((_, reject) => { watchdog = setTimeout(() => reject(new Error('the model never answered')), callTimeoutMs); }),
+      ]).finally(() => clearTimeout(watchdog));
       for (const row of out) onResult(row);
     } catch (err) {
       onError(err);

@@ -56,6 +56,10 @@ export const DEFAULTS = {
   batchMs: 80,             // how long to gather lines before one call
   holdSeconds: 14,          // how long a line stays on the overlay
   maxLines: 6,
+  // Beside the game's own chat (display "above"), a line goes when the
+  // game's line goes - MEASURED at 7.0-7.5s after it is said - and
+  // holdSeconds is not used. false keeps lines for holdSeconds there too.
+  fadeWithGame: true,
   // Where the English goes. "box" is the second chat box drawn over the
   // game, and is the only one BUILT. "replace" - the English written into
   // the game's own chat line as "english (original)" - is what the user

@@ -85,7 +85,14 @@ export async function askGemini({ apiKey, model = MODEL, request, fetchImpl = gl
   if (!apiKey) throw new Error('no Gemini API key');
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
-  let res;
+  // The clock runs until the BODY has been read, not until the headers
+  // arrive. It used to stop at the headers, and a reply whose body then
+  // stalled was waited for without end: SEEN in the overlay - a line shown
+  // as said and never translated, not even as a failure, while a call made
+  // by hand answered in 0.8s. Three of those and every later line in the
+  // match sat behind them for good, which the user saw as "it worked at
+  // the start, then stopped".
+  let res, data = null;
   try {
     res = await fetchImpl(`${API_BASE}/models/${encodeURIComponent(model)}:generateContent`, {
       method: 'POST',
@@ -93,13 +100,12 @@ export async function askGemini({ apiKey, model = MODEL, request, fetchImpl = gl
       body: JSON.stringify(request),
       signal: controller.signal,
     });
+    try { data = await res.json(); } catch (err) { if (err && err.name === 'AbortError') throw err; /* no body */ }
   } catch (err) {
     throw new Error(err && err.name === 'AbortError' ? 'the model took too long' : 'could not reach the model');
   } finally {
     clearTimeout(timer);
   }
-  let data = null;
-  try { data = await res.json(); } catch { /* no body */ }
   if (!res.ok) throw new Error((data && data.error && data.error.message) || `http ${res.status}`);
   return replyTextFrom(data);
 }
@@ -134,7 +140,11 @@ export const MAX_ATTEMPTS = 3;
 export function askGeminiHedged(opts, { hedgeAfterMs = HEDGE_AFTER_MS, attempts = MAX_ATTEMPTS, ask = askGemini } = {}) {
   return new Promise((resolve, reject) => {
     let started = 0, failed = 0, settled = false, timer = null, lastError = null;
-    const finish = (fn, value) => { if (settled) return; settled = true; clearTimeout(timer); fn(value); };
+    const finish = (fn, value) => { if (settled) return; settled = true; clearTimeout(timer); clearTimeout(deadline); fn(value); };
+    // Whatever an attempt does or fails to do, this ends: no promise handed
+    // to the pipeline may stay open for ever.
+    const deadline = setTimeout(() => finish(reject, lastError || new Error('the model took too long')), hedgeAfterMs * (attempts - 1) + ATTEMPT_MS + 500);
+    if (deadline.unref) deadline.unref();
     const launch = () => {
       if (settled || started >= attempts) return;
       started++;

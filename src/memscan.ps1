@@ -175,7 +175,9 @@ public static class DotaMem {
   /// R/RS = the region it was in and that region's size, AB = the
   /// allocation. Where a line lands is the open question, and an address
   /// alone cannot say whether two lines shared a region or a heap.
-  public class Hit { public string S; public long A, R, RS, AB; public bool W, P; }
+  /// N = this line was APPENDED to the game's chat list since the last
+  /// poll, so it is new whatever it says. Only the panel reader can know.
+  public class Hit { public string S; public long A, R, RS, AB; public bool W, P, N; }
 
   // The windows: sorted, merged [start, end) ranges around every address
   // a line has been seen at. Replaced whole, never edited, so a scan on
@@ -441,11 +443,29 @@ public static class DotaMem {
   static readonly byte[] HUD_CHAT = Encoding.UTF8.GetBytes("HudChat\0");
   static Dictionary<long, long> HudChatOf = new Dictionary<long, long>();     // chat panel -> its HudChat ancestor
   static int LayoutDirty = 0, LayoutCount = -1;
+
+  // Which lines are NEW. The reader downstream drops a line whose words it
+  // has shown before, and it has to: a scan finds the same strings over
+  // and over, and the panel remakes every child when it trims. But that
+  // also swallowed a player saying "gg" twice - and the user pasting the
+  // same test line twice, which looked like the translator had died. The
+  // chat list settles it: a child that appeared at the END of the array,
+  // with everything before it unchanged, was just said. After a trim
+  // nothing can be told apart, and the words decide again.
+  static Dictionary<long, int> PrevCount = new Dictionary<long, int>();
+  static Dictionary<long, long> PrevLast = new Dictionary<long, long>();
+  static HashSet<long> Appended = new HashSet<long>();
+  // The text of the newest line, per panel. A trim OFTEN comes with the
+  // line that caused it (the list reaches 24 because something was said),
+  // and then nothing above applies - SEEN: a repeated line lost exactly
+  // so. After a trim the newest line is still new if it is not the line
+  // that was newest before.
+  static Dictionary<long, string> NewestText = new Dictionary<long, string>();
   /// Set by ReadPanels when there is a layout to report; the caller
   /// prints it and clears it.
   public static string LayoutJson = null;
 
-  public static void ForgetPanels() { Panels.Clear(); LastStr.Clear(); Tries.Clear(); InMatch.Clear(); HudChatOf.Clear(); LayoutCount = -1; LayoutDirty = 0; LayoutJson = null; Settled = false; }
+  public static void ForgetPanels() { Panels.Clear(); LastStr.Clear(); Tries.Clear(); InMatch.Clear(); HudChatOf.Clear(); PrevCount.Clear(); PrevLast.Clear(); Appended.Clear(); NewestText.Clear(); LayoutCount = -1; LayoutDirty = 0; LayoutJson = null; Settled = false; }
 
   static long HudChatAbove(IntPtr h, long p) {
     var q = new byte[8]; var id = new byte[HUD_CHAT.Length];
@@ -603,6 +623,13 @@ public static class DotaMem {
         bytes += arr.Length;
         long hud; bool wantLayout = HudChatOf.TryGetValue(Panels[pi], out hud);
         var strs = new long[count];
+        int prevCount; long prevLast = 0;
+        bool known = PrevCount.TryGetValue(Panels[pi], out prevCount) && PrevLast.TryGetValue(Panels[pi], out prevLast);
+        bool grew = known && count > prevCount && prevCount > 0 && BitConverter.ToInt64(arr, (prevCount - 1) * 8) == prevLast;
+        if (grew) for (int k = prevCount; k < count; k++) Appended.Add(BitConverter.ToInt64(arr, k * 8));
+        bool trimmed = known && !grew && count != prevCount;
+        if (trimmed) Appended.Clear();                                    // every child is a new object
+        PrevCount[Panels[pi]] = count; PrevLast[Panels[pi]] = BitConverter.ToInt64(arr, (count - 1) * 8);
         int foundBefore = found.Count;
         for (int k = 0; k < count; k++) {
           long c = BitConverter.ToInt64(arr, k * 8);
@@ -633,7 +660,13 @@ public static class DotaMem {
             if (tries >= GIVE_UP) { LastStr[c] = str; Tries.Remove(c); }
             continue;
           }
-          found.Add(new Hit { S = s, A = str, W = true, P = true });
+          bool fresh = Appended.Remove(c);
+          if (k == count - 1) {
+            string before;
+            if (trimmed && NewestText.TryGetValue(Panels[pi], out before) && before != s) fresh = true;
+            NewestText[Panels[pi]] = s;
+          }
+          found.Add(new Hit { S = s, A = str, W = true, P = true, N = fresh });
           LastStr[c] = str; Tries.Remove(c);
         }
 
@@ -804,7 +837,7 @@ while ($true) {
         }
         foreach ($h in $lines) {
           $b64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($h.S))
-          Emit @{ t = 'line'; b64 = $b64; a = $h.A; w = 1; r = 0; rs = 0; ab = 0; p = 1 }
+          Emit @{ t = 'line'; b64 = $b64; a = $h.A; w = 1; r = 0; rs = 0; ab = 0; p = 1; n = [int]$h.N }
         }
         # A stat per poll would be four a second saying nothing. One after
         # the first read (it is what tells the reader the backlog is over),

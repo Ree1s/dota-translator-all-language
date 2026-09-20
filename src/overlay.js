@@ -150,15 +150,25 @@ function coverLine(row) {
   return true;
 }
 
+// How long the GAME keeps a chat line up. MEASURED, half-second
+// screenshots from the moment the rig pressed Enter: fully there at 7.0s,
+// gone at 7.5s - a cut, not a fade. Beside the game's chat ours goes when
+// the game's does (the user asked for exactly that), counted from when
+// the line was SAID, not from when its English arrived; a translation
+// that comes very late still gets LATE_MIN_MS to be read in.
+const GAME_LINE_MS = 7000, LATE_MIN_MS = 2500;
+const withGame = () => cfg.fadeWithGame && document.body.classList.contains('bare');
+
 function addPending(row) {
   // Over the game's own chat there is nothing to show yet: the line is
   // already on the screen, in Russian, exactly where the English will go.
   if (covering()) return;
   const el = build(row, 'pending');
+  el._born = Date.now();
   rows.set(row.id, el);
   box.appendChild(el);
   trim();
-  fade(el, cfg.holdSeconds * 1000);
+  fade(el, withGame() ? GAME_LINE_MS : cfg.holdSeconds * 1000);
 }
 
 function addLine(row) {
@@ -168,6 +178,7 @@ function addLine(row) {
   if (covering() && !row.translated) return;
   const el = build(row, row.translated ? 'done' : 'plain');
   const was = row.id ? rows.get(row.id) : null;
+  el._born = (was && was._born) || Date.now();
   if (was && was.isConnected) {
     clearTimeout(was._fade);
     box.replaceChild(el, was);
@@ -176,9 +187,10 @@ function addLine(row) {
   }
   if (row.id) rows.set(row.id, el);
   trim();
-  // The hold starts again when the English arrives: that is when there
-  // is something to read.
-  fade(el, cfg.holdSeconds * 1000);
+  // In a panel of its own the hold starts again when the English arrives:
+  // that is when there is something to read. Beside the game's chat it
+  // does not - the line goes when the game's line goes.
+  fade(el, withGame() ? Math.max(LATE_MIN_MS, el._born + GAME_LINE_MS - Date.now()) : cfg.holdSeconds * 1000);
 }
 
 function addStatus(s) {

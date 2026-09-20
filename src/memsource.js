@@ -84,7 +84,7 @@ export function parseEvent(raw) {
     // Where it was found, when the helper says. A user-space address is
     // under 2^47, so a JS number holds it exactly.
     if (typeof o.a === 'number') {
-      return { kind: 'line', text, addr: o.a, inWindow: o.w === 1, region: o.r, regionSize: o.rs, alloc: o.ab, isPrivate: o.p === 1 };
+      return { kind: 'line', text, fresh: o.n === 1, addr: o.a, inWindow: o.w === 1, region: o.r, regionSize: o.rs, alloc: o.ab, isPrivate: o.p === 1 };
     }
     return { kind: 'line', text };
   }
@@ -215,7 +215,10 @@ export function startMemorySource({
       // drops those as already shown - but whoever is drawing over a line
       // needs to know where it lives now.
       if (Number.isFinite(ev.addr)) for (const line of lines) onSeen({ addr: ev.addr, channel: line.channel, name: line.name, text: line.text });
-      for (const line of tracker.accept(lines)) {
+      // A line the chat list says was just appended is new whatever its
+      // words: the tracker is still told, but is not asked.
+      const accepted = tracker.accept(lines);
+      for (const line of (ev.fresh ? lines : accepted)) {
         if (priming) continue;        // remembered, deliberately not shown
         // Every NEW line counts here, English ones too: where the game
         // puts a line does not depend on what language it is in.

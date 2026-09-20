@@ -15,6 +15,7 @@
   ],
   "batchMs": 80,
   "holdSeconds": 14,
+  "fadeWithGame": true,
   "maxLines": 6,
   "display": "above",
   "showOriginal": true,
