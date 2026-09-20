@@ -759,11 +759,17 @@ with a slider. What was built, and the rules it follows:
   **"The catch, up front"**, questions, a closing call. Its own colours
   (amber on near-black) so the two do not look like one product.
 - **The slider is the hero**: one chat, drawn twice, the top layer clipped
-  at a handle - without / with. It is a real `<input type="range">` laid
+  at a handle - without / with. Every row has a hero PORTRAIT before the
+  name, on both sides (the user asked: "random hero images in front of
+  players too, not color, also for the translated side") - four heroes
+  drawn at random from sixteen on each visit, the same one for a player
+  on both sides of the handle, with the old coloured block behind as the
+  fallback. They are LINKED from Valve's image server, as the app's own
+  are; all sixteen URLs checked 200. It is a real `<input type="range">` laid
   over the scene, so drag, tap and keyboard all work with no code, and it
-  sways once on load to show that it moves. **The scene is drawn in CSS:
-  no screenshot of the game, no Valve font, nothing of Valve's is on the
-  page.** Keep it that way.
+  sways once on load to show that it moves. **The scene is drawn in CSS: no screenshot of
+  the game and no Valve font, and the portraits are hot-linked, so
+  nothing of Valve's is IN THE REPO.** Keep it that way.
 - **Every number is a measurement from this file and every translation
   shown is what the model actually answered** (run through
   `translateBatch` before being written down - the first draft had
