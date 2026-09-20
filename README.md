@@ -276,6 +276,12 @@ Plain Node assert, no runner. 62 tests, none of which need Dota running: the
 parsers are fed strings taken verbatim out of the game's memory, and the
 whole reading chain runs against a stand-in for the scanner.
 
+## Supporting it
+
+It is free and stays free. If it helped and you feel like it:
+[ko-fi.com/sc0rebreaker](https://ko-fi.com/sc0rebreaker). Donors get nothing
+extra - there is nothing extra to get.
+
 ## Licence
 
 **[PolyForm Noncommercial 1.0.0](LICENSE.md)** - free for players, not for

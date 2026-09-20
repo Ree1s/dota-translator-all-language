@@ -956,6 +956,17 @@ tech user may not find it", and the SmartScreen warning "might be scary".
   drawing of the tray with the ^ flyout. Linked from the landing page's
   steps. SEEN at phone width in the browser pane only.
 
+## Donations (2026-09-20)
+
+Ko-fi, paid out through PayPal: `https://ko-fi.com/sc0rebreaker`. Stripe
+REJECTED the user for having no business number; do not suggest it again.
+The link is in the landing page's footer and its "Is it really free?"
+answer, the README, `.github/FUNDING.yml` (the repo's Sponsor button) and
+the tray menu (from v0.2.11); clicks on the site are `donate_click`.
+Worded as supporting the developer, never as payment, and donors get
+nothing extra: it is a fan tool on Valve's game under a noncommercial
+licence. GitHub Sponsors was suggested as a second route; not set up.
+
 ## The website counts visits (2026-09-20)
 
 The user wanted to see "if anyone even went there". `docs/analytics.js`

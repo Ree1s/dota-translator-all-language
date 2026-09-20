@@ -321,6 +321,7 @@ function makeTray() {
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Settings and key...', click: openSetup },
     { label: 'Hide or show the translations (Alt+D)', click: toggleHidden },
+    { label: 'Support the developer (Ko-fi)', click: () => shell.openExternal('https://ko-fi.com/sc0rebreaker') },
     { label: 'Version ' + app.getVersion(), enabled: false },
     { type: 'separator' },
     { label: 'Quit', click: () => app.quit() },
