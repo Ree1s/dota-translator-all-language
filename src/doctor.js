@@ -8,11 +8,12 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { findLogPath, parseChatLine, needsTranslation, LogTail } from './chatlog.js';
+import { findDotaLog, parseChatLine, needsTranslation, LogTail } from './chatlog.js';
 import { loadConfig } from './config.js';
 
 const cfg = loadConfig();
-const file = cfg.logPath || findLogPath();
+const found = cfg.logPath ? { path: cfg.logPath, exists: fs.existsSync(cfg.logPath), installed: true } : findDotaLog();
+const file = found.path;
 const clock = () => new Date().toTimeString().slice(0, 8);
 const say = (s) => console.log(s);
 
@@ -22,7 +23,7 @@ say('  ------------------------------------------');
 
 if (!file) {
   say('');
-  say('  X  Could not find Dota 2 console.log.');
+  say('  X  Could not find a Dota 2 install.');
   say('');
   say('     Looked in the usual Steam locations. If Dota is on another');
   say('     drive, find the file yourself and put its path in config.json:');
@@ -39,10 +40,10 @@ say('  Log file: ' + file);
 let exists = fs.existsSync(file);
 if (!exists) {
   say('');
-  say('  !  The file is not there yet.');
-  say('     Either -condebug is not set, or Dota has not been started');
-  say('     since you set it. Add it to the launch options and restart');
-  say('     Dota. This will keep watching.');
+  say('  !  Dota is installed, but the log is not there yet.');
+  say('     The log is created the first time Dota runs with -condebug.');
+  say('     Start the game now - this will keep watching and say so the');
+  say('     moment it appears.');
 } else {
   const st = fs.statSync(file);
   const age = Math.round((Date.now() - st.mtimeMs) / 1000);

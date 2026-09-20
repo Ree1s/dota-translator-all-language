@@ -98,17 +98,29 @@ function steamRoot() {
   return [path.join(os.homedir(), '.steam/steam'), path.join(os.homedir(), '.local/share/Steam')];
 }
 
-// Finds the log by looking, so a moved install needs no config. Returns
-// null rather than guessing when there is nothing on disk.
-export function findLogPath() {
+// Finds the log by looking, so a moved install needs no config.
+//
+// An INSTALL with no log yet is not a failure and must not be reported as
+// one: the log does not exist until Dota has run once with -condebug, so
+// the honest answer there is the path it WILL appear at, and the caller
+// waits for it. Only a machine with no Dota at all gives null.
+export function findDotaLog() {
+  let expected = null;
   for (const root of steamRoot()) {
     let vdf = '';
     try { vdf = fs.readFileSync(path.join(root, 'steamapps', 'libraryfolders.vdf'), 'utf8'); } catch { /* no list */ }
     for (const candidate of logCandidates(root, vdf)) {
-      if (fs.existsSync(candidate)) return candidate;
+      if (fs.existsSync(candidate)) return { path: candidate, exists: true, installed: true };
+      // game/dota is the folder the log lands in; its presence is the
+      // install, whatever state the log is in.
+      if (!expected && fs.existsSync(path.dirname(candidate))) expected = candidate;
     }
   }
-  return null;
+  return expected ? { path: expected, exists: false, installed: true } : { path: null, exists: false, installed: false };
+}
+
+export function findLogPath() {
+  return findDotaLog().path;
 }
 
 // Follows a file the way `tail -f` does, by polling: the log is appended

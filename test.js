@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
-import { parseChatLine, chatToTranslate, needsTranslation, libraryPaths, logCandidates, LogTail } from './src/chatlog.js';
+import { parseChatLine, chatToTranslate, needsTranslation, libraryPaths, logCandidates, LogTail, findDotaLog } from './src/chatlog.js';
 import { buildRequest, replyTextFrom, translationsFrom, translateBatch } from './src/translate.js';
 import { createPipeline } from './src/pipeline.js';
 import { mergeConfig, DEFAULTS } from './src/config.js';
@@ -75,6 +75,23 @@ ok('a library listed twice yields one candidate', () => {
   const list = logCandidates('C:\\Steam', '"path" "C:\\\\Steam"');
   assert.equal(list.length, 1);
   assert.match(list[0], /console\.log$/);
+});
+
+ok('a machine with no Dota at all is told so, not handed a path', () => {
+  // Nothing of the caller's is on disk in the test environment, so the
+  // lookup must report "not installed" rather than a path that is only a
+  // guess. An install WITH no log yet is the opposite case and is covered
+  // by the doctor, which waits for the file instead of exiting.
+  const found = findDotaLog();
+  assert.equal(typeof found, 'object');
+  assert.ok('path' in found && 'exists' in found && 'installed' in found);
+  if (!found.installed) {
+    assert.equal(found.path, null);
+    assert.equal(found.exists, false);
+  } else {
+    assert.equal(typeof found.path, 'string');
+    assert.equal(found.exists, fs.existsSync(found.path));
+  }
 });
 
 console.log('LogTail');
