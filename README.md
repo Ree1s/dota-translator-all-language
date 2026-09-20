@@ -85,8 +85,8 @@ the memory reading runs through PowerShell, which Windows already has.
      access"** on every model while still happily listing them. If that
      happens, make the key in a different project.
 
-3. **Install it.** Download `Dota-Translator-Setup-x.y.z.exe` from the
-   [latest release](https://github.com/sc0rebreaker/dota-translator/releases/latest) and run it. It installs for your user only (no
+3. **Install it.** [Download `Dota-Translator-Setup.exe`](https://github.com/sc0rebreaker/dota-translator/releases/latest/download/Dota-Translator-Setup.exe)
+   (always the latest release) and run it. It installs for your user only (no
    administrator needed), adds a shortcut and starts the app. The installer
    is not code-signed, so Windows SmartScreen asks first: *More info*, then
    *Run anyway*.

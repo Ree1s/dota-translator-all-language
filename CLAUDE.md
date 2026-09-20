@@ -761,6 +761,17 @@ missing for players who are not developers. Do the two together.
   token. To cut one: `npm version patch` then
   `git push origin master --follow-tags`.
   `package-lock.json` is COMMITTED now (it was gitignored; `npm ci` needs it).
+- **v0.2.0 WAS BROKEN, and why the workflow does not let electron-builder
+  publish:** its uploader raced itself and made TWO releases for the one
+  tag, the installer in one and the blockmap in the other, so the download
+  link was a 404 while the API said all was well. The workflow now builds
+  with `--publish never` and makes ONE release with `gh release create`
+  (deleting any earlier attempt under the same tag first). v0.2.1 was made
+  that way and CHECKED: one release, three files, the 80 MB installer
+  downloads, `latest.yml` names it. Check the DOWNLOAD, not the API.
+- The installer has a version-less name from v0.2.2
+  (`Dota-Translator-Setup.exe`), so the site links straight to
+  `releases/latest/download/Dota-Translator-Setup.exe`.
 - **The installed app updates itself** (`electron-updater`, GitHub
   provider, `checkForUpdates` in `main.js`): once at startup, downloads
   in the background, installs when the app is next CLOSED - never a

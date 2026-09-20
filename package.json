@@ -1,6 +1,6 @@
 {
   "name": "dota-translator",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "description": "Russian Dota 2 chat, in English, live, above the game's own chat.",
   "type": "module",
@@ -51,7 +51,7 @@
           ]
         }
       ],
-      "artifactName": "Dota-Translator-Setup-${version}.${ext}",
+      "artifactName": "Dota-Translator-Setup.${ext}",
       "icon": "build/icon.ico"
     },
     "nsis": {
