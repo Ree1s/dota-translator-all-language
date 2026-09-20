@@ -1156,7 +1156,7 @@ ok('the landing page keeps the promises the project made about how it talks', ()
   }
   // Every download button goes through the page that explains the Windows
   // warning (the user: "so people know for sure"); only that page links the exe.
-  assert.ok(html.includes('href="download.html#start"'));
+  assert.ok(html.includes('href="download.html"'));
   assert.ok(!html.includes('Dota-Translator-Setup.exe"'), 'the landing page links the installer directly');
   assert.ok(fs.readFileSync(path.join('docs', 'download.html'), 'utf8').includes('releases/latest/download/Dota-Translator-Setup.exe'));
   // Every in-page link goes somewhere.

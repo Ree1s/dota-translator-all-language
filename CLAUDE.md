@@ -942,10 +942,11 @@ tech user may not find it", and the SmartScreen warning "might be scary".
   itself, nor the second-launch path - neither was run here (the user's
   installed copy was running, and a dev copy beside it is two consumers).
 - **It is `docs/download.html` from v0.2.9, and EVERY download button on
-  the landing page goes to it** (`download.html#start` starts the download
-  by itself after 0.9s and says so; a plain visit downloads nothing).
+  the landing page goes to it.** NOTHING downloads by itself there: a
+  first version auto-started the download and the user had it removed the
+  same evening - the visitor presses Download for Windows on that page.
   `install.html` is a redirect. It asks GitHub's API for the latest
-  version and shows it. The auto-start was NOT run here: it downloads 80 MB.
+  version and shows it.
 - **The version is shown** (the user could not find it): settings window
   title bar and foot, tray tooltip, tray menu, the download page. The
   installer keeps its version-less NAME - the site's link depends on it.
