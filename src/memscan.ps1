@@ -51,12 +51,14 @@ public static class DotaMem {
   const int VM_READ = 0x0010, QUERY = 0x0400, COMMIT = 0x1000;
   const int MAX_STR = 512;   // a chat line is far shorter; this bounds a runaway read
 
-  // The channel tags Dota puts in front of every chat line. Closed list:
-  // an extra tag is a false positive waiting to happen.
-  // Scanned for; the JS side decides which are real channels. Kept a
-  // little wider than CHANNELS so a tag we have not named still SHOWS UP
-  // (as an unknown tag) instead of never being looked for at all.
+  // Panorama's markup wraps EVERY chat line whatever its channel, so it
+  // is the one anchor that finds both. MEASURED: the plain pre-formatted
+  // string tags team chat "[Allies] " and leaves all-chat untagged, so
+  // scanning for tags alone found team chat and missed all-chat entirely.
+  // The plain tagged form is kept as a second anchor - it is cheap, and
+  // it still catches a line whose markup copy has been freed.
   static readonly string[] TAGS = {
+    "class=\"ChatPersona\"",
     "[Allies] ", "[All] ", "[Everyone] ", "[Team] ", "[Spectators] ", "[Coaches] "
   };
   static readonly List<byte[]> PATS = new List<byte[]>();
@@ -69,17 +71,18 @@ public static class DotaMem {
     return p == 0x02 || p == 0x04 || p == 0x20 || p == 0x40;
   }
 
-  // Read forward from the tag to the end of the string. Deliberately NOT
-  // backwards: the first version walked back looking for the previous
-  // null and, where there was none, dragged in whatever bytes preceded
-  // the line ("�@  [Allies] ..."). Everything a chat line says -
-  // channel, name, message - comes AFTER the tag, so the bytes before it
-  // are never wanted.
-  static string Extract(byte[] buf, long n, long at) {
+  static string Extract(byte[] buf, long n, long at, int back) {
+    // Forward to the end of the string; backwards only as far as `back`
+    // asks and only over printable bytes. The first version walked back
+    // to the previous null and, where there was none, dragged in whatever
+    // preceded the line ("�@  [Allies] ..."). The markup form needs
+    // a LITTLE look-back, because its channel tag sits before the anchor.
+    long s = at;
+    while (s > 0 && at - s < back && buf[s - 1] != 0 && buf[s - 1] >= 0x20) s--;
     long e = at;
-    while (e < n && buf[e] != 0 && e - at < MAX_STR) e++;
-    if (e <= at) return null;
-    try { return Encoding.UTF8.GetString(buf, (int)at, (int)(e - at)); } catch { return null; }
+    while (e < n && buf[e] != 0 && e - s < MAX_STR) e++;
+    if (e <= s) return null;
+    try { return Encoding.UTF8.GetString(buf, (int)s, (int)(e - s)); } catch { return null; }
   }
 
   /// Scan. When `only` is non-empty, just those region bases are read -
@@ -119,7 +122,7 @@ public static class DotaMem {
                 bool okp = true;
                 for (int j = 1; j < pl; j++) if (buf[i + j] != p[j]) { okp = false; break; }
                 if (!okp) continue;
-                string s = Extract(buf, n, i);
+                string s = Extract(buf, n, i, 48);
                 if (s != null) { found.Add(s); LastHits++; any = true; }
               }
             }

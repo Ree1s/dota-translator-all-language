@@ -110,10 +110,14 @@ export async function translateBatch(items, opts = {}) {
   const numbered = items.map((it, n) => ({ ...it, i: n }));
   const text = await askGemini({ ...opts, request: buildRequest(numbered, opts) });
   const map = translationsFrom(text);
-  return numbered.map((it) => ({
-    name: it.name,
-    text: it.text,
-    en: map.get(it.i) || it.text,
-    translated: map.has(it.i),
+  return numbered.map(({ i, ...it }) => ({
+    // Everything the caller handed in is carried through - the channel
+    // and colour slot the memory source reads come back untouched, so a
+    // translated line still knows whether it was team or all chat. `i` is
+    // destructured away rather than set undefined: a key holding
+    // undefined is still a key, and callers compare these rows.
+    ...it,
+    en: map.get(i) || it.text,
+    translated: map.has(i),
   }));
 }

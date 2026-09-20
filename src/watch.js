@@ -29,7 +29,8 @@ start(cfg, {
     console.log(`[${time()}] ${s.text}${s.file ? ' (' + s.file + ')' : ''}`);
   },
   onResult: (row) => {
-    console.log(`[${time()}] ${row.name}: ${row.en}`);
+    const where = row.channel === 'team' ? '[team] ' : row.channel === 'all' ? '[all]  ' : '';
+    console.log(`[${time()}] ${where}${row.name}: ${row.en}`);
     if (cfg.showOriginal && row.translated) console.log(`           ${row.text}`);
   },
 });

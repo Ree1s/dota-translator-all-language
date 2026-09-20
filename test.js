@@ -8,7 +8,7 @@ import { execFileSync } from 'node:child_process';
 import { parseChatLine, chatToTranslate, needsTranslation, libraryPaths, logCandidates, LogTail, findDotaLog } from './src/chatlog.js';
 import { buildRequest, replyTextFrom, translationsFrom, translateBatch } from './src/translate.js';
 import { createPipeline } from './src/pipeline.js';
-import { parseMemoryChatLine, createLineTracker, readMemoryFindings, unknownChannelTag, MAX_LINE, MAX_NAME } from './src/chatmem.js';
+import { parseMemoryChatLine, parseMarkupChatLine, createLineTracker, readMemoryFindings, unknownChannelTag, PERSONA, MAX_LINE, MAX_NAME } from './src/chatmem.js';
 import { parseEvent, scannerArgs, POWERSHELL, startMemorySource } from './src/memsource.js';
 import { EventEmitter } from 'node:events';
 import { mergeConfig, DEFAULTS } from './src/config.js';
@@ -409,6 +409,67 @@ ok('findings are split into lines and rejects', () => {
   ]);
   assert.equal(lines.length, 2);
   assert.equal(rejected, 2);
+});
+
+// The strings below are VERBATIM from Dota's memory, 2026-09-20.
+const MARKUP_ALL = 'arget"> <span class="ChatPersona"><span class="PlayerColor0">'
+  + '<font color=\'#3375FF\'>unc status</font></span></span></span>: hello</span>';
+const MARKUP_TEAM = 'Allies] <span class="ChatPersona"><span class="PlayerColor4">'
+  + '<font color=\'#FF6B00\'>Pablo</font></span></span></span>: Pushing mid</span>';
+
+ok('ALL-CHAT is read, though it carries no channel tag', () => {
+  // The whole reason this parser exists: the plain pre-formatted string
+  // tags team chat "[Allies] " and leaves all-chat untagged, so anchoring
+  // on tags found team chat and missed every word of all-chat, silently.
+  const line = parseMarkupChatLine(MARKUP_ALL);
+  assert.equal(line.channel, 'all');
+  assert.equal(line.name, 'unc status');
+  assert.equal(line.text, 'hello');
+  assert.equal(line.slot, 0);
+});
+
+ok('team chat keeps its channel, read from the tag before the anchor', () => {
+  const line = parseMarkupChatLine('[' + MARKUP_TEAM);
+  assert.equal(line.channel, 'team');
+  assert.equal(line.channelTag, 'Allies');
+  assert.equal(line.name, 'Pablo');
+  assert.equal(line.text, 'Pushing mid');
+  assert.equal(line.slot, 4);
+});
+
+ok('a clipped opening bracket still reads as team chat', () => {
+  // The scanner looks back a bounded number of bytes from the anchor, so
+  // a long name can push "[" out of the window. The closing bracket is
+  // what keeps this unambiguous - all-chat ends 'ChatTarget"> '.
+  assert.equal(parseMarkupChatLine(MARKUP_TEAM).channel, 'team');
+  assert.equal(parseMarkupChatLine(MARKUP_ALL).channel, 'all');
+});
+
+ok('a non-ASCII name survives the markup', () => {
+  const s = 'Allies] <span class="ChatPersona"><span class="PlayerColor2">'
+    + '<font color=\'#BF00BF\'>小志</font></span></span></span>: не фидите</span>';
+  const line = parseMarkupChatLine(s);
+  assert.equal(line.name, '小志');
+  assert.equal(line.text, 'не фидите');
+});
+
+ok('no markup left in what gets translated', () => {
+  const line = parseMarkupChatLine(MARKUP_ALL);
+  assert.ok(!/[<>]/.test(line.text), 'tags survived: ' + line.text);
+  assert.ok(!/[<>]/.test(line.name));
+});
+
+ok('a string that is not a chat line is not markup either', () => {
+  assert.equal(parseMarkupChatLine('<span class="CombatEventGoldIcon" />'), null);
+  assert.equal(parseMarkupChatLine('e_dive_corrosive_rope02.vpcf'), null);
+  assert.equal(parseMarkupChatLine(PERSONA), null);          // anchor, no name
+  assert.equal(parseMarkupChatLine(null), null);
+});
+
+ok('both forms of the same line reach readMemoryFindings', () => {
+  const { lines } = readMemoryFindings([MARKUP_ALL, '  [Allies] Иван: го мид']);
+  assert.equal(lines.length, 2);
+  assert.deepEqual(lines.map((l) => l.channel), ['all', 'team']);
 });
 
 ok('a channel we have not named is REPORTED, not silently dropped', () => {
