@@ -18,15 +18,32 @@ Word the notice carefully:
   Overplus is the fair comparison.
 - Say the risk is **undocumented**, not **safe**. See the VAC section.
 
-**Writing to memory was raised and argued against** (in-place replacement
-of the chat text instead of an overlay). Reading is passive; writing is the
-thing VAC actually scans for, so it is a different risk class, not a small
-step further. Practical blockers too: the translation is usually longer
-than the original so it will not fit the allocation, and Panorama
-re-renders from its own data. The overlay also keeps the original visible
-beside the translation, which matters because machine translation of Dota
-slang will sometimes be wrong. If it is ever attempted: separate
-experiment, throwaway account, never the main one.
+**REPLACING the chat text in place is WANTED, as an option** (the user's
+preference over a second chat box). It was argued against once on risk -
+reading is passive, writing is what VAC scans for - and the user's answer
+stands and is reasonable: **Overplus writes to the client** (its Inventory
+Changer does exactly that), its users are broadly fine, and the last ban
+wave was years ago. So this is a decision, not an open question. Default
+to the overlay, make replace opt-in.
+
+**Replace is harder to BUILD than the overlay, independent of risk**, and
+these are the two reasons, both visible in the dump above:
+
+- The translation is usually longer than the original, so it will not fit
+  the existing allocation. Writing past it needs the length field or the
+  surrounding container, not just the string.
+- The text exists in **two** representations (plain formatted string and
+  Panorama markup). Panorama re-renders from its own data, so which buffer
+  is written, and when, decides whether the change appears at all or is
+  simply overwritten back.
+
+Sequencing, for that reason and not for safety: **overlay first** (its
+pipeline is already built and tested), **replace second**, once it is known
+which buffer the renderer actually reads. The reading work is identical
+either way, so nothing is wasted. An overlay also keeps the original
+visible beside the translation, which is worth something when machine
+translation of Dota slang gets it wrong - worth offering even once replace
+exists.
 
 ## MEASURED: Dota keeps chat in memory as plain readable strings
 
