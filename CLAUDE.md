@@ -973,7 +973,8 @@ The user wanted to see "if anyone even went there". `docs/analytics.js`
 (GA4, `G-RX1LXWKFZD`, the user's property) is loaded by every page in
 `docs/`, does nothing on localhost or from a file, and sends events a page
 view cannot: `download_click`, `aistudio_click`, `github_click`,
-`guide_click`, `slider_used`. The landing page's footer says so. `npm
+`guide_click`, `slider_used`. The footer said so at first; the user had
+that sentence removed the same evening - do not put it back. `npm
 test` fails if a page in `docs/` lacks it or if anything like it turns up
 in `src/` - the APP has no analytics and must not get any. NOT done: a
 cookie consent banner, which GA strictly wants for EU visitors; the user
