@@ -9,4 +9,5 @@ contextBridge.exposeInMainWorld('setup', {
   guide: () => ipcRenderer.invoke('setup:guide'),
   close: () => ipcRenderer.invoke('setup:close'),
   fit: () => ipcRenderer.invoke('setup:fit'),
+  folder: () => ipcRenderer.invoke('setup:folder'),
 });

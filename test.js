@@ -1017,6 +1017,32 @@ ok('saving from the setup window leaves the rest of the player\'s config alone',
   assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), { display: 'above' });
 });
 
+const { settingsPatch, uiSettings, LANGUAGES } = await import('./src/settings.js');
+
+ok('what the settings window sends back is made safe before it is saved', () => {
+  assert.deepEqual(settingsPatch({ scripts: ['han', 'cyrillic', 'klingon'], showOriginal: false, showHeroes: true, autoUpdate: false, fontSize: 19.6 }),
+    { scripts: ['cyrillic', 'han'], showOriginal: false, showHeroes: true, autoUpdate: false, fontSize: 20 });
+  // No language ticked would be an app that translates nothing and does
+  // not say why: that one choice is not saved.
+  assert.equal('scripts' in settingsPatch({ scripts: [] }), false);
+  assert.equal('scripts' in settingsPatch({ scripts: ['klingon'] }), false);
+  assert.equal(settingsPatch({ fontSize: 400 }).fontSize, 28);
+  assert.equal(settingsPatch({ fontSize: 1 }).fontSize, 11);
+  // Wrong types are left out, so what was there stays.
+  assert.deepEqual(settingsPatch({ showOriginal: 'yes', fontSize: 'big', geminiApiKey: 'x', offsetsUrl: 'http://evil' }), {});
+  assert.deepEqual(settingsPatch(null), {});
+});
+
+ok('the window is shown the five settings and never the key', () => {
+  const shown = uiSettings({ ...mergeConfig({}), geminiApiKey: 'secret', geminiApiKeyEnc: 'c2VjcmV0' });
+  assert.deepEqual(Object.keys(shown).sort(), ['autoUpdate', 'fontSize', 'scripts', 'showHeroes', 'showOriginal']);
+  assert.ok(!JSON.stringify(shown).includes('secret'));
+  // Every language it offers is one the reader really knows.
+  const { SCRIPTS } = { SCRIPTS: ['cyrillic', 'greek', 'han', 'hangul', 'arabic', 'thai'] };
+  assert.deepEqual(LANGUAGES.map(([id]) => id).sort(), [...SCRIPTS].sort());
+  assert.equal(LANGUAGES[0][1], 'Russian');
+});
+
 ok('the setup page cannot load anything from anywhere', () => {
   // It is where a key is typed. No web fonts, no scripts but its own.
   const html = fs.readFileSync(path.join('src', 'setup.html'), 'utf8');

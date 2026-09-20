@@ -874,6 +874,21 @@ missing quote there failed silently.
   `DT_SHOT=<file>` makes the window photograph itself - the way to look at
   it while a game covers the screen (a screen capture showed Dota, and a
   search by window title found the USER'S installed copy, not the dev one).
+- **"More settings", a fold in the same window, shut by default** (the
+  user asked whether the other settings belonged in the UI; the answer
+  was FIVE of the twenty-five): which languages, the original in brackets,
+  hero portraits, update automatically, text size for the box. The rest
+  is engine tuning and stays in config.json - the fold says so and has an
+  "Open its folder" button (the file is made first if it does not exist).
+  `src/settings.js` decides what the window is SHOWN (never the key) and
+  makes safe what it sends back: unknown languages dropped, NO language
+  ticked is not saved (an app that translates nothing and does not say
+  why), sizes clamped 11-28, anything of the wrong type or not one of the
+  five ignored. Saving applies at once: the overlay page reloads, and the
+  reader restarts only if the languages changed. With a key already
+  saved the button reads "Save" and does not call Google. SEEN by the
+  window's own snapshot, fold open (`DT_SHOT_MORE=1`). NOT exercised:
+  pressing Save with changed settings against a running match.
 - It STOLE FOCUS from the user's game when the test copy opened it. In
   real use it only opens unasked when there is no key, i.e. before the
   first match ever - but do not open it from code while a match is on.
@@ -984,7 +999,7 @@ npm start        # the overlay (Electron)
 npm run watch    # the same chain in a terminal - use this first
 npm run demo     # drives the chain from a fake source, no Dota needed
 npm run doctor   # no-key diagnostic
-npm test         # 98 tests, plain node assert, no runner
+npm test         # 100 tests, plain node assert, no runner
 ```
 
 Keep `npm test` green. It needs no game running and no API key.

@@ -7,7 +7,8 @@ import { app, BrowserWindow, screen, ipcMain, globalShortcut, safeStorage, shell
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { loadConfig, saveConfig, onDisk } from './config.js';
+import { loadConfig, saveConfig, onDisk, CONFIG_PATH } from './config.js';
+import { uiSettings, settingsPatch, LANGUAGES } from './settings.js';
 import { checkKey, tidyKey } from './keycheck.js';
 import updater from 'electron-updater';
 import { startWatching } from './watcher.js';
@@ -289,6 +290,7 @@ async function fitSetup() {
     setupWin.setContentSize(w, Math.max(400, Math.min(want, room)));
     // DT_SHOT=<file>: the window photographs itself - the only way to look
     // at it while a game covers the screen.
+    if (process.env.DT_SHOT_MORE && !fitSetup.opened) { fitSetup.opened = true; setupWin.webContents.executeJavaScript('document.getElementById("more").open = true'); return; }
     if (process.env.DT_SHOT) setTimeout(async () => { try { fs.writeFileSync(process.env.DT_SHOT, (await setupWin.webContents.capturePage()).toPNG()); } catch { /* closed */ } }, 600);
     if (DEBUG) console.log('setup window: page needs', want, 'screen allows', room, '-> content', setupWin.getContentSize().join('x'));
     setupWin.center();
@@ -318,7 +320,24 @@ function toggleHidden() {
   if (hidden) win.hide(); else if (inFront) win.showInactive();
 }
 
-ipcMain.handle('setup:state', () => ({ hasKey: Boolean(storedKey()), display: cfg.display }));
+ipcMain.handle('setup:state', () => ({ hasKey: Boolean(storedKey()), display: cfg.display, settings: uiSettings(cfg), languages: LANGUAGES }));
+ipcMain.handle('setup:folder', () => {
+  // The file may not exist yet on a fresh install: make it, so that there
+  // is something in the folder to find.
+  if (!fs.existsSync(CONFIG_PATH)) saveConfig({});
+  shell.showItemInFolder(CONFIG_PATH);
+});
+
+// The five settings the window offers, applied to the running app: the
+// overlay's page is reloaded (it is told its settings on every load) and
+// the reader restarted if WHICH LANGUAGES changed, since that is decided
+// where the lines are read.
+function applySettings(patch) {
+  const languagesChanged = patch.scripts && JSON.stringify(patch.scripts) !== JSON.stringify(cfg.scripts);
+  Object.assign(cfg, patch);
+  if (win && !win.isDestroyed()) win.reload();
+  return languagesChanged;
+}
 ipcMain.handle('setup:close', () => { if (setupWin && !setupWin.isDestroyed()) setupWin.close(); });
 ipcMain.handle('setup:guide', () => {
   // The copy that came with the app: it is there with no internet, and it
@@ -328,18 +347,22 @@ ipcMain.handle('setup:guide', () => {
 ipcMain.handle('setup:save', async (_e, payload) => {
   const display = payload && payload.display === 'box' ? 'box' : 'above';
   const typed = tidyKey(payload && payload.key);
-  // No new key typed and one already saved: only the look is changing.
+  const patch = settingsPatch(payload && payload.settings);
+  // No new key typed and one already saved: only the settings are changing.
   if (!typed && storedKey()) {
-    saveConfig({ display });
+    saveConfig({ display, ...patch });
+    const restart = applySettings(patch);
     applyDisplay(display);
+    if (restart) restartWatcher();
     return { ok: true, checked: false };
   }
   const r = await checkKey(typed, { model: cfg.model });
   if (!r.ok) return r;
   const canEncrypt = safeStorage.isEncryptionAvailable();
   saveConfig(canEncrypt
-    ? { geminiApiKeyEnc: safeStorage.encryptString(r.key).toString('base64'), geminiApiKey: '', display }
-    : { geminiApiKey: r.key, display });
+    ? { geminiApiKeyEnc: safeStorage.encryptString(r.key).toString('base64'), geminiApiKey: '', display, ...patch }
+    : { geminiApiKey: r.key, display, ...patch });
+  applySettings(patch);
   cfg.geminiApiKey = r.key;
   applyDisplay(display);
   restartWatcher();

@@ -41,6 +41,25 @@
   .mode label b { display: block; color: var(--text); font-weight: 600; }
   .mode input { margin-top: 3px; accent-color: var(--accent); }
   .mode label:has(input:checked) { border-color: var(--accent); background: rgba(240, 180, 76, 0.06); }
+  /* More settings: shut until asked for. The first thing a new player
+     sees stays "paste key, press button". */
+  details.more { margin-top: 18px; border: 1px solid var(--line); border-radius: 10px; }
+  details.more summary { cursor: pointer; list-style: none; padding: 11px 14px; font-weight: 600; font-size: 14px; color: var(--dim); display: flex; justify-content: space-between; }
+  details.more summary::-webkit-details-marker { display: none; }
+  details.more summary::after { content: '+'; color: var(--accent); font-weight: 400; font-size: 18px; line-height: 1; }
+  details.more[open] summary::after { content: '\2013'; }
+  details.more[open] summary { color: var(--text); border-bottom: 1px solid var(--line); }
+  .more .body { padding: 4px 14px 14px; display: grid; gap: 14px; }
+  .more h3 { font-size: 13px; font-weight: 600; margin-top: 10px; color: var(--text); }
+  .more .hint { color: var(--faint); font-size: 12.5px; margin-top: 2px; }
+  .langs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 10px; margin-top: 8px; }
+  .check { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; color: var(--dim); font-weight: 400; margin: 0; cursor: pointer; }
+  .check input { margin-top: 3px; accent-color: var(--accent); }
+  .check b { color: var(--text); font-weight: 600; display: block; }
+  .size { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+  .size input { flex: 1; accent-color: var(--accent); }
+  .size output { font-family: var(--mono); font-size: 13px; color: var(--text); min-width: 44px; text-align: right; }
+  .files { border-top: 1px solid var(--line); padding-top: 12px; color: var(--faint); font-size: 12.5px; }
   #result { margin-top: 18px; border-radius: 10px; padding: 12px 14px; font-size: 14.5px; display: none; border: 1px solid var(--line-strong); border-left-width: 3px; }
   #result.ok { display: block; border-left-color: var(--good); background: rgba(123, 216, 143, 0.07); }
   #result.bad { display: block; border-left-color: var(--warn); background: rgba(229, 139, 107, 0.07); }
@@ -68,6 +87,25 @@
     <label><input type="radio" name="display" value="above" checked><span><b>Above Dota's chat</b>Plain text, like the game's own</span></label>
     <label><input type="radio" name="display" value="box"><span><b>In its own box</b>A dark panel in a corner</span></label>
   </div>
+
+  <details class="more" id="more">
+    <summary>More settings</summary>
+    <div class="body">
+      <div>
+        <h3>Translate these languages</h3>
+        <div class="langs" id="langs"></div>
+      </div>
+      <label class="check"><input type="checkbox" id="showOriginal"><span><b>Show what was said, in brackets</b>go mid (&#1080;&#1076;&#1080; &#1084;&#1080;&#1076;) - so a bad translation never hides the original</span></label>
+      <label class="check"><input type="checkbox" id="showHeroes"><span><b>Hero portraits before names</b>As Dota's chat has them. The pictures are fetched from Valve's image server</span></label>
+      <label class="check"><input type="checkbox" id="autoUpdate"><span><b>Update automatically</b>Checked at startup, installed when you next close the app</span></label>
+      <div>
+        <h3>Text size, in its own box</h3>
+        <p class="hint">Above Dota's chat the text copies the game's size; this is for the separate box.</p>
+        <div class="size"><input type="range" id="fontSize" min="11" max="28" step="1"><output id="fontSizeOut"></output></div>
+      </div>
+      <p class="files">There are more settings than these - timing, position, the model - in a file called <b>config.json</b>, for people who like that sort of thing. <button class="link" id="folder" type="button">Open its folder</button></p>
+    </div>
+  </details>
 
   <div id="result" role="status"></div>
 
