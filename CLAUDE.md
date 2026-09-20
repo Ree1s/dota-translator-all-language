@@ -724,10 +724,9 @@ installer or updater, so a fix meant everybody pulling a new version.
   shipped offsets read 4 lines in 7s; the same with `clientText` moved by
   8 read none. A real fetch answered 404 in 0.3s and fell back to the
   bundled copy, as it should - because:
-- **THE REPO IS PRIVATE** (GitHub's public API says 404 for it, 2026-09-20).
-  Until the user makes it public, the fetch reaches nothing AND the
-  landing page's "Get it free on GitHub" is a dead link for everybody
-  else. Both are waiting on that one decision, which is the user's.
+- The repo was private when this was built and went public later the same
+  evening. The fetch still answers 404 until `offsets.json` is PUSHED:
+  master was 20-odd commits ahead of origin, and pushing is the user's.
 - **AFTER A PATCH:** re-derive with `tools/ptrscan.ps1` /
   `tools/panellayout.ps1` (see THE CONTAINER), change `offsets.json` AND
   the constants in `memscan.ps1`, bump `version` and `updated`, commit,
@@ -813,7 +812,16 @@ npm test         # 92 tests, plain node assert, no runner
 Keep `npm test` green. It needs no game running and no API key.
 
 - Commit trailer: `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`
-- Working branch is `master`, pushed to `KristjanRanna/dota-translator`.
+- Working branch is `master`, pushed to `sc0rebreaker/dota-translator`.
+  **The GitHub username changed on 2026-09-20 from `KristjanRanna` to
+  `sc0rebreaker`, and the repo went PUBLIC the same evening.** GitHub
+  redirects the old repo URLs (web, git, and raw answered 200 under the old
+  name that night) but NOT Pages sites or the profile, and a redirect dies
+  if anybody takes the old name - so every URL in the app, the page and
+  the licence uses the new one. Pages, when it is switched on, will be
+  `sc0rebreaker.github.io/dota-translator`. Before it went public the
+  whole history was searched for a Google API key (`AIza...`) and for
+  `config.json` ever being tracked: neither, on any branch.
 - `tools/` holds the test rig: `fakedota.js` (stand-in game),
   `saychat.ps1` (types lines into the real game), `latency.mjs` (say ->
   found, and processor use), `whereis.mjs` (where every copy of a line

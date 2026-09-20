@@ -2,7 +2,7 @@
 
 <https://polyformproject.org/licenses/noncommercial/1.0.0>
 
-Required Notice: Copyright Kristjan Ranna (https://github.com/KristjanRanna/dota-translator)
+Required Notice: Copyright Kristjan Ranna (https://github.com/sc0rebreaker/dota-translator)
 
 ## Acceptance
 

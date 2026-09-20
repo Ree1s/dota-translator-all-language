@@ -18,7 +18,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { ROOT } from './config.js';
 
-export const OFFSETS_URL = 'https://raw.githubusercontent.com/KristjanRanna/dota-translator/master/offsets.json';
+export const OFFSETS_URL = 'https://raw.githubusercontent.com/sc0rebreaker/dota-translator/master/offsets.json';
 const BUNDLED = path.join(ROOT, 'offsets.json');
 const CACHE = path.join(ROOT, 'offsets.cache.json');
 
