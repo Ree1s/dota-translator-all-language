@@ -15,9 +15,12 @@ import { translateBatch } from './translate.js';
 import { ROOT } from './config.js';
 
 export function startWatchingMemory(cfg, { onResult, onPending = () => {}, onStatus = () => {}, onLayout = () => {}, onSeen = () => {}, onFocus = () => {}, onGamePath = () => {}, translate, startSource = startMemorySource } = {}) {
-  const doTranslate = translate || ((batch) => translateBatch(batch, {
+  // hedge: whether a slow call may be raced by a second one. The pipeline
+  // says no once the minute's calls are half spent.
+  const doTranslate = translate || ((batch, { hedge = true } = {}) => translateBatch(batch, {
     apiKey: cfg.geminiApiKey,
     model: cfg.model,
+    attempts: hedge ? undefined : 1,
   }));
 
   // What has been translated already. Chat repeats itself - "gg", the
@@ -34,6 +37,7 @@ export function startWatchingMemory(cfg, { onResult, onPending = () => {}, onSta
   const pipe = createPipeline({
     translate: doTranslate,
     batchMs: cfg.batchMs,
+    callsPerMinute: cfg.callsPerMinute,
     onResult: (row) => { remember(row); onResult(row); },
     onError: (err) => onStatus({ kind: 'error', text: String((err && err.message) || err) }),
   });

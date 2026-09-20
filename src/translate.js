@@ -172,7 +172,7 @@ export function askGeminiHedged(opts, { hedgeAfterMs = HEDGE_AFTER_MS, attempts 
 // never silently lost.
 export async function translateBatch(items, opts = {}) {
   const numbered = items.map((it, n) => ({ ...it, i: n }));
-  const text = await askGeminiHedged({ ...opts, request: buildRequest(numbered, opts) });
+  const text = await askGeminiHedged({ ...opts, request: buildRequest(numbered, opts) }, opts.attempts ? { attempts: opts.attempts } : {});
   const map = translationsFrom(text);
   return numbered.map(({ i, ...it }) => ({
     // Everything the caller handed in is carried through - the channel

@@ -61,6 +61,25 @@ found or stops validating. Details under "THE CONTAINER" below.
   line lost BOTH tries and went up untranslated at +10.6s. With one call
   at a time that would also have held every line behind it; it did not,
   the other three came through in ~1s each while it hung.
+- **THE FREE TIER IS 15 CALLS A MINUTE, and it was run into (20:18).**
+  `generate_content_free_tier_requests, limit: 15, model:
+  gemini-3.5-flash-lite` - five lines in a row "quota exceeded" and up
+  untranslated. That run doubled the load (the overlay and `e2e.mjs` were
+  both translating the same lines), but a line per call plus hedging
+  gets there alone in a loud game. The limit is per CALL, so the pipeline
+  now governs calls, not lines (`callsPerMinute`, default 15, one kept
+  back): the first half of the minute's budget is spent at once - that is
+  the allowance for a fight - and after it calls are SPACED so the rest
+  lasts until the oldest call ages out, everything said in between
+  sharing the next call, unhedged. A line that has waited 10s is shown as
+  said. MEASURED, 21 lines in 45s, one consumer:
+
+  | | translated | say -> English |
+  |---|---|---|
+  | gather window widened with use (first attempt) | 15/21, six lost to the clock | 1.0-2.3s, then 10-11s and untranslated |
+  | calls paced once half the budget is spent | **21/21**, no quota error | first 7: 0.9-1.3s; then 1.4-6.7s, median 2.2s |
+
+  Do not run `e2e.mjs` with the overlay up: two consumers, one key.
 - **A repeat is answered from a cache** (text -> English, 500 entries):
   55ms and 283ms measured, no call.
 - **The chat box** (`overlay.html/js`): one dark panel, `[Allies]`/`[All]`,
@@ -680,7 +699,7 @@ npm start        # the overlay (Electron)
 npm run watch    # the same chain in a terminal - use this first
 npm run demo     # drives the chain from a fake source, no Dota needed
 npm run doctor   # no-key diagnostic
-npm test         # 83 tests, plain node assert, no runner
+npm test         # 86 tests, plain node assert, no runner
 ```
 
 Keep `npm test` green. It needs no game running and no API key.

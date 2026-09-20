@@ -160,6 +160,7 @@ no processor time, and reading the chat costs about 0.3% of one core.
 | `scanWideCapMb` | the biggest memory region the look-everywhere re-read will open, in MB; 0 opens them all, 64 is lighter on the PC and can miss an all-chat line for a long time (0) |
 | `scanWideEvery` | every Nth re-read looks everywhere chat has ever been, to catch a line written somewhere new (5) |
 | `scripts` | which writing systems to translate. `["cyrillic"]` by default; `greek`, `han`, `hangul`, `arabic`, `thai` are also known |
+| `callsPerMinute` | how many calls a minute your key allows. The free tier is 15. The busier the chat, the more lines share one call, so a loud game stays inside it (15) |
 | `batchMs` | how long to gather lines before one call (80) |
 | `holdSeconds` | how long a line stays on screen (14) |
 | `fadeWithGame` | in `above` mode a translated line disappears when Dota's own line does, about 7 seconds after it is said, and `holdSeconds` is ignored. `false` keeps it for `holdSeconds` (true) |

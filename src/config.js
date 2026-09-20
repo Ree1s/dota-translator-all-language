@@ -47,6 +47,10 @@ export const DEFAULTS = {
   // live game; see CLAUDE.md. false is the scanner alone.
   chatPanel: true,
   panelIntervalMs: 250,     // a panel poll is nearly free, so: often
+  // How many calls a minute the key allows. 15 is the free tier of
+  // gemini-3.5-flash-lite, MEASURED by running into it. As the minute's
+  // calls are spent, lines wait a little longer and share a call.
+  callsPerMinute: 15,
   scripts: ['cyrillic'],    // which writing systems to translate
   // Lines said in the same breath go in one call. 400 was chosen before
   // anybody had played with it; in a fight every tenth of a second shows.

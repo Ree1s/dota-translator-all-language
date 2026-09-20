@@ -13,6 +13,7 @@
   "scripts": [
     "cyrillic"
   ],
+  "callsPerMinute": 15,
   "batchMs": 80,
   "holdSeconds": 14,
   "fadeWithGame": true,

@@ -830,6 +830,66 @@ await okAsync('a call that never settles does not keep its place in the pipeline
   assert.deepEqual(out, [['one', false], ['two', true]]);
 });
 
+await okAsync('as the minute is spent calls are spaced out and lines share them', async () => {
+  // The free tier is 15 calls a minute and it was run into. The limit is
+  // per CALL, so the answer is fewer, fuller calls - not fewer lines.
+  let clock = 1000000;
+  const batches = [], hedges = [], out = [];
+  const pipe = createPipeline({
+    batchMs: 1, callsPerMinute: 5, now: () => clock,        // a budget of 4: two at once, two paced
+    translate: async (batch, { hedge }) => { batches.push(batch.length); hedges.push(hedge); return batch.map((b) => ({ ...b, en: 'EN', translated: true })); },
+    onResult: (row) => out.push(row.text),
+  });
+  pipe.push({ text: 'a' }); await tick(15);
+  pipe.push({ text: 'b' }); await tick(15);
+  assert.deepEqual(batches, [1, 1]);
+  // Half the budget has gone: these wait for their turn, together.
+  for (const t of ['c', 'd', 'e']) pipe.push({ text: t });
+  await tick(80);
+  assert.deepEqual(batches, [1, 1], 'a call was made with no spacing');
+  clock += 5000; await tick(200);                           // not their turn yet: 60s / 2 left = 30s apart
+  assert.deepEqual(batches, [1, 1]);
+  clock += 3000;                                            // 8s: not yet too late to be worth translating
+  await tick(200);
+  assert.equal(pipe.pending, 3);
+  pipe.stop();
+  assert.deepEqual(hedges, [true, true]);
+});
+
+await okAsync('when their turn comes, everything that waited goes in one call, unhedged', async () => {
+  let clock = 1000000;
+  const batches = [], hedges = [];
+  const pipe = createPipeline({
+    batchMs: 1, callsPerMinute: 5, maxWaitMs: 40000, now: () => clock,
+    translate: async (batch, { hedge }) => { batches.push(batch.length); hedges.push(hedge); return batch.map((b) => ({ ...b, en: 'EN', translated: true })); },
+    onResult: () => {},
+  });
+  pipe.push({ text: 'a' }); await tick(15);
+  pipe.push({ text: 'b' }); await tick(15);
+  for (const t of ['c', 'd', 'e']) pipe.push({ text: t });
+  await tick(30);
+  clock += 31000; await tick(1100);
+  pipe.stop();
+  assert.deepEqual(batches, [1, 1, 3]);
+  assert.equal(hedges[2], false, 'a second request was allowed with half the budget gone');
+});
+
+await okAsync('a line that has waited too long for the limit is shown as it was said', async () => {
+  let clock = 1000000;
+  const out = [];
+  const pipe = createPipeline({
+    batchMs: 1, callsPerMinute: 2, maxWaitMs: 10000, now: () => clock,
+    translate: async (batch) => batch.map((b) => ({ ...b, en: 'EN', translated: true })),
+    onResult: (row) => out.push([row.text, row.translated]),
+  });
+  pipe.push({ text: 'a' }); await tick(20);
+  pipe.push({ text: 'late' }); await tick(20);
+  clock += 11000;
+  await tick(1100);
+  pipe.stop();
+  assert.deepEqual(out, [['a', true], ['late', false]]);
+});
+
 await okAsync('a refusal is the answer and is not asked twice', async () => {
   let tries = 0;
   const refuses = async () => {
