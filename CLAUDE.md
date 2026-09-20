@@ -29,7 +29,7 @@ retry described below is for.
 
 ## Open issues, in the order they matter
 
-### 1. THE READER COSTS THE GAME FRAMES - a fix is BUILT and has read one live match; frame time is NOT measured
+### 1. THE READER: cheap enough now by feel, but it MISSES LINES when they are said (see "SECOND LIVE MATCH")
 
 User-reported the first time the overlay was ever left running while
 actually playing: *"my game seems laggy"*. Believe it; it is not
@@ -121,6 +121,40 @@ to fix, not a trade to accept. Changed, NOT yet played with:
   distance from EACH OTHER. If they do, give all chat its own windows.
   If they do not, the windowed route cannot make all chat instant and
   the chat container (below) is the way.
+
+**SECOND LIVE MATCH (18:10-18:12, 1s poll): all chat is fine, and
+something worse turned up - LINES ARE SOMETIMES NOT FOUND WHEN SAID.**
+
+- All chat is NOT inherently far: 6 of 6 all-chat lines were inside a
+  window and found by windowed polls. Over both matches 17 of 20 new
+  lines were in a window; the three that were not were 14.7, 98.8 and
+  214 MB away, the last in a different allocation. Do not build
+  per-channel windows; that theory is dead.
+- **Five lines surfaced in ONE poll at 18:11:59**, two of them typed 20
+  to 35 seconds earlier (they come before lines found at 18:11:24 and
+  18:11:37 in the list the user typed from). One line, the first, never
+  appeared. Six wide polls ran in between and found none of them.
+- Those five sat at evenly spaced addresses (~0x2500 apart) in one
+  region, and earlier placements there had distance 0 and 4: the SAME
+  SLOTS, reused. That looks like a chat panel laying its lines out again
+  (opening the chat box to type is the suspect), not a line being said.
+  So some of what has been read all along may be a REDRAW, and the copy
+  made when the line is said is sometimes somewhere no poll looks: a
+  region over the 64 MB poll cap, or an allocation that was not hot at
+  the last sweep. The first match shows the same signature (three lines
+  displayed together at 18:02:13-14).
+- The same region changed size between polls (13.6 MB, then 2.6 MB), so
+  the chat heap is being split and merged under us. A region that merges
+  past 64 MB drops out of every poll. One placement was in a 54.2 MB
+  region. UNPROVEN that this is the cause; it is the first suspect.
+- `tools/whereis.mjs` is the experiment for it: nothing but full sweeps,
+  back to back, every copy of every Cyrillic line written to
+  `whereis.log` with region size, allocation and whether a poll could
+  have seen it. Heavy on purpose; bot match only. **Not yet run on Dota.**
+- Cost at a 1s poll, 4 hot allocations: windowed 50-170 MB / 75-220ms,
+  wide 760-970 MB / 0.9-1.3s, full sweep 4.4s. The model failed both
+  tries once (2.5s + 8s) and the line went up untranslated at +10s.
+- How the game felt at the 1s poll: NOT yet reported.
 
 **Then measure frame time in the game**, windows on against
 `scanWindowMb: 0`, before believing any of it.

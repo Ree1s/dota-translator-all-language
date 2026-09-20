@@ -387,3 +387,24 @@ placement 2026-09-20T15:02:47.420Z mode=win inWindow=1 distance=3408 channel=tea
 
 Scan lines from the same run: full 6611ms 7533MB 7955 regions, 5 hot;
 wide 1478-1737ms 1166-1348MB ~370 regions; win 97-244ms 48-182MB 7-33 regions.
+
+## Second live run (18:10-18:12, 1s poll): the raw placement rows
+
+Reading in CLAUDE.md open issue 1, "SECOND LIVE MATCH".
+
+```
+placement 2026-09-20T15:11:05.263Z mode=win inWindow=1 distance=13824 channel=team addr=0x552174054b4 region=0x55217320000 regionMb=13.6 alloc=0x551fa000000
+placement 2026-09-20T15:11:14.433Z mode=win inWindow=1 distance=3452 channel=all addr=0x55217407d38 region=0x55217320000 regionMb=13.6 alloc=0x551fa000000
+placement 2026-09-20T15:11:24.598Z mode=win inWindow=1 distance=0 channel=all addr=0x5521740d2b8 region=0x55217320000 regionMb=13.6 alloc=0x551fa000000
+placement 2026-09-20T15:11:32.645Z mode=win inWindow=1 distance=1006698 channel=team addr=0x55217505622 region=0x552172e0000 regionMb=13.9 alloc=0x551fa000000
+placement 2026-09-20T15:11:37.311Z mode=wide inWindow=0 distance=214213278 channel=team addr=0x5526ed849b4 region=0x5526ed80000 regionMb=19.6 alloc=0x55240000000
+placement 2026-09-20T15:11:42.207Z mode=win inWindow=1 distance=5756 channel=all addr=0x5526ed83338 region=0x5526ed80000 regionMb=19.6 alloc=0x55240000000
+placement 2026-09-20T15:11:59.580Z mode=win inWindow=1 distance=1532 channel=all addr=0x552174084b8 region=0x55217320000 regionMb=2.6 alloc=0x551fa000000
+placement 2026-09-20T15:11:59.580Z mode=win inWindow=1 distance=3061 channel=all addr=0x5521740ad38 region=0x55217320000 regionMb=2.6 alloc=0x551fa000000
+placement 2026-09-20T15:11:59.580Z mode=win inWindow=1 distance=4 channel=all addr=0x5521740cfb8 region=0x55217320000 regionMb=2.6 alloc=0x551fa000000
+placement 2026-09-20T15:11:59.581Z mode=win inWindow=1 distance=1924 channel=team addr=0x5521740f234 region=0x55217320000 regionMb=2.6 alloc=0x551fa000000
+placement 2026-09-20T15:11:59.581Z mode=win inWindow=1 distance=764 channel=team addr=0x5521740fcb4 region=0x55217320000 regionMb=2.6 alloc=0x551fa000000
+placement 2026-09-20T15:12:03.244Z mode=win inWindow=1 distance=12336 channel=team addr=0x5521fe42182 region=0x5521c9e0000 regionMb=54.2 alloc=0x551fa000000
+placement 2026-09-20T15:13:00.201Z mode=win inWindow=1 distance=1518016 channel=team addr=0x5525e6b8422 region=0x5525e000000 regionMb=60.4 alloc=0x55240000000
+placement 2026-09-20T15:13:04.967Z mode=wide inWindow=0 distance=47132560 channel=team addr=0x55238858bb2 region=0x55238000000 regionMb=32.0 alloc=0x551fa000000
+```

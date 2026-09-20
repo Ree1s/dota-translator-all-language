@@ -16,7 +16,7 @@
 # Protocol, one JSON object per line:
 #   {"t":"status","state":"waiting|scanning|reading","pid":N,"detail":"..."}
 #   {"t":"line","b64":"<the line, UTF-8, base64>","a":<address>,"w":0|1,
-#    "r":<region base>,"rs":<region size>,"ab":<allocation base>}
+#    "r":<region base>,"rs":<region size>,"ab":<allocation base>,"p":0|1}
 #   {"t":"stat","full":bool,"mode":"full|wide|win","ms":N,"mb":N,
 #    "regions":N,"hits":N,"hot":N,"winMb":N}
 #   {"t":"error","detail":"..."}
@@ -470,7 +470,7 @@ while ($true) {
     # re-encoded on the way out; the reader decodes it as UTF-8.
     foreach ($h in $lines) {
       $b64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($h.S))
-      Emit @{ t = 'line'; b64 = $b64; a = $h.A; w = [int]$h.W; r = $h.R; rs = $h.RS; ab = $h.AB }
+      Emit @{ t = 'line'; b64 = $b64; a = $h.A; w = [int]$h.W; r = $h.R; rs = $h.RS; ab = $h.AB; p = [int]$h.P }
     }
 
     Emit @{

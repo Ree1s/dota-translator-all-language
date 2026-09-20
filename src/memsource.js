@@ -78,7 +78,7 @@ export function parseEvent(raw) {
     // Where it was found, when the helper says. A user-space address is
     // under 2^47, so a JS number holds it exactly.
     if (typeof o.a === 'number') {
-      return { kind: 'line', text, addr: o.a, inWindow: o.w === 1, region: o.r, regionSize: o.rs, alloc: o.ab };
+      return { kind: 'line', text, addr: o.a, inWindow: o.w === 1, region: o.r, regionSize: o.rs, alloc: o.ab, isPrivate: o.p === 1 };
     }
     return { kind: 'line', text };
   }
