@@ -839,6 +839,16 @@ icon".)
   (deleting any earlier attempt under the same tag first). v0.2.1 was made
   that way and CHECKED: one release, three files, the 80 MB installer
   downloads, `latest.yml` names it. Check the DOWNLOAD, not the API.
+- **From v0.2.10 the installer can be CHECKED against the build** (the
+  user asked how anybody knows the exe is what is on GitHub; before this,
+  they could not). The workflow attests it
+  (`actions/attest-build-provenance`: GitHub signs "this workflow built
+  this file from this commit") and writes its SHA-256 into the release
+  notes; `download.html` says how to check both. SEEN for v0.2.10: the
+  notes carry the hash, and GitHub's public API returns 1 attestation for
+  it. NOT run: `gh attestation verify` itself - `gh` is not installed
+  here. It does not remove the SmartScreen warning; only a paid
+  certificate does.
 - The installer has a version-less name from v0.2.2
   (`Dota-Translator-Setup.exe`), so the site links straight to
   `releases/latest/download/Dota-Translator-Setup.exe`.
