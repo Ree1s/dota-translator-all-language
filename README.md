@@ -1,5 +1,12 @@
 # Dota Translator
 
+> **STATUS 2026-09-20: BLOCKED.** Dota does not write chat to `console.log`,
+> so the app cannot get its input. Measured, not assumed - see
+> [NOTES.md](NOTES.md) for the evidence, the decision to keep this free and
+> open source, and the one experiment worth running next. Everything below
+> describes the app as designed; it works end to end against a fake log
+> (`npm run demo`) but not against a real game.
+
 Reads Dota 2's chat out of the game's own console log, translates anything
 written in Cyrillic into English with Gemini, and shows it on a transparent
 overlay above the game.
