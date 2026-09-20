@@ -9,7 +9,8 @@
     "start": "electron .",
     "watch": "node src/watch.js",
     "test": "node test.js",
-    "demo": "node src/demo.js"
+    "demo": "node src/demo.js",
+    "doctor": "node src/doctor.js"
   },
   "devDependencies": {
     "electron": "^33.0.0"
