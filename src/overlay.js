@@ -60,14 +60,16 @@ function span(cls, text) {
 // see one), or an image that will not load, leaves the space empty so the
 // names still line up.
 const HERO_IMAGES = 'https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/';
-function face(hero) {
+function face(hero, own) {
   const el = document.createElement('span');
   el.className = 'face';
   if (hero) {
     const img = document.createElement('img');
     img.alt = '';
     img.onerror = () => img.remove();
-    img.src = HERO_IMAGES + hero + '.png';
+    // own: the game's own picture, read from the player's install. The web
+    // one is a different drawing of the same hero, so it is second choice.
+    img.src = own || HERO_IMAGES + hero + '.png';
     el.appendChild(img);
   }
   return el;
@@ -80,7 +82,7 @@ function build(row, state) {
   // The game tags team chat and leaves all chat bare; beside the game's
   // own lines, so do we. In a panel of its own the tag is worth having.
   const bareLook = document.body.classList.contains('bare');
-  if (cfg.showHeroes) el.appendChild(face(row.hero));
+  if (cfg.showHeroes) el.appendChild(face(row.hero, row.face));
   if (TAGS[row.channel] && !(bareLook && row.channel === 'all')) el.appendChild(span('tag', TAGS[row.channel]));
   // In the game the colon is not part of the name: it is white, and stands
   // a little off it.

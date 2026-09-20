@@ -185,8 +185,21 @@ once, as said, italic, and turns into `english (original)`.
     the name and 4.3 before the text; shadow down-right only (an outline
     all round made letters look bigger). SEEN: the two rows line up to
     the pixel at tag and name. One screen, one scale (1.33).
-  - Still different, knowingly: our portrait is Valve's CDN picture,
-    a touch brighter than the game's own; `(original)` is smaller and
+  - **The portrait is the GAME'S OWN FILE from v0.2.13** (the user: "ours
+    is bigger and shows a bit differently" - it was the same SIZE and a
+    different DRAWING: the web server's picture shows Monkey King's staff,
+    the game's is older and tighter on the face). `src/heroface.js` reads
+    `panorama/images/heroes/npc_dota_hero_<name>_png.vtex_c` out of the
+    player's `pak01` (directory parse 69ms once; a picture per hero,
+    cached) and hands the overlay a data: URL with each row; the web
+    picture is the fallback. 143 of 143 decoded on this install, in three
+    pixel formats: DXT5 holding YCoCg (103; read as plain colour they come
+    out orange and green - told apart by alpha not being flat 255), an
+    embedded PNG (fmt 16), raw BGRA (fmt 28). SEEN at 10x beside the
+    game's: the same picture; drawn 4% darker (`brightness(0.96)`,
+    measured as mean colour) to match. Disk only, never the process, and
+    nothing of it is in the repo.
+  - Still different, knowingly: `(original)` is smaller and
     regular weight by design; all chat was not compared, only team.
   - A dev copy (`npm start`) CANNOT read the installed app's encrypted
     key (`DT_CONFIG` at it just opens the setup window - which steals

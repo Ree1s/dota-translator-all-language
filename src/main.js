@@ -8,6 +8,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { loadConfig, saveConfig, onDisk, CONFIG_PATH } from './config.js';
+import { faces } from './heroface.js';
 import { uiSettings, settingsPatch, LANGUAGES } from './settings.js';
 import { checkKey, tidyKey } from './keycheck.js';
 import updater from 'electron-updater';
@@ -103,6 +104,11 @@ function createWindow() {
 
 let started = false;
 let lastFonts = '';
+// The game's own hero portraits, from the player's install (src/heroface.js).
+// Until the game's folder is known, and for any hero it cannot give, the
+// overlay uses the picture on Valve's web server - which is NOT the same one.
+let faceOf = () => null;
+const withFace = (row) => (cfg.showHeroes && row && row.hero ? { ...row, face: faceOf(row.hero) } : row);
 
 // The look changed in the setup window: put the window back where that
 // look wants it and start its page again, clean.
@@ -195,7 +201,7 @@ async function start() {
   const start = cfg.source === 'log' ? startWatching : startWatchingMemory;
   watcher = start(cfg, {
     onStatus: (s) => send('status', s),
-    onPending: (row) => send('pending', row),
+    onPending: (row) => send('pending', withFace(row)),
     onLayout,
     onSeen: (s) => { if (cfg.display === 'cover') send('seen', s); },
     // The game's chat is set in Valve's Radiance, which is not on anybody's
@@ -204,6 +210,7 @@ async function start() {
     onGamePath: (exe) => {
       // dota2.exe is in game/bin/win64; the fonts are in game/dota/panorama/fonts.
       const dir = path.resolve(path.dirname(exe), '..', '..', 'dota', 'panorama', 'fonts');
+      faceOf = faces(path.resolve(path.dirname(exe), '..', '..', 'dota'));
       if (fs.existsSync(path.join(dir, 'radiance-bold.otf'))) { lastFonts = pathToFileURL(dir).href; send('fonts', lastFonts); }
     },
     // Up only while the game is the window in front.
@@ -212,7 +219,7 @@ async function start() {
       if (!win || win.isDestroyed() || hidden) return;
       if (on) win.showInactive(); else win.hide();
     },
-    onResult: (row) => send('line', row),
+    onResult: (row) => send('line', withFace(row)),
   });
 }
 

@@ -1162,4 +1162,43 @@ ok('the landing page keeps the promises the project made about how it talks', ()
   for (const [, id] of html.matchAll(/href="#([a-z-]+)"/g)) assert.ok(html.includes(`id="${id}"`), 'no section #' + id);
 });
 
+await okAsync('the game\'s own hero portraits: a pak is indexed, a texture decoded, and anything odd is a quiet no', async () => {
+  const { readIndex, decodeTexture, faces } = await import('./src/heroface.js');
+  // A compiled texture as the game lays one out: 16 bytes of header, one
+  // DATA block (offset, size), the texture header, then the pixels.
+  const texture = (fmt, W, H, pixels) => {
+    const head = Buffer.alloc(16); head.writeUInt32LE(8, 8); head.writeUInt32LE(1, 12);
+    const block = Buffer.alloc(12); block.write('DATA'); block.writeUInt32LE(8, 4); block.writeUInt32LE(40, 8);
+    const data = Buffer.alloc(40); data.writeUInt16LE(W, 20); data.writeUInt16LE(H, 22); data.writeUInt8(fmt, 26);
+    return Buffer.concat([head, block, data, pixels]);
+  };
+  // Raw BGRA, one blue pixel top left: a BMP is bottom-up, so it lands in the last row.
+  const raw = Buffer.alloc(4 * 4 * 4); raw[0] = 255;
+  const url = decodeTexture(texture(28, 4, 4, raw));
+  assert.match(url, /^data:image\/bmp;base64,/);
+  const bmp = Buffer.from(url.split(',')[1], 'base64');
+  assert.equal(bmp.readInt32LE(18), 4);
+  assert.equal(bmp[54 + 3 * 4 * 3], 255, 'the blue pixel is not where a bottom-up bitmap has it');
+  // An embedded PNG is passed on as it is; pixels that do not add up are refused.
+  const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 13, 10, 26, 10]), Buffer.alloc(8)]);
+  assert.match(decodeTexture(texture(16, 4, 4, png)), /^data:image\/png;base64,iVBOR/);
+  assert.equal(decodeTexture(texture(28, 4, 4, Buffer.alloc(7))), null);
+  assert.equal(decodeTexture(texture(99, 4, 4, raw)), null);
+  // A pak directory with one portrait and one file that is not one.
+  const z = (s) => Buffer.from(s + '\0', 'latin1');
+  const entry = (archive, offset, length) => { const e = Buffer.alloc(18); e.writeUInt16LE(archive, 6); e.writeUInt32LE(offset, 8); e.writeUInt32LE(length, 12); e.writeUInt16LE(0xffff, 16); return e; };
+  const head = Buffer.alloc(28); head.writeUInt32LE(0x55aa1234, 0); head.writeUInt32LE(2, 4);
+  const tex = texture(28, 4, 4, raw);
+  const tree = Buffer.concat([z('vtex_c'), z('panorama/images/heroes'), z('npc_dota_hero_furion_png'), entry(3, 5, tex.length), z('not_a_hero'), entry(3, 0, 1), z(''), z(''), z('')]);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dt-pak-'));
+  fs.writeFileSync(path.join(dir, 'pak01_dir.vpk'), Buffer.concat([head, tree]));
+  fs.writeFileSync(path.join(dir, 'pak01_003.vpk'), Buffer.concat([Buffer.alloc(5), tex]));
+  assert.deepEqual([...readIndex(path.join(dir, 'pak01_dir.vpk')).keys()], ['furion']);
+  const face = faces(dir);
+  assert.match(face('furion'), /^data:image\/bmp/);
+  assert.equal(face('axe'), null);
+  assert.equal(face('../etc'), null, 'a hero name goes into a file lookup: letters only');
+  assert.equal(faces(path.join(dir, 'nowhere'))('furion'), null, 'no game folder must not throw');
+});
+
 console.log('\n' + passed + ' passed');
