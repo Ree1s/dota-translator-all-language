@@ -1154,6 +1154,11 @@ ok('the landing page keeps the promises the project made about how it talks', ()
   for (const f of fs.readdirSync('src')) {
     assert.doesNotMatch(fs.readFileSync(path.join('src', f), 'latin1'), /googletagmanager|google-analytics|gtag[(]/, 'analytics in the app: src/' + f);
   }
+  // Every download button goes through the page that explains the Windows
+  // warning (the user: "so people know for sure"); only that page links the exe.
+  assert.ok(html.includes('href="download.html#start"'));
+  assert.ok(!html.includes('Dota-Translator-Setup.exe"'), 'the landing page links the installer directly');
+  assert.ok(fs.readFileSync(path.join('docs', 'download.html'), 'utf8').includes('releases/latest/download/Dota-Translator-Setup.exe'));
   // Every in-page link goes somewhere.
   for (const [, id] of html.matchAll(/href="#([a-z-]+)"/g)) assert.ok(html.includes(`id="${id}"`), 'no section #' + id);
 });

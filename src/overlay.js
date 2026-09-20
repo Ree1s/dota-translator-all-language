@@ -124,7 +124,14 @@ const GAME_SHOWS_MS = 8500;
 // In the 1080-high units the game lays out in: where a line's text starts
 // (after the 7 of padding and the portrait), MEASURED on one screen.
 let TEXT_LEFT = 49;
-const PAD = 4, FONT = 18;
+// The game's own stylesheet (panorama/styles/chat.vcss_c, read out of the
+// pak on disk, 2026-09-20) gives HudChat lines font-size 18, names 20, the
+// [Allies] tag 18 in #fbe6b9. But the user saw ours BIGGER at 18: Valve's
+// UI sizes a font by its whole cell (ascent + descent), a browser by its
+// em, and Radiance's cell is 1.2 em (hhea 860 + 340 over 1000). So the
+// same number draws glyphs 1/1.2 the size in the game. The 1.2 is from the
+// font file; that Panorama sizes by the cell is INFERRED, not measured.
+const PAD = 4, FONT = 18 / 1.2;
 
 function covering() { return cfg.display === 'cover' && layout; }
 

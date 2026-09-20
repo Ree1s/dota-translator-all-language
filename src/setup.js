@@ -32,6 +32,9 @@ $('more').addEventListener('toggle', () => window.setup.fit());
 $('folder').addEventListener('click', () => window.setup.folder());
 
 window.setup.state().then((s) => {
+  // Which version this is, where it can be seen: the title bar and the foot.
+  document.title = 'Dota Translator ' + s.version;
+  $('version').textContent = 'Version ' + s.version;
   fill(s);
   // Somebody who already has a key is here for the settings: a plain Save.
   if (s.hasKey) save.textContent = 'Save';

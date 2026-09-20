@@ -165,6 +165,17 @@ once, as said, italic, and turns into `english (original)`.
   is `#fff` at full opacity with the exact slot colours. NOT seen over
   the game since; if it still looks dull, the game may draw its chat
   brighter than sRGB white on an HDR screen, which a window cannot match.
+- **The text was BIGGER than the game's (the user, v0.2.8) though both
+  say 18.** The game's real stylesheet was read out of `pak01` on disk
+  (`panorama/styles/chat.vcss_c`; a VPK directory is easy to parse and
+  compiled CSS is plain text inside): `DOTAChat#HudChat .ChatLine` 18px
+  bold, shadow `1px 1.5px 0 #000`; `.ChatPersona` 20px; `.ChatTarget` 18px
+  `#fbe6b9`; `.HeroIcon` 40x23, 4 right, 1px black border; `.Expired` is
+  how a line goes. Radiance's cell (ascent + descent) is 1.2 em, and
+  Valve's UI appears to size by the cell where a browser sizes by the em,
+  so from v0.2.9 ours is 18/1.2 = 15 units, names 20/18 of that, tag in
+  the game's colour. The 1.2 is from the font file; that Panorama sizes
+  by the cell is INFERRED from the user's report. NOT seen over the game.
 - The setup window's key guide opens the LIVE page
   (`sc0rebreaker.github.io/dota-translator/key.html`) from v0.2.7; it
   opened the bundled copy, and a `file:///C:/Users/...` address looked
@@ -920,7 +931,15 @@ tech user may not find it", and the SmartScreen warning "might be scary".
   setup window's "It works" message says the same. NOT seen: the balloon
   itself, nor the second-launch path - neither was run here (the user's
   installed copy was running, and a dev copy beside it is two consumers).
-- **`docs/install.html`**: the blue warning DRAWN twice (before and after
+- **It is `docs/download.html` from v0.2.9, and EVERY download button on
+  the landing page goes to it** (`download.html#start` starts the download
+  by itself after 0.9s and says so; a plain visit downloads nothing).
+  `install.html` is a redirect. It asks GitHub's API for the latest
+  version and shows it. The auto-start was NOT run here: it downloads 80 MB.
+- **The version is shown** (the user could not find it): settings window
+  title bar and foot, tray tooltip, tray menu, the download page. The
+  installer keeps its version-less NAME - the site's link depends on it.
+- **`docs/install.html`** (as it was first called): the blue warning DRAWN twice (before and after
   More info, the button ringed), why it appears (unsigned = no paid
   certificate, not a finding; built on GitHub from public source), and a
   drawing of the tray with the ^ flyout. Linked from the landing page's

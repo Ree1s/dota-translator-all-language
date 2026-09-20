@@ -317,7 +317,7 @@ function makeTray() {
   // read. Drawn for this project (build/icon-source.html) - NOT Dota's
   // logo, which is Valve's trademark and not ours to use.
   tray = new Tray(nativeImage.createFromPath(path.join(here, 'tray.png')).resize({ width: 16, height: 16 }));
-  tray.setToolTip('Dota Translator');
+  tray.setToolTip('Dota Translator ' + app.getVersion());
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Settings and key...', click: openSetup },
     { label: 'Hide or show the translations (Alt+D)', click: toggleHidden },
@@ -341,7 +341,7 @@ function toggleHidden() {
   if (hidden) win.hide(); else if (inFront) win.showInactive();
 }
 
-ipcMain.handle('setup:state', () => ({ hasKey: Boolean(storedKey()), display: cfg.display, settings: uiSettings(cfg), languages: LANGUAGES }));
+ipcMain.handle('setup:state', () => ({ version: app.getVersion(), hasKey: Boolean(storedKey()), display: cfg.display, settings: uiSettings(cfg), languages: LANGUAGES }));
 ipcMain.handle('setup:folder', () => {
   // The file may not exist yet on a fresh install: make it, so that there
   // is something in the folder to find.
