@@ -135,6 +135,24 @@ of three lines (team, all, team) shows every strip on its row.
   between two translated ones left alone in its slot; and the strips moved
   up a row with the game's stack when a new line arrived. A chat with no
   box at all from the first moment needs replace-in-place (below).
+- **WATCHING THE USER'S OWN CHAT (19:48-19:55), what was seen:** eleven
+  of their pasted Russian lines translated and laid on the right rows,
+  rows moving up with the stack. THREE FAULTS, the first fixed:
+  (1) the strip went bare at 6s while the game still showed its line -
+  English printed over Russian, twice; now 8.5s. (2) NOT FIXED: the
+  overlay stays on top when the user alt-tabs - English drawn over their
+  browser. Hide the window when Dota is not the foreground window.
+  (3) NOT FIXED: with the chat OPENED (Enter) the game shows old lines
+  again and a bare strip lands on top of one. Needs a "chat is open"
+  signal. NOT in the nine UI panels from ChatLinesPanel up to HudChat:
+  every byte of +0x40..+0x300 was the same open and closed. The float at
+  +0x58 is not visibility either (static per line; on the wrapper it
+  spikes and decays like a scroll). The client-side objects (+0x8 of each)
+  were the next place to look; the user stopped that experiment, which
+  presses Enter and Escape in their game - ASK before running it again.
+  Until then the honest fallback is to never go bare.
+- Chinese lines (voice-line pastes) are ignored by design: `scripts` is
+  ["cyrillic"]. `"han"` exists; the prompt is written for Russian.
 - Pending rows are not drawn in cover mode (the line is already on
   screen, in Russian, where the English will go), nor are lines that
   failed to translate. With no layout - scanner fallback, no match yet -

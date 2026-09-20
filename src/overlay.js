@@ -86,9 +86,12 @@ const english = new Map();       // key -> { row, until }
 let layout = null;
 const firstSeen = new Map();     // key -> when the line first appeared in the game
 // How long the game keeps its own line up. MEASURED with timed
-// screenshots: there at 4s, gone by 7s. Until then the strip has to hide
-// it; after that there is nothing under the English but the game.
-const GAME_SHOWS_MS = 6000;
+// screenshots: there at 4s, gone by 7s - and then, watching the user's own
+// chat, STILL THERE at 6s twice, with the bare English printed on top of
+// it. So 8.5s: a strip that lingers a second too long costs nothing, and
+// one that leaves early is unreadable. Until then the strip has to hide
+// the line; after that there is nothing under the English but the game.
+const GAME_SHOWS_MS = 8500;
 // In the 1080-high units the game lays out in: where a line's text starts
 // (after the 7 of padding and the portrait), MEASURED on one screen.
 const TEXT_LEFT = 49, PAD = 4, FONT = 18;
