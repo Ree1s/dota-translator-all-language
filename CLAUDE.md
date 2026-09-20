@@ -180,6 +180,27 @@ once, as said, italic, and turns into `english (original)`.
   wide, 16:9, text at 49. `parseEvent` only takes `[a-z_]` for a hero - it
   goes into a URL. SEEN over the live match: same portrait, size and
   place as the game's own line beneath it.
+- **AFTER A MATCH, IN THE MAIN MENU (the user, in the installed app): the
+  overlay said "Finding the chat in memory..." and then flashed the last
+  lines of the finished game.** Three faults, all fixed in v0.2.5, and
+  REPRODUCED first: `tools/fakechat.ps1 -EndAfter 7` ends the stand-in's
+  match while the process stays open (the HUD panel stops validating, its
+  strings stay in memory) and copies the chat, a line at a time, into a
+  ChatLinesPanel under `DotaDashboard`. The released helper put five
+  "copied" lines out and ran a full sweep; the fixed one, none and none.
+  1. **Only a MATCH's panel is read** (`InMatch`: under DotaHud). The
+     menu's and the post-game's panels are watched - they are how a new
+     match is noticed - and never read. The game copies the match's chat
+     into them, and an APPENDED line counts as new whatever it says, which
+     is exactly the rule that made repeats work.
+  2. **Once the panel reader has worked in a game, the scanner never runs
+     again in it** (`$panelEverFound`). With the match over it swept the
+     process and dug the finished game's chat up out of freed memory. It
+     is for the day the panel cannot be found AT ALL. After the panel goes
+     there is one search at once, then only when the game's memory moves.
+  3. **The overlay shows errors and nothing else.** How the app is getting
+     on is for `npm run watch` and `DT_DEBUG`, not for the player's screen.
+  NOT seen on the real game yet: only on the stand-in.
 - What it gives up: the English is up to six rows above the line it
   translates when the chat is nearly empty. What it avoids is everything
   that went wrong with cover: the strip, the guess at when the game's

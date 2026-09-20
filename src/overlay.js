@@ -217,8 +217,11 @@ function addLine(row) {
 }
 
 function addStatus(s) {
-  if (s.kind === 'ready') return;          // nothing to say when it works
-  if (!s.text) return;                     // a stat or a find: numbers, not words
+  // Only when something is WRONG and the player can do something about
+  // it. "Finding the chat in memory..." over the main menu told the user
+  // nothing they wanted to know: how the app is getting on is for
+  // `npm run watch` and DT_DEBUG, not for the screen they are playing on.
+  if (s.kind !== 'error' || !s.text) return;
   const el = document.createElement('div');
   el.className = 'status';
   el.textContent = s.text;

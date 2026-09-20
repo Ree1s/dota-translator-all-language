@@ -642,6 +642,14 @@ public static class DotaMem {
         LastRegions += count;
         counts = "0x" + Panels[pi].ToString("x") + ":" + count + (counts.Length > 0 ? " " : "") + counts;
         if (count == 0) continue;
+        // Only a MATCH's chat is read. The user saw the last lines of a
+        // finished game flash up in the main menu: the dashboard and the
+        // post-game screen have ChatLinesPanels of their own, the game
+        // copies the match's chat into them, and lines APPENDED to a panel
+        // count as new whatever they say. The menu's chat is not what this
+        // is for; panels that are not under DotaHud are watched (they say
+        // when a match begins) and never read.
+        if (!InMatch.Contains(Panels[pi])) continue;
         var arr = new byte[count * 8];
         if (!Rd(h, kids, arr, arr.Length)) continue;        // the array moved under us: next poll
         bytes += arr.Length;
@@ -788,6 +796,8 @@ $announcedSearch = $false
 # The same, for the chat panel: when to look for it again, and whether
 # the reader has been told we are looking.
 $panelRetryAt = [DateTime]::MinValue
+$panelEverFound = $false
+$panelJustLost = $false
 $panelFoundAt = [DateTime]::MinValue
 $panelFoundAtBytes = 0
 $panelWaitMs = 0
@@ -809,7 +819,7 @@ while ($true) {
   if (-not $proc) {
     if ($lastPid -ne 0) {
       # Dota closed: the addresses we learned mean nothing for the next one.
-      [DotaMem]::ForgetPanels(); $panelRetryAt = [DateTime]::MinValue; $panelWaitMs = 0; $announcedPanel = $false; $hot.Clear(); $addrs.Clear(); $winBytes = [DotaMem]::SetWindows($addrs, 0); $lastPid = 0; $lastFull = [DateTime]::MinValue; $idleWaitMs = 0; $announcedSearch = $false
+      [DotaMem]::ForgetPanels(); $panelEverFound = $false; $panelJustLost = $false; $panelRetryAt = [DateTime]::MinValue; $panelWaitMs = 0; $announcedPanel = $false; $hot.Clear(); $addrs.Clear(); $winBytes = [DotaMem]::SetWindows($addrs, 0); $lastPid = 0; $lastFull = [DateTime]::MinValue; $idleWaitMs = 0; $announcedSearch = $false
       Emit @{ t = 'status'; state = 'waiting'; detail = 'Dota closed' }
     }
     Start-Sleep -Milliseconds 2000
@@ -817,7 +827,7 @@ while ($true) {
   }
 
   if ($proc.Id -ne $lastPid) {
-    [DotaMem]::ForgetPanels(); $panelRetryAt = [DateTime]::MinValue; $panelWaitMs = 0; $announcedPanel = $false; $hot.Clear(); $addrs.Clear(); $winBytes = [DotaMem]::SetWindows($addrs, 0); $lastFull = [DateTime]::MinValue; $idleWaitMs = 0; $announcedSearch = $false
+    [DotaMem]::ForgetPanels(); $panelEverFound = $false; $panelJustLost = $false; $panelRetryAt = [DateTime]::MinValue; $panelWaitMs = 0; $announcedPanel = $false; $hot.Clear(); $addrs.Clear(); $winBytes = [DotaMem]::SetWindows($addrs, 0); $lastFull = [DateTime]::MinValue; $idleWaitMs = 0; $announcedSearch = $false
     $lastPid = $proc.Id
     # Where the game is installed goes with it: the overlay takes the game's
     # own chat font from there rather than shipping a copy of Valve's.
@@ -844,7 +854,8 @@ while ($true) {
       # menu does not, so that is the trigger; and every 3 minutes anyway,
       # because this is a heuristic and NOT yet seen across a real boundary.
       $due = [DateTime]::UtcNow -ge $panelRetryAt
-      if ($due -and [DotaMem]::Panels.Count -gt 0 -and -not [DotaMem]::Settled) {
+      $idle = ([DotaMem]::Panels.Count -gt 0 -and -not [DotaMem]::Settled) -or ([DotaMem]::Panels.Count -eq 0 -and $panelEverFound -and -not $panelJustLost)
+      if ($due -and $idle) {
         $proc.Refresh()
         $moved = [Math]::Abs($proc.PrivateMemorySize64 - $panelFoundAtBytes) -gt 150MB
         $stale = ([DateTime]::UtcNow - $panelFoundAt).TotalMilliseconds -gt 180000
@@ -853,6 +864,8 @@ while ($true) {
       if (([DotaMem]::Panels.Count -eq 0 -or -not [DotaMem]::Settled) -and $due) {
         if (-not $announcedPanel) { $announcedPanel = $true; Emit @{ t = 'status'; state = 'scanning'; pid = $proc.Id; detail = 'looking for the chat panel' } }
         $n = [DotaMem]::FindPanels($proc.Id, $SweepThreads)
+        $panelJustLost = $false
+        if ($n -gt 0) { $panelEverFound = $true }
         $proc.Refresh(); $panelFoundAtBytes = $proc.PrivateMemorySize64; $panelFoundAt = [DateTime]::UtcNow
         Emit @{ t = 'find'; panels = $n; ms = [DotaMem]::LastMs; mb = [int]([DotaMem]::LastBytes / 1MB) }
         if ($n -gt 0) {
@@ -890,11 +903,17 @@ while ($true) {
           }
         }
         if ([DotaMem]::Panels.Count -gt 0) { Start-Sleep -Milliseconds $PanelIntervalMs; continue }
-        # The panel has gone (the match ended, or the layout is not what it
-        # was). Look again at once, and scan in the meantime.
-        $panelRetryAt = [DateTime]::UtcNow; $lastFull = [DateTime]::MinValue
-        Emit @{ t = 'status'; state = 'scanning'; pid = $proc.Id; detail = 'the chat panel went away' }
+        # The panel has gone: the match ended. Look once, at once, for what
+        # is there now; after that, only when the game's memory moves.
+        $panelRetryAt = [DateTime]::UtcNow; $panelJustLost = $true
       }
+      # The panel reader has worked in this game, so the offsets are right
+      # and the SCANNER below has nothing to add - and something to take
+      # away: with the match over it sweeps the whole process and digs the
+      # finished game's chat back up out of freed memory, which the user
+      # saw go up in the main menu. It is for the day the panel cannot be
+      # found at all, and only that.
+      if ($panelEverFound) { Start-Sleep -Milliseconds $IntervalMs; continue }
     } catch {
       Emit @{ t = 'error'; detail = $_.Exception.Message }
       Start-Sleep -Milliseconds 1000

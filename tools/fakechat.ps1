@@ -29,6 +29,12 @@
 # against what is true.
 
 param(
+  # After this many lines the MATCH ENDS while the game stays open, as it
+  # did for the user: the HUD's panel stops being a panel, and the match's
+  # chat is copied, line by line, into a ChatLinesPanel under the
+  # DASHBOARD - which is what put a finished game's chat on their screen in
+  # the main menu. 0 = the match never ends.
+  [int]$EndAfter = 0,
   [int]$Every = 3000,
   [int]$Max = 30,
   [string]$OutDir = (Join-Path $env:TEMP 'dt-fakechat')
@@ -109,10 +115,11 @@ public static class FakeChat {
   }
 
   public static int Main(string[] args) {
-    int every = 3000, max = 30;
+    int every = 3000, max = 30, endAfter = 0;
     for (int i = 0; i + 1 < args.Length; i++) {
       if (args[i] == "--every") every = int.Parse(args[i + 1]);
       if (args[i] == "--max") max = int.Parse(args[i + 1]);
+      if (args[i] == "--end-after") endAfter = int.Parse(args[i + 1]);
     }
 
     long k32 = (long)GetModuleHandle("kernel32.dll");
@@ -144,6 +151,30 @@ public static class FakeChat {
       " panel=0x" + ((long)panel).ToString("x") + ", a line every " + every + "ms, at most " + max);
 
     for (int n = 0; ; n++) {
+      if (endAfter > 0 && n == endAfter) {
+        // The match is over. The HUD's panel is no longer one (its vtable
+        // and id are gone) but every string it held is still in memory.
+        Marshal.WriteInt64(panel, 0, 0);
+        Marshal.WriteIntPtr(panel, UI_ID, IntPtr.Zero);
+        Console.WriteLine("[match over] " + DateTime.Now.ToString("HH:mm:ss.fff"));
+        // And the menu gets a chat of its own, with the match's lines
+        // appended to it one at a time.
+        IntPtr dash = UiPanel(IntPtr.Zero, "DotaDashboard");
+        IntPtr menuChat = UiPanel(dash, "ChatLinesPanel");
+        IntPtr menuArr = Zeroed(64 * 8);
+        Marshal.WriteIntPtr(menuChat, UI_KIDS, menuArr);
+        Marshal.WriteInt32(menuChat, UI_CAP, 64);
+        for (int k = 0; k < 6; k++) {
+          string[] old = lines[k % lines.Length];
+          IntPtr copy = UiPanel(menuChat, null);
+          SetText(copy, Markup(old[0] == "1", old[1], old[2] + " copied " + k));
+          Marshal.WriteIntPtr(menuArr, k * 8, copy);
+          Marshal.WriteInt32(menuChat, UI_COUNT, k + 1);
+          Console.WriteLine("[menu copy] #" + k);
+          Thread.Sleep(700);
+        }
+        Thread.Sleep(Timeout.Infinite);
+      }
       string[] l = lines[n % lines.Length];
       IntPtr ui = UiPanel(panel, null);
 
@@ -178,4 +209,4 @@ public static class FakeChat {
 
 if (Test-Path $exe) { Remove-Item -Force $exe }
 Add-Type -TypeDefinition $src -OutputAssembly $exe -OutputType ConsoleApplication
-& $exe --every $Every --max $Max
+& $exe --every $Every --max $Max --end-after $EndAfter
