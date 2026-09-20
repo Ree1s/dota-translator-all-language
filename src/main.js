@@ -346,9 +346,9 @@ function applySettings(patch) {
 }
 ipcMain.handle('setup:close', () => { if (setupWin && !setupWin.isDestroyed()) setupWin.close(); });
 ipcMain.handle('setup:guide', () => {
-  // The copy that came with the app: it is there with no internet, and it
-  // is the one that matches this version.
-  shell.openExternal(pathToFileURL(onDisk(path.join(here, '..', 'docs', 'key.html'))).href);
+  // The live page, not the copy that came with the app: a file:// address
+  // in the browser looks wrong, and a key is no use offline anyway.
+  shell.openExternal('https://sc0rebreaker.github.io/dota-translator/key.html');
 });
 ipcMain.handle('setup:save', async (_e, payload) => {
   const display = payload && payload.display === 'box' ? 'box' : 'above';

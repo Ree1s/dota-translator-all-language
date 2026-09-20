@@ -158,6 +158,17 @@ once, as said, italic, and turns into `english (original)`.
     headers, so a stalled body would have been waited for for ever), the
     hedge has an overall deadline, and the pipeline gives a call 12s
     before taking its place back. No hang was ever actually observed.
+- **The colours were dimmer than the game's (the user, v0.2.6), white and
+  names alike.** Two causes: `opacity` (0.92) was set on the BODY, so it
+  dimmed everything in every mode, and the text was the box's off-white
+  `#e8e6df`. From v0.2.7 `opacity` is the dark box's only, and bare text
+  is `#fff` at full opacity with the exact slot colours. NOT seen over
+  the game since; if it still looks dull, the game may draw its chat
+  brighter than sRGB white on an HDR screen, which a window cannot match.
+- The setup window's key guide opens the LIVE page
+  (`sc0rebreaker.github.io/dota-translator/key.html`) from v0.2.7; it
+  opened the bundled copy, and a `file:///C:/Users/...` address looked
+  like a wrong link to the user.
 - **The line goes when the game's line goes** (`fadeWithGame`, default
   true, `above` mode only; the user asked for it). MEASURED with
   half-second screenshots from the rig's Enter: the game's line is fully

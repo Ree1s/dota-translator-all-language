@@ -234,7 +234,9 @@ window.dt.onConfig((next) => {
   cfg = { ...cfg, ...next };
   if (Number.isFinite(next.textLeft)) TEXT_LEFT = next.textLeft;
   document.documentElement.style.setProperty('--size', cfg.fontSize + 'px');
-  document.body.style.opacity = String(cfg.opacity);
+  // The dark box only: bare text beside the game's own chat is as bright as
+  // the game's, and anything under 1 on the body dims names and white alike.
+  box.style.opacity = String(cfg.opacity);
   // Anchored to the bottom, the box grows UPWARDS, as a chat does.
   document.body.classList.toggle('bottom', String(cfg.position).startsWith('bottom') || cfg.position === 'chat');
 });
