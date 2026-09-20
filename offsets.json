@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "updated": "2026-09-20",
+  "note": "Where Dota keeps its chat, measured with tools/ptrscan.ps1 and tools/panellayout.ps1. A Dota patch that moves any of these is fixed by changing THIS FILE on master: every copy of the app fetches it at startup. See CLAUDE.md, THE CONTAINER.",
+  "panel": {
+    "uiClient": "0x08",
+    "uiId": "0x10",
+    "uiParent": "0x18",
+    "uiCount": "0x28",
+    "uiKids": "0x30",
+    "clientText": "0x90",
+    "textStr": "0x10",
+    "uiHeight": "0x54",
+    "uiTextWidth": "0x1a0",
+    "uiPos": "0x1b0",
+    "uiScale": "0x1e0"
+  },
+  "layout": {
+    "chatLeft": 31.5,
+    "chatBottom": 140,
+    "chatHigh": 162,
+    "textLeft": 49
+  }
+}

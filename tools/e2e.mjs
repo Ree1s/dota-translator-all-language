@@ -19,12 +19,16 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from '../src/config.js';
 import { startWatchingMemory } from '../src/memwatcher.js';
+import { loadOffsets } from '../src/offsets.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const COUNT = Number(process.argv[2] || 8);
 const GAP = Number(process.argv[3] || 4000);
 const cfg = loadConfig();
 if (!cfg.geminiApiKey) { console.log('No Gemini key in config.json; nothing was started.'); process.exit(1); }
+
+cfg.offsets = await loadOffsets({ url: cfg.offsetsUrl });
+console.log(`offsets: ${cfg.offsets.source}, v${cfg.offsets.version}`);
 
 const PHRASES = ['идем на рошана', 'у кого есть дасты', 'отходим, их пятеро', 'керри фарми, мы держим',
   'смок и идем на мид', 'куплю гем после драки', 'нужны варды на боте', 'не ходите в лес'];

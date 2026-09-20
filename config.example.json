@@ -3,6 +3,7 @@
   "model": "gemini-3.5-flash-lite",
   "logPath": "",
   "source": "memory",
+  "offsetsUrl": "https://raw.githubusercontent.com/KristjanRanna/dota-translator/master/offsets.json",
   "chatPanel": true,
   "panelIntervalMs": 250,
   "scanIntervalMs": 1000,

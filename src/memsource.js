@@ -27,6 +27,7 @@ export function scannerArgs(script = SCRIPT, {
   wideCapMb,
   panel,
   panelIntervalMs,
+  offsets,
   processName,
 } = {}) {
   const args = [
@@ -47,6 +48,8 @@ export function scannerArgs(script = SCRIPT, {
   if (Number.isFinite(wideCapMb)) args.push('-WideCapMb', String(wideCapMb));
   if (panel === false) args.push('-Panel', '0');
   if (Number.isFinite(panelIntervalMs)) args.push('-PanelIntervalMs', String(panelIntervalMs));
+  // Only ever digits and known names: it is a command line.
+  if (typeof offsets === 'string' && /^[A-Za-z]+=[0-9]+(;[A-Za-z]+=[0-9]+)*$/.test(offsets)) args.push('-Offsets', offsets);
   if (processName) args.push('-ProcessName', processName);
   return args;
 }
@@ -126,6 +129,7 @@ export function startMemorySource({
   onSeen = () => {},
   onFocus = () => {},
   onGamePath = () => {},
+  offsets,
   panel,
   panelIntervalMs,
   windowMb,
@@ -240,7 +244,7 @@ export function startMemorySource({
 
   function start() {
     if (stopped) return;
-    child = spawnImpl(POWERSHELL, scannerArgs(SCRIPT, { intervalMs, fullRescanMs, windowMb, wideEvery, wideCapMb, panel, panelIntervalMs, processName }), {
+    child = spawnImpl(POWERSHELL, scannerArgs(SCRIPT, { intervalMs, fullRescanMs, windowMb, wideEvery, wideCapMb, panel, panelIntervalMs, offsets, processName }), {
       windowsHide: true,
       stdio: ['ignore', 'pipe', 'pipe'],
     });

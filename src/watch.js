@@ -6,12 +6,16 @@
 import { loadConfig } from './config.js';
 import { startWatching } from './watcher.js';
 import { startWatchingMemory } from './memwatcher.js';
+import { loadOffsets } from './offsets.js';
 
 const cfg = loadConfig();
 if (!cfg.geminiApiKey) {
   console.error('No Gemini API key. Put one in config.json or set GEMINI_API_KEY.');
   process.exit(1);
 }
+
+cfg.offsets = await loadOffsets({ url: cfg.offsetsUrl });
+console.log(`Offsets: ${cfg.offsets.source}, v${cfg.offsets.version} (${cfg.offsets.updated}).`);
 
 const time = () => new Date().toTimeString().slice(0, 8);
 

@@ -10,6 +10,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { loadConfig } from './config.js';
 import { startWatching } from './watcher.js';
 import { startWatchingMemory } from './memwatcher.js';
+import { loadOffsets, bundledOffsets } from './offsets.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const cfg = loadConfig();
@@ -104,7 +105,11 @@ const DEBUG = Boolean(process.env.DT_DEBUG);
 // layout is written in, which is why they are multiplied by the scale
 // the game reports rather than kept as pixels. NOT checked on any other
 // screen; that they are layout constants is the bet.
-const CHAT_LEFT = 31.5, CHAT_BOTTOM = 140, LINE_BOX = 1000, ROWS_HIGH = 340;
+// The three that were calibrated by eye live in offsets.json with the
+// memory offsets, for the same reason: if a patch restyles the chat they
+// are fixed by a commit there. These are what shipped, until it is read.
+let { chatLeft: CHAT_LEFT, chatBottom: CHAT_BOTTOM, chatHigh: CHAT_HIGH, textLeft: TEXT_LEFT } = bundledOffsets().layout;
+const LINE_BOX = 1000, ROWS_HIGH = 340;
 // ABOVE mode: the same place, one chat-height higher. The game draws its
 // chat in a window 216px high at scale 1.33 (162 units: six lines, which
 // is also what it shows when the chat is OPENED), so a box that ends
@@ -113,7 +118,7 @@ const CHAT_LEFT = 31.5, CHAT_BOTTOM = 140, LINE_BOX = 1000, ROWS_HIGH = 340;
 // but needed a strip to hide the Russian, a guess at when the game's line
 // fades (wrong once already), and a signal for the opened chat that was
 // not found.
-const CHAT_HIGH = 162, GAP = 4;
+const GAP = 4;
 let coverAt = '';
 
 function coverBounds(l) {
@@ -145,7 +150,12 @@ function send(channel, payload) {
   if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
 }
 
-function start() {
+async function start() {
+  // A few seconds at most, and never fatal: see src/offsets.js.
+  cfg.offsets = await loadOffsets({ url: cfg.offsetsUrl });
+  ({ chatLeft: CHAT_LEFT, chatBottom: CHAT_BOTTOM, chatHigh: CHAT_HIGH, textLeft: TEXT_LEFT } = cfg.offsets.layout);
+  send('config', { textLeft: TEXT_LEFT });
+  if (DEBUG) console.log('offsets', cfg.offsets.source, 'v' + cfg.offsets.version, cfg.offsets.updated);
   if (!cfg.geminiApiKey) {
     send('status', { kind: 'error', text: 'No Gemini API key. Put one in config.json.' });
     return;

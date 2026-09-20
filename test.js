@@ -963,6 +963,67 @@ ok('every script parses', () => {
   for (const f of fs.readdirSync('tools').filter((x) => /\.m?js$/.test(x))) execFileSync(process.execPath, ['--check', path.join('tools', f)]);
 });
 
+console.log('offsets');
+
+const { parseOffsets, offsetsArg, loadOffsets, bundledOffsets } = await import('./src/offsets.js');
+
+ok('the offsets that ship are the ones compiled into the helper', () => {
+  // Two copies of the same measurement. If they drift, the app behaves
+  // one way online and another offline, and nobody can tell why.
+  const shipped = bundledOffsets();
+  const ps = fs.readFileSync(path.join('src', 'memscan.ps1'), 'utf8');
+  const compiled = {};
+  for (const [, name, hex] of ps.matchAll(/\b(UI_[A-Z_]+|CLIENT_TEXT|TEXT_STR) = (0x[0-9a-fA-F]+)/g)) compiled[name] = parseInt(hex, 16);
+  const pairs = { uiClient: 'UI_CLIENT', uiId: 'UI_ID', uiParent: 'UI_PARENT', uiCount: 'UI_COUNT', uiKids: 'UI_KIDS', clientText: 'CLIENT_TEXT',
+    textStr: 'TEXT_STR', uiHeight: 'UI_H', uiTextWidth: 'UI_TEXT_W', uiPos: 'UI_POS', uiScale: 'UI_SCALE' };
+  for (const [key, name] of Object.entries(pairs)) assert.equal(shipped.panel[key], compiled[name], `${key} is ${shipped.panel[key]} in offsets.json and ${compiled[name]} in memscan.ps1`);
+  // And every name the file uses is one the helper knows how to set.
+  for (const key of Object.keys(pairs)) assert.ok(ps.includes(`${key} = '${pairs[key]}'`), 'memscan.ps1 cannot set ' + key);
+});
+
+ok('an offsets file is taken whole or not at all', () => {
+  const good = JSON.parse(fs.readFileSync('offsets.json', 'utf8'));
+  assert.equal(parseOffsets(good).panel.clientText, 0x90);
+  const broken = (change) => { const o = JSON.parse(JSON.stringify(good)); change(o); return parseOffsets(o); };
+  assert.equal(broken((o) => { delete o.panel.uiKids; }), null, 'a missing offset');
+  assert.equal(broken((o) => { o.panel.uiKids = '0x31'; }), null, 'a pointer that is not on a pointer boundary');
+  assert.equal(broken((o) => { o.panel.uiKids = 0x999999; }), null, 'an offset far outside any panel');
+  assert.equal(broken((o) => { o.panel.uiKids = '48; rm -rf'; }), null, 'not a number');
+  assert.equal(broken((o) => { o.layout.chatLeft = 'wide'; }), null);
+  assert.equal(broken((o) => { o.version = 0; }), null);
+  assert.equal(parseOffsets(null), null);
+});
+
+ok('the helper is handed names and digits and nothing else', () => {
+  const arg = offsetsArg(bundledOffsets().panel);
+  assert.match(arg, /^[A-Za-z]+=[0-9]+(;[A-Za-z]+=[0-9]+)*$/);
+  const args = scannerArgs('S.ps1', { offsets: arg });
+  assert.equal(args[args.indexOf('-Offsets') + 1], arg);
+  assert.ok(!scannerArgs('S.ps1', { offsets: 'uiKids=48 -Priority High' }).includes('-Offsets'), 'a command line was let through');
+  assert.ok(!scannerArgs('S.ps1').includes('-Offsets'));
+});
+
+await okAsync('a newer offsets file on the repo wins, a bad or missing one changes nothing', async () => {
+  const cacheFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'dt-off-')), 'cache.json');
+  const shipped = JSON.parse(fs.readFileSync('offsets.json', 'utf8'));
+  const patched = { ...shipped, version: shipped.version + 1, panel: { ...shipped.panel, clientText: '0x98' } };
+  const serving = (body, ok = true) => async () => ({ ok, json: async () => body });
+
+  const a = await loadOffsets({ url: 'x', cacheFile, fetchImpl: serving(patched) });
+  assert.deepEqual([a.source, a.panel.clientText], ['fetched', 0x98]);
+  // Offline next time: the fix is remembered.
+  const b = await loadOffsets({ url: 'x', cacheFile, fetchImpl: async () => { throw new Error('offline'); } });
+  assert.deepEqual([b.source, b.panel.clientText], ['cached', 0x98]);
+  // Garbage, a 404, or fetching switched off: what shipped.
+  const fresh = path.join(path.dirname(cacheFile), 'none.json');
+  for (const fetchImpl of [serving({ nonsense: true }), serving(patched, false)]) {
+    const c = await loadOffsets({ url: 'x', cacheFile: fresh, fetchImpl });
+    assert.deepEqual([c.source, c.panel.clientText], ['bundled', 0x90]);
+  }
+  const d = await loadOffsets({ url: '', cacheFile: fresh, fetchImpl: serving(patched) });
+  assert.equal(d.source, 'bundled');
+});
+
 console.log('landing page');
 
 ok('the landing page keeps the promises the project made about how it talks', () => {

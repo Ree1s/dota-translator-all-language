@@ -62,6 +62,9 @@ param(
   # How often to look for the panel again while the only ones known are
   # the menu's. Two sweeps each time - but in the menu, not in a match.
   [int]$PanelRefindMs = 20000,
+  # "uiClient=8;uiId=16;..." - see src/offsets.js. Empty uses what is
+  # compiled in below, which is what was measured on 2026-09-20.
+  [string]$Offsets = '',
   [int]$PollThreads = 1,
   [int]$SweepThreads = 2,
   [string]$Priority = 'BelowNormal'
@@ -519,7 +522,9 @@ public static class DotaMem {
 
   static bool Valid(IntPtr h, long p, out int count, out long kids) {
     count = 0; kids = 0;
-    var b = new byte[0x40]; var q = new byte[8];
+    // As much of the panel as holds the fields wanted, wherever a patch
+    // may have moved them to.
+    var b = new byte[Math.Max(0x40, Math.Max(Math.Max(UI_ID, UI_PARENT), Math.Max(UI_COUNT, UI_KIDS)) + 8)]; var q = new byte[8];
     if (!Rd(h, p, b, b.Length)) return false;
     long vt = BitConverter.ToInt64(b, 0), parent = BitConverter.ToInt64(b, UI_PARENT);
     count = BitConverter.ToInt32(b, UI_COUNT); kids = BitConverter.ToInt64(b, UI_KIDS);
@@ -733,6 +738,21 @@ public static class DotaMem {
 "@
 
 [DotaMem]::POLL_MAX_REGION = [long]$WideCapMb * 1MB
+
+# The offsets, when the app has newer ones than were compiled in: it
+# fetches offsets.json from the repo so that a Dota patch is fixed by one
+# commit there rather than a new version here. Names it does not know
+# and values that are not plain numbers in range are ignored one by one.
+$fields = @{
+  uiClient = 'UI_CLIENT'; uiId = 'UI_ID'; uiParent = 'UI_PARENT'; uiCount = 'UI_COUNT'; uiKids = 'UI_KIDS'
+  clientText = 'CLIENT_TEXT'; textStr = 'TEXT_STR'
+  uiHeight = 'UI_H'; uiTextWidth = 'UI_TEXT_W'; uiPos = 'UI_POS'; uiScale = 'UI_SCALE'
+}
+foreach ($pair in ($Offsets -split ';')) {
+  if ($pair -notmatch '^([A-Za-z]+)=([0-9]{1,5})$') { continue }
+  $name = $Matches[1]; $value = [int]$Matches[2]
+  if ($fields.ContainsKey($name) -and $value -le 0x2000) { [DotaMem].GetField($fields[$name]).SetValue($null, $value) }
+}
 
 function Emit($obj) {
   # -Compress keeps it to one line, which is what the reader splits on.

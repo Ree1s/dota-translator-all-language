@@ -322,8 +322,9 @@ permission rule) or run the probe themselves.
   but the FIND is 9-13s of sweeping, and if it lands in a fight it may
   be felt. It should land in the loading screen. Frame time is still the
   measurement that decides, and has still never been taken.
-- **A patch.** The offsets are from one build (2026-09-20). The day they
-  move, `find` reports 0 panels and the scanner carries on; `npm run
+- **A patch.** The offsets are from one build (2026-09-20), and are now
+  fixed by a commit to `offsets.json` (see "Offsets come from the repo").
+  The day they move, `find` reports 0 panels and the scanner carries on; `npm run
   watch` prints both. Re-derive with `tools/ptrscan.ps1`: the chain is
   string -> text object -> client panel -> UI panel, and `-Parents`
   prints the tree above any panel once +0x10/+0x18/+0x28 are right.
@@ -695,6 +696,53 @@ suspect) has not been seen again. The check costs nothing either way.
 
 ---
 
+## Offsets come from the repo, not from the build (2026-09-20, late)
+
+The user asked whether a Dota patch needs a manual update. It did: seven
+memory offsets and four layout numbers were constants, and there is no
+installer or updater, so a fix meant everybody pulling a new version.
+
+- **`offsets.json`** (repo root) holds them all. **`src/offsets.js`**
+  fetches it from `raw.githubusercontent.com/.../master/offsets.json` at
+  startup (3s at most, never fatal), and believes, in order: what it just
+  fetched; the last good fetch (`offsets.cache.json`, gitignored - so a
+  fix survives being offline); the copy that shipped. The higher
+  `version` of fetched and shipped wins, so a stale CDN cannot roll a
+  newer build back. `offsetsUrl: ""` never fetches.
+- **All or nothing.** `parseOffsets` rejects the whole file if any offset
+  is missing, not a number, not aligned (8 for pointers, 4 for the rest),
+  over 0x2000, or a layout number is out of range. They only ever say
+  where to READ; nothing in the app writes to the game.
+- The helper takes them as `-Offsets "uiClient=8;uiId=16;..."` and sets
+  the C# statics by reflection; names it does not know and values that
+  are not plain digits are skipped. `scannerArgs` refuses anything that
+  is not names and digits - it is a command line. The panel header read
+  grows to fit whatever the offsets ask for.
+- `npm test` fails if `offsets.json` and the constants compiled into
+  `memscan.ps1` ever differ: two copies of one measurement must not drift.
+- PROVEN on the stand-in (`panelwatch.mjs fakedota --offsets ...`): the
+  shipped offsets read 4 lines in 7s; the same with `clientText` moved by
+  8 read none. A real fetch answered 404 in 0.3s and fell back to the
+  bundled copy, as it should - because:
+- **THE REPO IS PRIVATE** (GitHub's public API says 404 for it, 2026-09-20).
+  Until the user makes it public, the fetch reaches nothing AND the
+  landing page's "Get it free on GitHub" is a dead link for everybody
+  else. Both are waiting on that one decision, which is the user's.
+- **AFTER A PATCH:** re-derive with `tools/ptrscan.ps1` /
+  `tools/panellayout.ps1` (see THE CONTAINER), change `offsets.json` AND
+  the constants in `memscan.ps1`, bump `version` and `updated`, commit,
+  push. Nothing else.
+
+**LATER, NOT NOW (the user's words: "mark this to the notes to do later
+maybe"): self-calibration.** The app re-derives the offsets itself by
+automating the pointer chase done by hand on 2026-09-20 - find a chat
+line's string, find what points at it, climb to the panel whose id is
+`ChatLinesPanel`, read the offsets off the distances - and caches the
+result per game build. No manual update at all, ever. It is a real piece
+of work (the chase needed a human to tell signal from noise at each
+level), and it must be proven against `tools/fakechat.ps1` with a
+DIFFERENT layout than the one it expects before it is trusted on the game.
+
 ## The landing page (`docs/index.html`, 2026-09-20)
 
 The user asked for a page "to make it sell (even though it's free)",
@@ -753,7 +801,7 @@ npm start        # the overlay (Electron)
 npm run watch    # the same chain in a terminal - use this first
 npm run demo     # drives the chain from a fake source, no Dota needed
 npm run doctor   # no-key diagnostic
-npm test         # 88 tests, plain node assert, no runner
+npm test         # 92 tests, plain node assert, no runner
 ```
 
 Keep `npm test` green. It needs no game running and no API key.

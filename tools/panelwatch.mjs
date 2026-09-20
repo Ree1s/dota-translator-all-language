@@ -17,6 +17,8 @@ const source = startMemorySource({
   processName,
   scripts: ['cyrillic'],
   panel: !process.argv.includes('--no-panel'),
+  // --offsets "uiClient=8;...": what the app would pass after fetching offsets.json
+  offsets: process.argv.includes('--offsets') ? process.argv[process.argv.indexOf('--offsets') + 1] : undefined,
   onMessage: (m) => console.log(`${time()}  LINE  [${m.channel}] ${m.name}: ${m.text}`),
   onStatus: (s) => console.log(`${time()}  ${s.kind}  ${s.text}`),
   onFind: (f) => console.log(`${time()}  find  ${f.panels} panel(s), ${f.ms}ms, ${f.mb}MB`),

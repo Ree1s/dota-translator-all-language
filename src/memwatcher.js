@@ -13,6 +13,7 @@ import { startMemorySource } from './memsource.js';
 import { createPipeline } from './pipeline.js';
 import { translateBatch } from './translate.js';
 import { ROOT } from './config.js';
+import { offsetsArg } from './offsets.js';
 
 export function startWatchingMemory(cfg, { onResult, onPending = () => {}, onStatus = () => {}, onLayout = () => {}, onSeen = () => {}, onFocus = () => {}, onGamePath = () => {}, translate, startSource = startMemorySource } = {}) {
   // hedge: whether a slow call may be raced by a second one. The pipeline
@@ -66,6 +67,7 @@ export function startWatchingMemory(cfg, { onResult, onPending = () => {}, onSta
     wideCapMb: cfg.scanWideCapMb,
     panel: cfg.chatPanel,
     panelIntervalMs: cfg.panelIntervalMs,
+    offsets: cfg.offsets ? offsetsArg(cfg.offsets.panel) : undefined,
     onLayout,
     onSeen,
     onFocus,

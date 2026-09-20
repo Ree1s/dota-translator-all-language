@@ -152,6 +152,7 @@ no processor time, and reading the chat costs about 0.3% of one core.
 | `geminiApiKey` | your key. `GEMINI_API_KEY` in the environment wins over it |
 | `model` | `gemini-3.5-flash-lite` by default |
 | `source` | `memory` reads the game. `log` is the old console.log reader, which cannot see chat |
+| `offsetsUrl` | where the app fetches `offsets.json` from when it starts - the few numbers that say where Dota keeps its chat, which a Dota patch can move. Fetching them means a patch is fixed for everybody by one change to that file, with nothing to reinstall. `""` never fetches and uses the copy that came with the app |
 | `chatPanel` | read the game's own chat list - a few KB, four times a second - instead of searching its memory for chat. The searching below only happens until the list is found, or if it cannot be (true) |
 | `panelIntervalMs` | how often to read the chat list (250) |
 | `scanIntervalMs` | how often to re-read the chat when searching (1000) |

@@ -123,7 +123,8 @@ const firstSeen = new Map();     // key -> when the line first appeared in the g
 const GAME_SHOWS_MS = 8500;
 // In the 1080-high units the game lays out in: where a line's text starts
 // (after the 7 of padding and the portrait), MEASURED on one screen.
-const TEXT_LEFT = 49, PAD = 4, FONT = 18;
+let TEXT_LEFT = 49;
+const PAD = 4, FONT = 18;
 
 function covering() { return cfg.display === 'cover' && layout; }
 
@@ -228,6 +229,7 @@ function addStatus(s) {
 
 window.dt.onConfig((next) => {
   cfg = { ...cfg, ...next };
+  if (Number.isFinite(next.textLeft)) TEXT_LEFT = next.textLeft;
   document.documentElement.style.setProperty('--size', cfg.fontSize + 'px');
   document.body.style.opacity = String(cfg.opacity);
   // Anchored to the bottom, the box grows UPWARDS, as a chat does.

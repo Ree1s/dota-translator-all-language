@@ -46,6 +46,11 @@ export const DEFAULTS = {
   // found, and scan only until it is or if it cannot be. MEASURED on the
   // live game; see CLAUDE.md. false is the scanner alone.
   chatPanel: true,
+  // Where the app fetches the chat's memory offsets from at startup, so
+  // that a Dota patch is fixed by one commit to offsets.json rather than
+  // by everybody reinstalling. "" never fetches and uses the copy that
+  // shipped. See src/offsets.js.
+  offsetsUrl: 'https://raw.githubusercontent.com/KristjanRanna/dota-translator/master/offsets.json',
   panelIntervalMs: 250,     // a panel poll is nearly free, so: often
   // How many calls a minute the key allows. 15 is the free tier of
   // gemini-3.5-flash-lite, MEASURED by running into it. As the minute's
