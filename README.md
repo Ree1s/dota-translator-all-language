@@ -85,12 +85,14 @@ the memory reading runs through PowerShell, which Windows already has.
      access"** on every model while still happily listing them. If that
      happens, make the key in a different project.
 
-3. **Install and run:**
+3. **Install it.** Download `Dota-Translator-Setup-x.y.z.exe` from the
+   [latest release](https://github.com/sc0rebreaker/dota-translator/releases/latest) and run it. It installs for your user only (no
+   administrator needed), adds a shortcut and starts the app. The installer
+   is not code-signed, so Windows SmartScreen asks first: *More info*, then
+   *Run anyway*.
 
-   ```bash
-   npm install
-   npm start
-   ```
+   From source instead: `npm install`, then `npm start`. `npm run dist`
+   builds the installer into `dist/`.
 
 4. **Paste your key into the window that opens.** The first time, the app
    asks for it: paste, press **Check and save**, and it tries the key with

@@ -7,9 +7,25 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+// INSTALLED, the app lives inside an archive (resources/app.asar) under
+// Program Files: nothing can be written there, and nothing outside the
+// app - PowerShell, the browser - can read a file that is inside it.
+//   DATA_DIR  where settings, the offsets cache and learn.log go: beside
+//             the app when run from source, %APPDATA%/Dota Translator when
+//             installed.
+//   onDisk()  the real path of a file the OUTSIDE world must open (the
+//             .ps1 helper, the key guide). The installer unpacks those
+//             beside the archive; see "asarUnpack" in package.json.
+export const PACKAGED = ROOT.includes('app.asar');
+export const DATA_DIR = PACKAGED
+  ? path.join(process.env.APPDATA || path.join(process.env.USERPROFILE || '.', 'AppData', 'Roaming'), 'Dota Translator')
+  : ROOT;
+if (PACKAGED) { try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch { /* it will say so when it cannot save */ } }
+export const onDisk = (file) => file.replace('app.asar' + path.sep, 'app.asar.unpacked' + path.sep);
 // DT_CONFIG points the app at another file: for trying the first-run
 // window without touching the real settings or the real key.
-export const CONFIG_PATH = process.env.DT_CONFIG || path.join(ROOT, 'config.json');
+export const CONFIG_PATH = process.env.DT_CONFIG || path.join(DATA_DIR, 'config.json');
 
 export const DEFAULTS = {
   geminiApiKey: '',

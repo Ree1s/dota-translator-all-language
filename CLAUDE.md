@@ -749,6 +749,42 @@ and there is no installer. Auto-update wants a packaged build first
 (electron-builder or similar), which is also what the landing page is
 missing for players who are not developers. Do the two together.
 
+## The installer (2026-09-20)
+
+The user: "too complicated for non techie users ... pretty much plug and
+play, except for adding the api key ... download -> installs the app".
+
+- **`npm run dist`** (electron-builder, NSIS, x64) builds
+  `dist/Dota-Translator-Setup-<version>.exe`, ~80 MB: one click, installs
+  for the current user only (no administrator), Desktop and Start menu
+  shortcuts, starts the app when it finishes. `dist/` is gitignored.
+- **What had to change for an installed app**, all in `src/config.js`:
+  the app then lives in `resources/app.asar`, which cannot be written to
+  and which nothing OUTSIDE the app can read. So `DATA_DIR` - settings,
+  `offsets.cache.json`, `learn.log` - is `%APPDATA%/Dota Translator` when
+  packaged (beside the source otherwise), and the two files the outside
+  world opens are unpacked by the installer (`asarUnpack`): `src/*.ps1`
+  for PowerShell and `docs/key.html` for the browser; `onDisk()` and
+  `memsource.SCRIPT` point at `app.asar.unpacked`.
+- PROVEN on the packaged build (`dist/win-unpacked`, run against the live
+  match with `DT_CONFIG` pointing at the real settings so no setup window
+  opened): offsets fetched, the reader ran from
+  `...app.asar.unpacked\src\memscan.ps1`, the chat layout was found, and
+  the helper exited within ~9s of the app being force-killed.
+- **NOT done / NOT seen:** running the INSTALLER itself (it installs and
+  launches, and a first launch with no key opens the setup window over
+  whatever is in front - the user said they would run it themselves); the
+  uninstaller; a machine without Node. **It is NOT code-signed**, so
+  SmartScreen warns ("More info" -> "Run anyway"); the page and README say
+  so. It uses Electron's default icon - there is no app icon yet.
+- **No release exists yet.** The landing page's buttons and the README
+  point at `releases/latest`, which is EMPTY until the user uploads the
+  exe to a GitHub release (`gh` is not installed here, and publishing a
+  binary under their name is theirs to do). Until then those buttons lead
+  to an empty page.
+- Auto-update is still "later": electron-updater against GitHub releases
+  is the obvious route now that there is an installer to update.
+
 ## The setup window: the key goes in through the app (2026-09-20)
 
 The user: "simpler for non techie user to just enter api key in the ui ...
@@ -877,9 +913,8 @@ with a slider. What was built, and the rules it follows:
   narrower than ~500px, so a "phone" screenshot from it is cropped, not
   overflowing - that cost a few minutes. NOT seen: a real phone, Safari,
   or the fonts failing to load (it falls back to Georgia / system UI).
-- There is still NO INSTALLER, so the call to action is the GitHub repo
-  and its setup guide. For people who are not developers that is the
-  weakest part of the pitch; a packaged build is what the page needs next.
+- The call to action is now a DOWNLOAD (`releases/latest`); see "The
+  installer" - and note that no release has been uploaded yet.
 
 ## Read these first
 

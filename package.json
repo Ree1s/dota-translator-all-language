@@ -2,7 +2,7 @@
   "name": "dota-translator",
   "version": "0.1.0",
   "private": true,
-  "description": "Translates Russian Dota 2 chat into English on an overlay.",
+  "description": "Russian Dota 2 chat, in English, live, above the game's own chat.",
   "type": "module",
   "main": "src/main.js",
   "scripts": {
@@ -10,9 +10,54 @@
     "watch": "node src/watch.js",
     "test": "node test.js",
     "demo": "node src/demo.js",
-    "doctor": "node src/doctor.js"
+    "doctor": "node src/doctor.js",
+    "dist": "electron-builder --win nsis --publish never"
   },
   "devDependencies": {
-    "electron": "^33.0.0"
+    "electron": "^33.0.0",
+    "electron-builder": "^26.15.3"
+  },
+  "productName": "Dota Translator",
+  "author": "Kristjan Ranna",
+  "build": {
+    "appId": "com.sc0rebreaker.dota-translator",
+    "productName": "Dota Translator",
+    "files": [
+      "src/**/*",
+      "offsets.json",
+      "docs/key.html",
+      "LICENSE.md",
+      "package.json",
+      "!src/demo.js",
+      "!src/doctor.js",
+      "!src/watch.js"
+    ],
+    "asarUnpack": [
+      "src/*.ps1",
+      "docs/**/*"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "Dota-Translator-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "runAfterFinish": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Dota Translator",
+      "deleteAppDataOnUninstall": false
+    }
   }
 }

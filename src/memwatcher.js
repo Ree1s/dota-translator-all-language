@@ -12,7 +12,7 @@ import path from 'node:path';
 import { startMemorySource } from './memsource.js';
 import { createPipeline } from './pipeline.js';
 import { translateBatch } from './translate.js';
-import { ROOT } from './config.js';
+import { DATA_DIR } from './config.js';
 import { offsetsArg } from './offsets.js';
 
 export function startWatchingMemory(cfg, { onResult, onPending = () => {}, onStatus = () => {}, onLayout = () => {}, onSeen = () => {}, onFocus = () => {}, onGamePath = () => {}, translate, startSource = startMemorySource } = {}) {
@@ -43,7 +43,7 @@ export function startWatchingMemory(cfg, { onResult, onPending = () => {}, onSta
     onError: (err) => onStatus({ kind: 'error', text: String((err && err.message) || err) }),
   });
 
-  const learnPath = path.join(ROOT, 'learn.log');
+  const learnPath = path.join(DATA_DIR, 'learn.log');
 
   const source = startSource({
     scripts: cfg.scripts,

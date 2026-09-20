@@ -12,7 +12,9 @@ import { readMemoryFindings, createLineTracker } from './chatmem.js';
 import { needsTranslation } from './chatlog.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-export const SCRIPT = path.join(HERE, 'memscan.ps1');
+// PowerShell cannot read a script that is inside the installed app's
+// archive; the installer leaves the .ps1 beside it.
+export const SCRIPT = path.join(HERE, 'memscan.ps1').replace('app.asar' + path.sep, 'app.asar.unpacked' + path.sep);
 
 // Windows PowerShell, which every Windows has - not `pwsh`, which is an
 // optional install. The script uses nothing newer than 5.1.

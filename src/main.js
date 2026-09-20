@@ -7,7 +7,7 @@ import { app, BrowserWindow, screen, ipcMain, globalShortcut, safeStorage, shell
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { loadConfig, saveConfig } from './config.js';
+import { loadConfig, saveConfig, onDisk } from './config.js';
 import { checkKey, tidyKey } from './keycheck.js';
 import { startWatching } from './watcher.js';
 import { startWatchingMemory } from './memwatcher.js';
@@ -287,7 +287,7 @@ ipcMain.handle('setup:close', () => { if (setupWin && !setupWin.isDestroyed()) s
 ipcMain.handle('setup:guide', () => {
   // The copy that came with the app: it is there with no internet, and it
   // is the one that matches this version.
-  shell.openExternal(pathToFileURL(path.join(here, '..', 'docs', 'key.html')).href);
+  shell.openExternal(pathToFileURL(onDisk(path.join(here, '..', 'docs', 'key.html'))).href);
 });
 ipcMain.handle('setup:save', async (_e, payload) => {
   const display = payload && payload.display === 'box' ? 'box' : 'above';

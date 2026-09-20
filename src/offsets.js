@@ -16,11 +16,11 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { ROOT } from './config.js';
+import { ROOT, DATA_DIR } from './config.js';
 
 export const OFFSETS_URL = 'https://raw.githubusercontent.com/sc0rebreaker/dota-translator/master/offsets.json';
 const BUNDLED = path.join(ROOT, 'offsets.json');
-const CACHE = path.join(ROOT, 'offsets.cache.json');
+const CACHE = path.join(DATA_DIR, 'offsets.cache.json');
 
 // name -> must it be pointer-aligned? Pointers and the 8-byte position
 // pair sit on 8; the 4-byte count, height, width and scale on 4.

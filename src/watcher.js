@@ -6,7 +6,7 @@ import path from 'node:path';
 import { LogTail, chatToTranslate, parseChatLine, needsTranslation, findLogPath } from './chatlog.js';
 import { createPipeline } from './pipeline.js';
 import { translateBatch } from './translate.js';
-import { ROOT } from './config.js';
+import { DATA_DIR } from './config.js';
 
 export function resolveLogPath(cfg) {
   if (cfg.logPath) return cfg.logPath;
@@ -37,7 +37,7 @@ export function startWatching(cfg, { onResult, onStatus = () => {}, translate } 
     onError: (err) => onStatus({ kind: 'error', text: String(err && err.message || err) }),
   });
 
-  const learnPath = path.join(ROOT, 'learn.log');
+  const learnPath = path.join(DATA_DIR, 'learn.log');
   const tail = new LogTail(file);
   tail.onLine = (line) => {
     const msg = chatToTranslate(line, cfg.scripts);
