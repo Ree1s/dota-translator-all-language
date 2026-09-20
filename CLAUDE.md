@@ -926,6 +926,18 @@ tech user may not find it", and the SmartScreen warning "might be scary".
   drawing of the tray with the ^ flyout. Linked from the landing page's
   steps. SEEN at phone width in the browser pane only.
 
+## The website counts visits (2026-09-20)
+
+The user wanted to see "if anyone even went there". `docs/analytics.js`
+(GA4, `G-RX1LXWKFZD`, the user's property) is loaded by every page in
+`docs/`, does nothing on localhost or from a file, and sends events a page
+view cannot: `download_click`, `aistudio_click`, `github_click`,
+`guide_click`, `slider_used`. The landing page's footer says so. `npm
+test` fails if a page in `docs/` lacks it or if anything like it turns up
+in `src/` - the APP has no analytics and must not get any. NOT done: a
+cookie consent banner, which GA strictly wants for EU visitors; the user
+was told, and chose GA.
+
 ## The setup window: the key goes in through the app (2026-09-20)
 
 The user: "simpler for non techie user to just enter api key in the ui ...

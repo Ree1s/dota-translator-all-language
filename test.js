@@ -1145,6 +1145,15 @@ ok('the landing page keeps the promises the project made about how it talks', ()
   const guide = fs.readFileSync(path.join('docs', 'key.html'), 'utf8');
   assert.doesNotMatch(guide, /AIza[0-9A-Za-z_-]{10,}/, 'something shaped like a real Google key is in the guide');
   assert.match(guide, /not a screenshot/);
+  // Visits are counted on the WEBSITE, on every page of it, and it says so.
+  // Never in the app: the README says what the app talks to, and that is all.
+  for (const page of fs.readdirSync('docs').filter((f) => f.endsWith('.html'))) {
+    assert.ok(fs.readFileSync(path.join('docs', page), 'utf8').includes('<script src="analytics.js" defer>'), page + ' is not counted');
+  }
+  assert.match(text, /counts visits with Google Analytics; the app itself does not/);
+  for (const f of fs.readdirSync('src')) {
+    assert.doesNotMatch(fs.readFileSync(path.join('src', f), 'latin1'), /googletagmanager|google-analytics|gtag[(]/, 'analytics in the app: src/' + f);
+  }
   // Every in-page link goes somewhere.
   for (const [, id] of html.matchAll(/href="#([a-z-]+)"/g)) assert.ok(html.includes(`id="${id}"`), 'no section #' + id);
 });
