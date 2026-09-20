@@ -91,6 +91,22 @@ though it cannot see chat - see below.
   10s** rather than running back to back.
 - **A call to the model that never arrived is made once more.** On the
   first live game this ever read, one of two lines timed out at 12s.
+- **THE POLL IS STILL HEAVY ENOUGH TO BE FELT IN THE GAME.** User-
+  reported, 2026-09-20, first time it was ever left running while
+  playing: "my game seems laggy". Reading ~710 MB every 2s across three
+  threads is ~350 MB/s of memory bandwidth taken from a game that wants
+  all of it, and `ReadProcessMemory` walks Dota's own address space to do
+  it. A poll's WALL time (470ms) is not its cost to the game, and nothing
+  here had measured frame times. **This is the next thing to fix**, and
+  the options in order of how much they buy:
+  1. Remember WHERE hits were, and scan a window around them every poll
+     (tens of MB), falling back to the whole hot allocation only every
+     Nth poll. Cheap to build, needs measuring against a live game.
+  2. Find the chat log CONTAINER once and read a few KB per poll instead
+     of scanning at all. Nearly free, and the most fragile across
+     patches.
+  3. Fewer threads and a longer interval - lowers contention, costs
+     latency, buys the least.
 
 ### Routes that are dead, with the measurement
 

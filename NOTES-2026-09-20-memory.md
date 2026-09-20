@@ -166,9 +166,21 @@ included, is not).
   **410-780ms / ~710 MB / ~255 regions**. Defaults moved to a 2s poll and
   a 2-minute sweep on those numbers.
 
+**The overlay works over the real game, and the reader is too expensive
+to leave running.** User-reported the first time it was played with:
+"my game seems laggy". Two causes, one of them avoidable: a leftover
+scanner from testing was running BESIDE the overlay's own, so the game
+paid twice - and a single one is still ~710 MB every 2s over three
+threads, about 350 MB/s of memory bandwidth taken from a game that wants
+all of it. A poll's wall time is not its cost to the game; frame times
+were never measured, and the player noticed before any number did.
+
+Fixing that is the next piece of work - see CLAUDE.md for the three
+options ranked. The short version: remember where hits were and scan a
+window around them, and only sweep the hot allocation occasionally.
+
 **Not yet done:**
 
-- The OVERLAY over the real game - the run above was `npm run watch`.
 - A whole match, and two matches in one process launch: whether the hot
   allocations stay the right ones.
 - Replacing the text in place. See the decision above; the overlay is
