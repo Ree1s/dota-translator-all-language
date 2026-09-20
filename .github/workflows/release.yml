@@ -5,9 +5,14 @@
 #   npm version patch        (bumps package.json, commits, tags vX.Y.Z)
 #   git push origin master --follow-tags
 #
-# electron-builder uploads the installer AND latest.yml, which is the file
-# the installed app reads to find out that there is a newer version. The
-# only credential involved is the token GitHub gives this workflow itself.
+# The build does NOT publish. electron-builder's own uploader was tried
+# first (v0.2.0) and raced itself: it made TWO releases for the one tag and
+# split the files between them, so the download link led to the one with
+# no installer in it. Here the files are built, and then ONE release is
+# made from them with GitHub's own CLI. latest.yml goes up with the
+# installer: it is the file the installed app reads to learn that there is
+# a newer version. The only credential is the token GitHub gives this
+# workflow itself.
 name: release
 
 on:
@@ -20,6 +25,8 @@ permissions:
 jobs:
   windows:
     runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -33,6 +40,15 @@ jobs:
         run: |
           want="v$(node -p "require('./package.json').version")"
           if [ "$want" != "$GITHUB_REF_NAME" ]; then echo "tag $GITHUB_REF_NAME, package.json $want"; exit 1; fi
-      - run: npm run release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: npm run dist
+      - name: One release, made once
+        shell: bash
+        run: |
+          # Anything already published under this tag is a failed attempt.
+          # v0.2.0 is named too, once: its two half-releases are the race
+          # described above. That line can go after v0.2.1 has run.
+          for tag in "$GITHUB_REF_NAME" v0.2.0; do
+            while gh release view "$tag" >/dev/null 2>&1; do gh release delete "$tag" --yes; done
+          done
+          gh release create "$GITHUB_REF_NAME" --title "Dota Translator ${GITHUB_REF_NAME#v}" --generate-notes \
+            dist/*.exe dist/*.exe.blockmap dist/latest.yml
