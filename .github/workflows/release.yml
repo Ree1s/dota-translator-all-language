@@ -21,6 +21,8 @@ on:
 
 permissions:
   contents: write
+  id-token: write       # for the attestation
+  attestations: write
 
 jobs:
   windows:
@@ -41,6 +43,11 @@ jobs:
           want="v$(node -p "require('./package.json').version")"
           if [ "$want" != "$GITHUB_REF_NAME" ]; then echo "tag $GITHUB_REF_NAME, package.json $want"; exit 1; fi
       - run: npm run dist
+      # GitHub signs a statement that THIS workflow built THIS file from THIS
+      # commit; anybody can check it with `gh attestation verify`.
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/*.exe
       - name: One release, made once
         shell: bash
         run: |
@@ -48,5 +55,17 @@ jobs:
           for tag in "$GITHUB_REF_NAME"; do
             while gh release view "$tag" >/dev/null 2>&1; do gh release delete "$tag" --yes; done
           done
-          gh release create "$GITHUB_REF_NAME" --title "Dota Translator ${GITHUB_REF_NAME#v}" --generate-notes \
+          # The installer's fingerprint, in the release notes, for anybody who
+          # wants to compare it with the file they were given.
+          sum=$(sha256sum dist/*.exe | cut -d" " -f1)
+          {
+            echo "SHA-256 of Dota-Translator-Setup.exe:"
+            echo
+            echo "    $sum"
+            echo
+            echo "Built by GitHub Actions from this tag, not on anybody's PC. To check the file you downloaded:"
+            echo
+            echo "    gh attestation verify Dota-Translator-Setup.exe --repo sc0rebreaker/dota-translator"
+          } > notes.md
+          gh release create "$GITHUB_REF_NAME" --title "Dota Translator ${GITHUB_REF_NAME#v}" --notes-file notes.md \
             dist/*.exe dist/*.exe.blockmap dist/latest.yml
