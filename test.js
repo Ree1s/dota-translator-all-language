@@ -638,10 +638,10 @@ ok('a placement carries the region and allocation the line was in', () => {
   const { source, feed } = fakeSource({ onPlacement: (p) => placed.push(p) });
   feed({ t: 'status', state: 'reading', pid: 7 });
   feed({ t: 'stat', full: true, mode: 'full', ms: 1 });
-  feed({ t: 'line', b64: Buffer.from('Иван: гг', 'utf8').toString('base64'), a: 5000, w: 0, r: 4096, rs: 8192, ab: 4096 });
+  feed({ t: 'line', b64: Buffer.from('[Allies] Иван: гг', 'utf8').toString('base64'), a: 5000, w: 0, r: 4096, rs: 8192, ab: 4096 });
   feed({ t: 'stat', full: false, mode: 'wide', ms: 1 });
   assert.deepEqual(placed, [{
-    inWindow: false, distance: null, channel: 'all', addr: 5000, region: 4096, regionSize: 8192, alloc: 4096, mode: 'wide',
+    inWindow: false, distance: null, channel: 'team', addr: 5000, region: 4096, regionSize: 8192, alloc: 4096, mode: 'wide',
   }]);
   source.stop();
 });

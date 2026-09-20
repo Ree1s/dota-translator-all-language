@@ -350,7 +350,7 @@ you the first two are open questions, and they are not.
 - Free, own key, donations. No subscription and **no hosted shared API
   key** - with public source that would be strangers' bills.
 
-## Two traps that have each cost an hour
+## Traps that have each cost an hour
 
 - **Never put a backslash escape through a bash heredoc into a patch.**
   It has silently mangled a string literal three times in this project
@@ -360,6 +360,10 @@ you the first two are open questions, and they are not.
   template literal arrived as a real newline, and a null escape in a
   match string stopped it matching. Use the Edit tool for any line with
   a backslash in it.
+- **Never read a test result through a pipe.** `npm test | tail` exits
+  with tail's status, so `&& git commit` after it commits a red suite.
+  It did, once (af2a78f, fixed in the next commit). Send the output to a
+  file and check the exit code.
 - **Never have two modules whose names differ only by case**
   (`lateResult.js` beside `LateResult.jsx`). Windows ignores case, the
   import resolves to the wrong file, and the failure looks like anything
