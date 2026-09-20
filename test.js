@@ -955,4 +955,24 @@ ok('every script parses', () => {
   for (const f of fs.readdirSync('tools').filter((x) => /\.m?js$/.test(x))) execFileSync(process.execPath, ['--check', path.join('tools', f)]);
 });
 
+console.log('landing page');
+
+ok('the landing page keeps the promises the project made about how it talks', () => {
+  // docs/index.html sells, and selling is where "undocumented" drifts into
+  // "safe". The decisions in CLAUDE.md, held to: at your own risk, said in
+  // so many words; never called safe; Overplus, never Overwolf, as the
+  // comparison; source-available, not open source.
+  const html = fs.readFileSync(path.join('docs', 'index.html'), 'utf8');
+  const text = html.replace(/<style[\s\S]*?<\/style>|<script[\s\S]*?<\/script>|<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+  assert.match(text, /at your own risk/i);
+  assert.match(text, /not on an account you would mind losing/i);
+  assert.match(text, /Overplus, not Overwolf/);
+  assert.match(text, /source-available rather than open source/);
+  for (const claim of [/\bis safe\b/i, /\bcompletely safe\b/i, /\bundetectable\b/i, /\bban-?proof\b/i, /\bVAC[- ]safe\b/i]) {
+    assert.doesNotMatch(text, claim, 'the landing page claims ' + claim);
+  }
+  // Every in-page link goes somewhere.
+  for (const [, id] of html.matchAll(/href="#([a-z-]+)"/g)) assert.ok(html.includes(`id="${id}"`), 'no section #' + id);
+});
+
 console.log('\n' + passed + ' passed');

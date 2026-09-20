@@ -681,6 +681,46 @@ suspect) has not been seen again. The check costs nothing either way.
 
 ---
 
+## The landing page (`docs/index.html`, 2026-09-20)
+
+The user asked for a page "to make it sell (even though it's free)",
+like Paperbook's (`Desktop/paperbook/web/src/WelcomeV3.jsx`) but shorter,
+with a slider. What was built, and the rules it follows:
+
+- **One static file, no build, no images.** `docs/` so that GitHub Pages
+  can serve it from `master` as it is. **Pages is NOT switched on** - that
+  is a setting on the user's repo, and publishing is theirs to do. Look at
+  it with `node tools/serve-docs.mjs` (http://localhost:4173; also the
+  `landing` entry in `.claude/launch.json`).
+- Same bones as Paperbook's: serif headline with an italic accent, a demo
+  in the hero, the numbers in a window card, what it does, three steps,
+  **"The catch, up front"**, questions, a closing call. Its own colours
+  (amber on near-black) so the two do not look like one product.
+- **The slider is the hero**: one chat, drawn twice, the top layer clipped
+  at a handle - without / with. It is a real `<input type="range">` laid
+  over the scene, so drag, tap and keyboard all work with no code, and it
+  sways once on load to show that it moves. **The scene is drawn in CSS:
+  no screenshot of the game, no Valve font, nothing of Valve's is on the
+  page.** Keep it that way.
+- **Every number is a measurement from this file and every translation
+  shown is what the model actually answered** (run through
+  `translateBatch` before being written down - the first draft had
+  invented ones, "go rosh" for what is really "let's rosh"). 45 lines =
+  the three `e2e.mjs` runs, 9 + 15 + 21. Two claims were softened because
+  they were designed, not seen: that the ten-second search lands in the
+  loading screen, and the fallback after a patch.
+- `npm test` holds the page to the project's decisions: "at your own
+  risk" in so many words, never "safe"/"undetectable", Overplus not
+  Overwolf, source-available not open source, and no dead in-page links.
+- SEEN: desktop (1280, headless Edge screenshots of every section) and a
+  298px-wide phone view in the browser pane. Headless Edge will not go
+  narrower than ~500px, so a "phone" screenshot from it is cropped, not
+  overflowing - that cost a few minutes. NOT seen: a real phone, Safari,
+  or the fonts failing to load (it falls back to Georgia / system UI).
+- There is still NO INSTALLER, so the call to action is the GitHub repo
+  and its setup guide. For people who are not developers that is the
+  weakest part of the pitch; a packaged build is what the page needs next.
+
 ## Read these first
 
 - `NOTES-2026-09-20-memory.md` - the memory-reading route, the decisions
@@ -699,7 +739,7 @@ npm start        # the overlay (Electron)
 npm run watch    # the same chain in a terminal - use this first
 npm run demo     # drives the chain from a fake source, no Dota needed
 npm run doctor   # no-key diagnostic
-npm test         # 86 tests, plain node assert, no runner
+npm test         # 87 tests, plain node assert, no runner
 ```
 
 Keep `npm test` green. It needs no game running and no API key.
@@ -712,7 +752,9 @@ Keep `npm test` green. It needs no game running and no API key.
   is), `fakechat.ps1` (native stand-in with a real chat container),
   `ptrscan.ps1` + `ptrview.mjs` (what points at a chat line; `-Dump`,
   `-Parents`), `panelwatch.mjs` (the reader with no model, to the ms), `e2e.mjs` (the
-  whole chain with the real model: said -> shown -> English).
+  whole chain with the real model: said -> shown -> English),
+  `serve-docs.mjs` (the landing page on localhost:4173), `panellayout.ps1`
+  (where a UI panel keeps its size and position).
   saychat, latency, whereis, ptrscan, panelwatch and e2e touch the live game: bot matches, with
   say-so.
 - **PowerShell variables ignore case**: `$targets` IS the `[string]$Targets`
