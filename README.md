@@ -1,59 +1,114 @@
 # Dota Translator
 
-> **STATUS 2026-09-20: BLOCKED.** Dota does not write chat to `console.log`,
-> so the app cannot get its input. Measured, not assumed - see
-> [NOTES.md](NOTES.md) for the evidence, the decision to keep this free and
-> open source, and the one experiment worth running next. Everything below
-> describes the app as designed; it works end to end against a fake log
-> (`npm run demo`) but not against a real game.
+Translates Russian Dota 2 chat into English, live, on a transparent overlay
+above the game. Free, open source, and it runs on your own Gemini key - no
+account, no server, nothing to sign up for.
 
-Reads Dota 2's chat out of the game's own console log, translates anything
-written in Cyrillic into English with Gemini, and shows it on a transparent
-overlay above the game.
+```
+[all]  unc status: hello everyone
+       привет всем
+[team] Иван: go mid
+       иди мид
+```
 
-Nothing touches the Dota process. The game writes `console.log` itself when
-started with `-condebug`, an official Valve launch option, and this only
-reads that file. No injection, no memory reading, nothing VAC objects to.
+## Read this before you install it
+
+**This reads Dota's memory, and Valve has never said whether that is
+allowed.** Be honest with yourself about that before running it.
+
+What it actually does: opens the Dota process with `PROCESS_VM_READ |
+PROCESS_QUERY_INFORMATION` - permission to read and to ask questions - and
+copies out the chat lines. It **never** calls `WriteProcessMemory`. Nothing
+is injected, nothing in the game is changed, and no file of Dota's is
+touched. You can check all of that yourself: it is one file,
+[`src/memscan.ps1`](src/memscan.ps1), and it is plain text.
+
+What nobody can tell you:
+
+- **There is no documented case of a VAC ban for reading Dota's memory
+  read-only.** That is not the same as it being safe. It means nobody has
+  reported one, which is a weaker claim.
+- **Valve has never answered the question.** It was
+  [asked directly](https://github.com/ValveSoftware/Dota2-Gameplay/issues/15007)
+  in January 2024 and closed without a reply.
+- The claim that read-only access is undetectable comes from the
+  reverse-engineering community, not from Valve, and those same sources say
+  it is not a guarantee.
+- The Steam Subscriber Agreement makes any third-party tool a violation
+  whatever technique it uses.
+
+The honest comparison is **Overplus** - unsanctioned, widely used, works
+anyway, and its users accept the risk. It is *not* comparable to Overwolf,
+which Valve permits and which does not read memory.
+
+**Use it at your own risk, and not on an account you would mind losing.**
+
+## Why memory, and not something gentler
+
+Every other route was tried first, and measured:
+
+- **`console.log` does not contain chat.** Dota draws chat with Panorama and
+  never sends it to the engine console. Tested with `-condebug` on, in a
+  match: the log grew 2 KB while a typed test message appeared nowhere in it.
+- **The `DOTA_CHAT` log channel cannot be switched on.** It exists, with the
+  right tags and no console-only flag, but `log_level DOTA_CHAT default`
+  answers **"Log verbosity levels are locked"** - in a match and in the main
+  menu alike.
+- **Game State Integration carries no chat.** It sends map, hero, items,
+  abilities, buildings, draft and wearables. No messages of any kind.
+- **Reading the screen works, but not for free.** A vision model transcribes
+  Cyrillic off the chat box perfectly; it also costs roughly 1,200 API calls
+  a game, which exhausts the free tier in a single match. Plain Tesseract
+  misreads the text over Dota's bright terrain.
+
+[NOTES.md](NOTES.md) and
+[NOTES-2026-09-20-memory.md](NOTES-2026-09-20-memory.md) hold the full
+measurements.
 
 ## Setup
 
-1. **Turn the log on.** Steam library, right click Dota 2, Properties,
-   Launch Options, add:
+You need Windows and Dota 2. There is no installer and nothing compiled -
+the memory reading runs through PowerShell, which Windows already has.
 
-   ```
-   -condebug
-   ```
-
-2. **Run Dota borderless windowed.** Settings, Video, Display Mode. An
+1. **Run Dota borderless windowed.** Settings, Video, Display Mode. An
    exclusive fullscreen game owns the screen and no overlay can sit on it.
 
-3. **Get a Gemini key** at https://aistudio.google.com/apikey - free tier.
-   Make it in a project with **no billing enabled**; a project with prepay
-   billing turned on does not fall back to the free tier, it just fails.
+2. **Get a Gemini key** at <https://aistudio.google.com/apikey> - the free
+   tier is plenty. Two traps, both of which cost an hour to find:
+   - Make it in a project with **no billing enabled**. A project with prepay
+     billing does *not* fall back to the free tier; it fails outright with
+     *"prepayment credits are depleted"*.
+   - A brand-new project can answer **403 "Your project has been denied
+     access"** on every model while still happily listing them. If that
+     happens, make the key in a different project.
 
-4. **Configure:**
+3. **Configure:**
 
    ```bash
    cp config.example.json config.json
    ```
 
    Paste the key into `geminiApiKey`. Or set `GEMINI_API_KEY` in the
-   environment instead, which wins over the file, so the key need never be
-   written to disk.
+   environment, which wins over the file, so the key need never be written
+   to disk.
 
-5. **Install and run:**
+4. **Install and run:**
 
    ```bash
    npm install
    npm start
    ```
 
-## Two ways to run it
+`-condebug` is **not** needed. That was for the old log reader.
+
+## Ways to run it
 
 - `npm start` - the overlay.
 - `npm run watch` - the same chain printed to a terminal, no Electron. Use
-  this first: it proves the log is being read and the key works, without
-  the window getting in the way.
+  this first: it proves the game is being read and the key works, without a
+  window in the way.
+- `npm run demo` - drives the whole chain from a fake source, with no Dota
+  running at all.
 
 ## Keys
 
@@ -66,7 +121,9 @@ reads that file. No injection, no memory reading, nothing VAC objects to.
 |---|---|
 | `geminiApiKey` | your key. `GEMINI_API_KEY` in the environment wins over it |
 | `model` | `gemini-3.5-flash-lite` by default |
-| `logPath` | blank finds the Steam install. Set it if auto-detection fails |
+| `source` | `memory` reads the game. `log` is the old console.log reader, which cannot see chat |
+| `scanIntervalMs` | how often to re-read the chat (1000) |
+| `fullRescanMs` | how often to sweep the whole process again (60000) |
 | `scripts` | which writing systems to translate. `["cyrillic"]` by default; `greek`, `han`, `hangul`, `arabic`, `thai` are also known |
 | `batchMs` | how long to gather lines before one call (400) |
 | `holdSeconds` | how long a line stays on screen (14) |
@@ -74,25 +131,46 @@ reads that file. No injection, no memory reading, nothing VAC objects to.
 | `showOriginal` | print the Russian under the English (true) |
 | `position` | `top-left`, `top-right`, `bottom-left`, `bottom-right` |
 | `clickThrough` | clicks pass through to the game (true) |
-| `learn` | write unrecognised foreign lines to `learn.log` - see below |
+| `learn` | write unrecognised lines to `learn.log` - see below |
 
 ## What it costs
 
-Only lines containing Cyrillic are sent, and lines arriving together go in
-one call. A normal game is a handful of calls with a few dozen short lines.
-That sits inside the Gemini free tier with room to spare.
+Almost nothing. Only lines containing Cyrillic are sent, and lines arriving
+together go in one call, so Dota's own chat wheel ("Pushing mid", already in
+your language) never costs anything at all. A normal game is a handful of
+calls carrying a few dozen short lines - well inside the free tier.
+
+Reading the screen instead would have cost roughly 1,200 calls a game.
+Reading memory is the reason this is free.
+
+## How it finds the chat
+
+Worth knowing if you are reviewing the code:
+
+Dota keeps each chat line complete and already formatted, as one UTF-8
+string. It also keeps Panorama's markup copy, which carries the player's
+colour. The markup is what this anchors on, because **all-chat has no
+channel tag**: team chat reads `[Allies] name: text` while all-chat is just
+`name: text`, which is far too common a shape to search 4 GB for.
+
+A full sweep of the process takes 15-25 seconds, far too slow to poll. So
+the first sweep learns *which regions* hold chat, and after that only those
+are read - about 400-900 ms over a handful of regions. The whole process is
+swept again every `fullRescanMs`, because the game keeps allocating.
+
+The first sweep of a match only **primes**: it remembers what has already
+been said without showing it, so starting the app mid-game does not dump the
+whole match onto your screen at once.
 
 ## If chat is not picked up
 
-A chat line in the log looks like `Name: message`, and that is what
-`parseChatLine` expects. If a Dota update changes the shape, set `"learn":
-true` in `config.json` and play a game: every line carrying a script you
-cannot read that the parser did **not** take as chat is appended to
-`learn.log`. That file is the answer to what the format became.
+Set `"learn": true` in `config.json` and play a game. An unrecognised chat
+channel is written to `learn.log`, and that file is the answer to what
+changed.
 
-The script gate is what keeps the parser honest the rest of the time - the
-engine's own output is ASCII, so it can never be mistaken for Russian chat
-however odd a line looks.
+Only `[Allies]` and untagged all-chat are confirmed against a real game.
+Spectator and coach chat are guesses; if one of them is wrong it will show
+up in that log rather than failing silently.
 
 ## Testing
 
@@ -100,7 +178,12 @@ however odd a line looks.
 npm test
 ```
 
-Plain Node assert, no runner. Covers the parser, the tail (including the
-log being truncated on a new game and a half-written line), the Gemini
-request and reply, the batching, and the config merge, and checks that
-every script in `src/` parses.
+Plain Node assert, no runner. 62 tests, none of which need Dota running: the
+parsers are fed strings taken verbatim out of the game's memory, and the
+whole reading chain runs against a stand-in for the scanner.
+
+## Licence and scope
+
+Free and open source. No subscription, no licence key, no paid tier and no
+hosted API key - you bring your own, which is why this costs nothing to run
+and nothing to host.

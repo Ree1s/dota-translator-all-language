@@ -33,7 +33,11 @@ const SCRIPT = [
 
 fs.writeFileSync(file, '');   // a new game truncates the log
 console.log('Fake log:', file);
-console.log('\nPut this in config.json as "logPath" (forward slashes are fine):');
+console.log('\nPut BOTH of these in config.json (forward slashes are fine):');
+// "source" matters as much as the path now: it defaults to reading the
+// running game, so a demo that set only logPath would sit there waiting
+// for Dota while the fake log filled up beside it, saying nothing.
+console.log('  "source": "log",');
 console.log('  "logPath": ' + JSON.stringify(file.split(path.sep).join('/')));
 console.log('\nThen run "npm start" (overlay) or "npm run watch" (terminal) in another window.');
 console.log('\nWriting a line every 2.5s. Ctrl+C to stop.\n');
