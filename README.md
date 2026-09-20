@@ -1,8 +1,8 @@
 # Dota Translator
 
 Translates Russian Dota 2 chat into English, live, on a transparent overlay
-above the game. Free, open source, and it runs on your own Gemini key - no
-account, no server, nothing to sign up for.
+above the game. Free for players, source available, and it runs on your own
+Gemini key - no account, no server, nothing to sign up for.
 
 ```
 [all]  unc status: hello everyone
@@ -182,8 +182,27 @@ Plain Node assert, no runner. 62 tests, none of which need Dota running: the
 parsers are fed strings taken verbatim out of the game's memory, and the
 whole reading chain runs against a stand-in for the scanner.
 
-## Licence and scope
+## Licence
 
-Free and open source. No subscription, no licence key, no paid tier and no
-hosted API key - you bring your own, which is why this costs nothing to run
-and nothing to host.
+**[PolyForm Noncommercial 1.0.0](LICENSE.md)** - free for players, not for
+products.
+
+In plain terms:
+
+- **If you play Dota, it is yours.** Use it, change it, share it, fork it,
+  build on it. You owe nothing and there is nothing to sign up for.
+- **If you sell software, you need permission.** A paid tool cannot bundle
+  this as a feature - not Overplus, not Overwolf, not anyone else charging
+  for it. Ask, and we can talk.
+- Charities, schools, research and public bodies are covered as
+  noncommercial, whatever funds them.
+
+This is **source-available**, not open source in the OSI sense - that
+definition requires allowing commercial use, and this deliberately does not.
+Calling it open source would be wrong, so it is not called that here.
+
+Note what the licence does *not* restrict: your own use is noncommercial
+whether or not you happen to stream, and nothing here limits fair use.
+
+No subscription, no licence key, no paid tier and no hosted API key - you
+bring your own, which is why this costs nothing to run and nothing to host.

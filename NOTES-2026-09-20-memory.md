@@ -18,6 +18,21 @@ Word the notice carefully:
   Overplus is the fair comparison.
 - Say the risk is **undocumented**, not **safe**. See the VAC section.
 
+**The licence is PolyForm Noncommercial 1.0.0** (the user's call): free for
+players, and a paid product may not bundle it - Overplus and Overwolf were
+named as exactly what this is meant to prevent. Three things follow:
+
+- **This is SOURCE-AVAILABLE, not open source.** Every OSI licence permits
+  commercial use, so "free for everyone but not for paid products" cannot
+  be open source by that definition. NOTES.md section 1 says "open source"
+  throughout; its REASONING still holds (readable code is what answers "is
+  this a virus"), but the word is wrong and the README avoids it.
+- GPL would not have helped. It does not stop a paid product using this,
+  it only forces them to publish their changes - weak leverage over a
+  bundled feature.
+- A licence only deters someone who cares about legal exposure. That is
+  exactly who Overplus and Overwolf are, which is why it is worth having.
+
 **REPLACING the chat text in place is WANTED, as an option** (the user's
 preference over a second chat box). It was argued against once on risk -
 reading is passive, writing is what VAC scans for - and the user's answer
