@@ -711,8 +711,9 @@ ok('the scanner script parses', () => {
     }
   };
 
-  const files = fs.readdirSync('src').filter((f) => f.endsWith('.ps1'));
-  assert.ok(files.length >= 1, 'expected the scanner, got ' + files.length);
+  // The rig's scripts too: one of them broken costs a live session.
+  const files = ['src', 'tools'].flatMap((d) => fs.readdirSync(d).filter((f) => f.endsWith('.ps1')).map((f) => path.join(d, f)));
+  assert.ok(files.length >= 4, 'expected the scanner and the rig, got ' + files.length);
 
   // A checker that always says yes says nothing, so it is asked about a
   // script that is definitely broken before it is believed about ours.
@@ -722,7 +723,7 @@ ok('the scanner script parses', () => {
   if (control === null) return;                        // not Windows: nothing to say
   assert.notEqual(control, '', 'the parse check passed a broken script');
 
-  for (const f of files) assert.equal(check(path.join('src', f)), '', f + ' does not parse');
+  for (const f of files) assert.equal(check(f), '', f + ' does not parse');
 });
 
 ok('every script parses', () => {
@@ -731,7 +732,7 @@ ok('every script parses', () => {
   for (const f of files) execFileSync(process.execPath, ['--check', path.join('src', f)]);
   // The stand-in game too: it is what the reader is tested against
   // before the live game is, so it being broken costs a live session.
-  execFileSync(process.execPath, ['--check', path.join('tools', 'fakedota.js')]);
+  for (const f of fs.readdirSync('tools').filter((x) => /\.m?js$/.test(x))) execFileSync(process.execPath, ['--check', path.join('tools', f)]);
 });
 
 console.log('\n' + passed + ' passed');

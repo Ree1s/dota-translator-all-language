@@ -208,6 +208,40 @@ The plain copies (team) and the markup copies sit in different places;
 the container is whatever holds the pointers, and `whereis.log` addresses
 are where to start looking for it.
 
+**THE CONTAINER HUNT: tools built and proven on a stand-in, NOT yet run
+on Dota (2026-09-20, late).**
+
+- `tools/ptrscan.ps1` finds every chat line, then every pointer into
+  one (level 1), then every pointer at what HOLDS those (level 2), and
+  so on; rows with the surrounding bytes go to `ptrscan.log`.
+  `tools/ptrview.mjs` counts what repeats in it. `-Dump 0xADDR` prints
+  annotated qwords; `-Targets` starts from addresses instead of strings.
+- `tools/fakechat.ps1` compiles a NATIVE stand-in (fakedota.exe, in the
+  temp folder) with a real container: panel -> reallocating array ->
+  labels -> text. The node stand-in cannot do this; node does not know
+  its own addresses. **Its layout is invented.** Against it the tools
+  recovered, blind: label class with text at +0x98, 21 of 24 followed
+  pointers; and at level 3 the array start held at panel +0x58.
+- Two things the stand-in taught, so they are not relearned on the game:
+  **walking back to a null does not find where a string starts** (heap
+  headers are not zeros), so level 1 takes any pointer INSIDE a line and
+  follows the ones at the commonest beginning; and **a range search
+  above level 1 drowns** (840 then 7,370 rows from 12 lines), so higher
+  levels look for exact pointers to candidate object starts (every
+  module address - a vtable - in the 0x200 before the holder) and to
+  array starts. A class is named by MODULE OFFSET, which survives a
+  restart where an address does not.
+- Cost on the game, ESTIMATED not measured: one sweep of private memory
+  plus one full sweep per level, so ~4 sweeps, ~30-40s of heavy reading.
+- What to read from the live run: does one class @ offset repeat once
+  per line at level 1 (the label)? Is there an array start at level 2-3,
+  and what class holds it? Is anything held in module data (a ROOT -
+  then no sweep is ever needed to find the panel again)? Run it twice, a
+  minute and a few lines apart: what stayed put is the container.
+- The READER is deliberately not written yet. Dota's layout may be a
+  list, not an array, and the text may hang off the label by more than
+  one hop; a reader written to the stand-in's shape would be a guess.
+
 **Then measure frame time in the game**, windows on against
 `scanWindowMb: 0`, before believing any of it.
 
@@ -292,7 +326,13 @@ Keep `npm test` green. It needs no game running and no API key.
 - `tools/` holds the test rig: `fakedota.js` (stand-in game),
   `saychat.ps1` (types lines into the real game), `latency.mjs` (say ->
   found, and processor use), `whereis.mjs` (where every copy of a line
-  is). The last three touch the live game: bot matches, with say-so.
+  is), `fakechat.ps1` (native stand-in with a real chat container),
+  `ptrscan.ps1` + `ptrview.mjs` (what points at a chat line). saychat,
+  latency, whereis and ptrscan touch the live game: bot matches, with
+  say-so.
+- **PowerShell variables ignore case**: `$targets` IS the `[string]$Targets`
+  parameter, and assigning an array to it joins it into one string. Cost
+  a run in ptrscan.
 - Source files are LF. There is no build step and nothing compiled.
 - The Gemini key lives in `config.json` (gitignored) or `GEMINI_API_KEY`.
 
