@@ -16,6 +16,7 @@
   "batchMs": 80,
   "holdSeconds": 14,
   "maxLines": 6,
+  "display": "box",
   "showOriginal": true,
   "fontSize": 16,
   "opacity": 0.92,

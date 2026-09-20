@@ -102,6 +102,9 @@ function start() {
     send('status', { kind: 'error', text: 'No Gemini API key. Put one in config.json.' });
     return;
   }
+  if (cfg.display === 'replace') {
+    send('status', { kind: 'error', text: 'Replacing the game chat in place is not built yet - using the chat box.' });
+  }
   // 'memory' reads the running game, which is the only place the chat
   // actually is; 'log' is the old console.log reader, kept as a fallback.
   const start = cfg.source === 'log' ? startWatching : startWatchingMemory;

@@ -61,7 +61,12 @@ function build(row, state) {
   name.style.color = readable(SLOT_COLOURS[row.slot] || '#7fd4ff');
   el.appendChild(name);
   el.appendChild(span('say', state === 'pending' ? row.text : row.en));
-  if (state === 'done' && cfg.showOriginal && row.translated && row.text !== row.en) el.appendChild(span('orig', row.text));
+  // "english (as it was said)", on one line, the way it is wanted in the
+  // game's own chat too. Nothing in brackets when the line was English
+  // already: that would only say the same thing twice.
+  if (state === 'done' && cfg.showOriginal && row.translated && row.text.trim().toLowerCase() !== row.en.trim().toLowerCase()) {
+    el.appendChild(span('orig', ' (' + row.text + ')'));
+  }
   return el;
 }
 

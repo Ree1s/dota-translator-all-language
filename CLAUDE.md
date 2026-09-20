@@ -88,6 +88,52 @@ found or stops validating. Details under "THE CONTAINER" below.
   nobody). It cannot tell a match from a menu. Look at the screen first.
 - `DT_DEBUG=1 npm start` prints every row sent to the chat box.
 
+## REPLACE IN PLACE: asked for as the DEFAULT, not built, one experiment blocked
+
+**What the user asked for (2026-09-20, during the second bot match):**
+rather than a second box positioned for every screen size, put the
+English in the game's OWN chat, where the line already is, as
+`english (original russian)` - and nothing in brackets when the line was
+English already. Two modes the user can choose, **replace the default**,
+the extra chat box the other. `display: "box" | "replace"` exists in
+config; only `box` is built, and `replace` falls back to it and says so.
+The chat box already uses the `english (original)` format, on one line.
+
+**Where it stopped:** the first experiment - overwrite the bytes of one
+of our OWN test lines in a bot match and see whether the chat redraws -
+was DENIED by Claude Code's permission classifier ("Modify Shared
+Resources") before anything was written. Nothing has ever been written
+to the game. Do not work around that; the user has to allow it (a Bash
+permission rule) or run the probe themselves.
+
+**What is known without writing, for whoever picks this up:**
+
+- The text object (vtable `panorama.dll+0x4674b0`): +0x10 -> the string;
+  **+0x38 and +0x40 both held 0x4c1 (1217) for a 327-byte line** - not
+  the length, not yet understood (a capacity? a hash?). A write longer
+  than the original cannot be done by overwriting alone.
+- `english (russian)` is ALWAYS longer than the original, so in-place
+  overwriting can never be the whole answer: a new string has to be
+  allocated in the game or the pointer at text+0x10 swung to memory we
+  own in the game's address space (`VirtualAllocEx`) - a bigger step than
+  a byte write, and whatever frees the string later will free OURS.
+- The label almost certainly does not re-lay-out because its source
+  bytes changed; Panorama lays text out once. But **the panel throws all
+  its children away and rebuilds them at 24 lines** - from what source is
+  exactly what the experiment would show. If the rebuild reads the
+  strings we changed, replace is "write, then wait for / provoke a
+  rebuild"; if it re-runs the template from the message data, the place
+  to write is the dialog variable, not the markup.
+- **A read-only way to get the same look, worth trying FIRST:** cover the
+  game's chat instead of changing it. A chat line's UI panel carries its
+  own layout: child +0x50 held the floats 1000.0 and 34.0 (0x447a0000,
+  0x42080000) - very likely the line's width and height - so the
+  position is probably in there too. Read that, and the box can be laid
+  exactly over each line on any screen size with no per-resolution
+  numbers, which was the user's objection to a second box - and with no
+  write to the game at all, so the ban-risk story does not change.
+  NOT verified: which floats are x/y, and whether they are screen pixels.
+
 ## Open issues, in the order they matter
 
 ### 0. What the panel reader has NOT been through

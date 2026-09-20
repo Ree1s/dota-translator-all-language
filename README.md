@@ -146,7 +146,8 @@ no processor time, and reading the chat costs about 0.3% of one core.
 | `batchMs` | how long to gather lines before one call (80) |
 | `holdSeconds` | how long a line stays on screen (14) |
 | `maxLines` | how many lines the overlay holds (6) |
-| `showOriginal` | print the Russian under the English (true) |
+| `showOriginal` | show what was actually said, in brackets after the English: `go mid (иди мид)`. Nothing is added when the line was English already (true) |
+| `display` | `box` draws the second chat box. `replace` - the English written into Dota's own chat line - is planned and not built; it falls back to the box |
 | `position` | where the chat box goes. `chat` (the default) is directly above Dota's own chat, growing upwards; or a corner: `top-left`, `top-right`, `bottom-left`, `bottom-right` |
 | `boxX`, `boxY` | put the box anywhere instead: fractions of the screen from its top-left, e.g. `0.02` and `0.5`. `-1` (the default) leaves it to `position` |
 | `boxWidth` | how wide the box is, in pixels (520) |

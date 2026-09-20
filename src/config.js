@@ -56,6 +56,14 @@ export const DEFAULTS = {
   batchMs: 80,             // how long to gather lines before one call
   holdSeconds: 14,          // how long a line stays on the overlay
   maxLines: 6,
+  // Where the English goes. "box" is the second chat box drawn over the
+  // game, and is the only one BUILT. "replace" - the English written into
+  // the game's own chat line as "english (original)" - is what the user
+  // wants as the default, and is NOT built: it means writing to the
+  // game's memory, and the one experiment that says whether the chat even
+  // redraws has not been allowed to run. Until it exists, "replace" falls
+  // back to the box and says so once.
+  display: 'box',
   showOriginal: true,
   fontSize: 16,
   opacity: 0.92,
