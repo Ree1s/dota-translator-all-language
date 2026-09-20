@@ -171,11 +171,28 @@ once, as said, italic, and turns into `english (original)`.
   compiled CSS is plain text inside): `DOTAChat#HudChat .ChatLine` 18px
   bold, shadow `1px 1.5px 0 #000`; `.ChatPersona` 20px; `.ChatTarget` 18px
   `#fbe6b9`; `.HeroIcon` 40x23, 4 right, 1px black border; `.Expired` is
-  how a line goes. Radiance's cell (ascent + descent) is 1.2 em, and
-  Valve's UI appears to size by the cell where a browser sizes by the em,
-  so from v0.2.9 ours is 18/1.2 = 15 units, names 20/18 of that, tag in
-  the game's colour. The 1.2 is from the font file; that Panorama sizes
-  by the cell is INFERRED from the user's report. NOT seen over the game.
+  how a line goes; `chat_colors.vcss_c`: team and all chat TEXT is
+  `#FAEAC9`, cream, NOT white.
+  - **A WRONG THEORY, shipped in v0.2.9-0.2.11:** that Valve sizes a font
+    by its cell (Radiance: 1.2 em) and so 18 means 15. It made the text
+    13% too SMALL. Do not reason about Panorama's font sizing; measure.
+  - **MEASURED, v0.2.12** (the user offered their bot match; four rounds
+    of: `saychat` one line, screenshot at +2.6s, ours beside the game's
+    copy of the same line, 4x zoom): the width of `[Allies]` matches at
+    **17.4 units**; the name is **1.017** of the text, not 20/18; portrait
+    **39.5 x 24** units starting 6.25 in, text 3.2 after it; tag -> name
+    3.7 units; the colon is WHITE-cream, not the name's colour, 0.5 after
+    the name and 4.3 before the text; shadow down-right only (an outline
+    all round made letters look bigger). SEEN: the two rows line up to
+    the pixel at tag and name. One screen, one scale (1.33).
+  - Still different, knowingly: our portrait is Valve's CDN picture,
+    a touch brighter than the game's own; `(original)` is smaller and
+    regular weight by design; all chat was not compared, only team.
+  - A dev copy (`npm start`) CANNOT read the installed app's encrypted
+    key (`DT_CONFIG` at it just opens the setup window - which steals
+    focus from the game; it did, twice). The repo's own `config.json`
+    has a plain key: run the dev copy with no `DT_CONFIG`, after closing
+    the installed app (one key, one consumer, and the single-instance lock).
 - The setup window's key guide opens the LIVE page
   (`sc0rebreaker.github.io/dota-translator/key.html`) from v0.2.7; it
   opened the bundled copy, and a `file:///C:/Users/...` address looked

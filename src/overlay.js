@@ -82,13 +82,16 @@ function build(row, state) {
   const bareLook = document.body.classList.contains('bare');
   if (cfg.showHeroes) el.appendChild(face(row.hero));
   if (TAGS[row.channel] && !(bareLook && row.channel === 'all')) el.appendChild(span('tag', TAGS[row.channel]));
-  const name = span('name', row.name + ':');
+  // In the game the colon is not part of the name: it is white, and stands
+  // a little off it.
+  const name = span('name', bareLook ? row.name : row.name + ':');
   // Beside the game's own chat, the game's own colours exactly: outlined
   // text carries the dark blue as well there as it does in Dota. Lifting
   // them is for the dark panel, where they sink.
   const colour = SLOT_COLOURS[row.slot] || '#7fd4ff';
   name.style.color = document.body.classList.contains('bare') ? colour : readable(colour);
   el.appendChild(name);
+  if (bareLook) el.appendChild(span('colon', ':'));
   el.appendChild(span('say', state === 'pending' ? row.text : row.en));
   // "english (as it was said)", on one line, the way it is wanted in the
   // game's own chat too. Nothing in brackets when the line was English
@@ -126,12 +129,12 @@ const GAME_SHOWS_MS = 8500;
 let TEXT_LEFT = 49;
 // The game's own stylesheet (panorama/styles/chat.vcss_c, read out of the
 // pak on disk, 2026-09-20) gives HudChat lines font-size 18, names 20, the
-// [Allies] tag 18 in #fbe6b9. But the user saw ours BIGGER at 18: Valve's
-// UI sizes a font by its whole cell (ascent + descent), a browser by its
-// em, and Radiance's cell is 1.2 em (hhea 860 + 340 over 1000). So the
-// same number draws glyphs 1/1.2 the size in the game. The 1.2 is from the
-// font file; that Panorama sizes by the cell is INFERRED, not measured.
-const PAD = 4, FONT = 18 / 1.2;
+// [Allies] tag 18 in #fbe6b9, the text #FAEAC9. The SIZE is not taken from
+// that but MEASURED, ours beside the game's own copy of the same line in
+// screenshots of a bot match (2026-09-20): the width of "[Allies]" matches
+// at 17.4 units, and the name at 1.017 of that (not the 20/18 the
+// stylesheet suggests). 18 was 3% too big and a guess at 15 far too small.
+const PAD = 4, FONT = 17.4;
 
 function covering() { return cfg.display === 'cover' && layout; }
 
@@ -258,12 +261,15 @@ window.dt.onLayout((l) => {
     // scale 1.33) - scaling it again spread the lines a third too far apart.
     const pitch = Math.min(...l.rows.map((r) => r.height).filter((h) => h > 0));
     if (Number.isFinite(pitch)) box.style.lineHeight = pitch + 'px';
-    // MEASURED on the game's own lines: 7 units of padding, a portrait
-    // 43.5 wide by 24.5 high (16:9), and the text at 49.
-    const room = cfg.showHeroes ? 7 : TEXT_LEFT;
+    // The portrait is the game's own stylesheet's 40 x 23 units, border
+    // included, and MEASURED in a screenshot beside the game's: it starts
+    // 6.25 units in and the text 44.6 units after it. (It was 16:9 and 40.5
+    // wide until v0.2.11 - the user saw that the pictures did not match.)
+    document.documentElement.style.setProperty('--u', l.scale + 'px');
+    const room = cfg.showHeroes ? 6.25 : TEXT_LEFT;
     box.style.paddingLeft = (room * l.scale) + 'px';
-    document.documentElement.style.setProperty('--face-w', ((TEXT_LEFT - 7 - 1.5) * l.scale) + 'px');
-    document.documentElement.style.setProperty('--face-gap', (1.5 * l.scale) + 'px');
+    document.documentElement.style.setProperty('--face-w', (39.5 * l.scale) + 'px');
+    document.documentElement.style.setProperty('--face-gap', (3.2 * l.scale) + 'px');
     return;
   }
   renderCover();

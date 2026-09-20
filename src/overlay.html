@@ -80,14 +80,22 @@
   .strip.wrap { white-space: normal; align-items: flex-start; line-height: 1.25; }
   /* ABOVE mode: no panel at all. Nothing of the game's is under these
      lines, so they can be what the game's own chat is: outlined text. */
-  body.bare #box { background: none; border: none; padding: 0; font-weight: 700; color: #fff; opacity: 1 !important;
-    text-shadow: 1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000, 0 2px 3px rgba(0, 0, 0, 0.9); }
+  body.bare #box { background: none; border: none; padding: 0; font-weight: 700; color: #FAEAC9; opacity: 1 !important;
+    /* The game's own: "text-shadow: 1px 1.5px 0px 2 #000" - down and right,
+       hard, no outline. An outline all round made the letters look bigger. */
+    text-shadow: 1px 1.5px 0 #000, 1.5px 2px 0 rgba(0, 0, 0, 0.7); }
   body.bare .row { padding: 0; white-space: nowrap; transition: opacity 250ms linear; }
   /* The game's own: tag #fbe6b9, names 20 to the text's 18. */
   body.bare .tag, body.bare .team .tag { color: #fbe6b9; }
-  body.bare .name { font-size: 1.111em; }
-  body.bare .orig { font-weight: 400; color: rgba(232, 230, 223, 0.8); }
-  body.bare .pending .say { color: rgba(232, 230, 223, 0.75); }
+  body.bare .name { font-size: 1.017em; margin: 0; }
+  body.bare .tag + .name { margin-left: calc(3.7 * var(--u, 1px)); }
+  body.bare .tag, body.bare .team .tag { margin-right: 0; }
+  body.bare .colon { margin: 0 calc(4.3 * var(--u, 1px)) 0 calc(0.5 * var(--u, 1px)); }
+  /* The game's portrait: 40 x 23 units with its black border inside. */
+  body.bare .face { aspect-ratio: auto; height: calc(24 * var(--u, 1px)); top: 0; }
+  body.bare .face img { box-sizing: border-box; border: 1px solid #000; border-radius: 0; }
+  body.bare .orig { font-weight: 400; color: rgba(250, 234, 201, 0.8); }
+  body.bare .pending .say { color: rgba(250, 234, 201, 0.75); }
   .status { color: var(--warn); font-size: 13px; padding: 1px 0; transition: opacity 500ms linear; }
   .status.out { opacity: 0; }
 </style>
