@@ -232,7 +232,13 @@ function checkForUpdates() {
   autoUpdater.on('update-downloaded', (info) => {
     if (tray) tray.setToolTip('Dota Translator - version ' + info.version + ' installs when you quit');
   });
-  autoUpdater.checkForUpdates().catch(() => { /* offline, or no release yet: next time */ });
+  const look = () => autoUpdater.checkForUpdates().catch(() => { /* offline, or no release yet: next time */ });
+  look();
+  // And again every few hours. It used to look ONCE, at startup - and the
+  // user's own copy, started before three releases came out and left
+  // running, never heard of any of them. An app that lives in the tray is
+  // started once a day at most, or once a week.
+  setInterval(look, 4 * 60 * 60 * 1000).unref();
 }
 
 app.whenReady().then(() => {

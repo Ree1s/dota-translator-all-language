@@ -763,12 +763,9 @@ of work (the chase needed a human to tell signal from noise at each
 level), and it must be proven against `tools/fakechat.ps1` with a
 DIFFERENT layout than the one it expects before it is trusted on the game.
 
-**LATER, NOT NOW (the user, 2026-09-20: "the app should auto update when
-start ... maybe work on it later ... but not now"): the app updating
-itself.** Today only `offsets.json` updates itself; the code does not,
-and there is no installer. Auto-update wants a packaged build first
-(electron-builder or similar), which is also what the landing page is
-missing for players who are not developers. Do the two together.
+(The app updating itself was "later, not now" on 2026-09-20 and was built
+the same evening, with the installer: see "Releases, auto-update and the
+icon".)
 
 ## Releases, auto-update and the icon (2026-09-20, v0.2.0)
 
@@ -793,9 +790,30 @@ missing for players who are not developers. Do the two together.
 - The installer has a version-less name from v0.2.2
   (`Dota-Translator-Setup.exe`), so the site links straight to
   `releases/latest/download/Dota-Translator-Setup.exe`.
-- **The installed app updates itself** (`electron-updater`, GitHub
-  provider, `checkForUpdates` in `main.js`): once at startup, downloads
-  in the background, installs when the app is next CLOSED - never a
+- **The installed app updates itself, USUALLY - and here is when it does
+  not.** The rule: it looks for a newer release at startup and every four
+  hours, downloads it quietly, and installs it when the app is next
+  CLOSED (and says so in the tray tooltip). The edge cases:
+  - **A copy that is never restarted never updated** - FOUND on the user's
+    own install, 2026-09-20: v0.2.2, started 21:56, still v0.2.2 with
+    nothing downloaded while v0.2.3, .4 and .5 came out, because it looked
+    ONCE, at startup. Fixed in v0.2.6 (the four-hourly look) - but a copy
+    OLDER than v0.2.6 still only looks at startup, so it needs one restart
+    to get there. After that it keeps itself current.
+  - **It installs on a CLEAN quit only** (tray > Quit, Alt+Shift+D). Killed
+    from Task Manager, or Windows shut down under it, the downloaded update
+    waits for the next clean quit.
+  - **A copy installed from the very first local build, v0.1.0, has no
+    updater at all.** Reinstall from the website.
+  - The installer is unsigned; updates still work (no publisherName is
+    set to verify), but SmartScreen warned on the first install.
+  - `autoUpdate: false`, and any run from source, never looks.
+  To check a machine: the exe's version is in
+  `%LOCALAPPDATA%\Programs\dota-translator\Dota Translator.exe`, a
+  downloaded update waits in `%LOCALAPPDATA%\dota-translator-updater\pending`,
+  and the tray menu shows the running version.
+- How it is built: `electron-updater`, GitHub provider, `checkForUpdates`
+  in `main.js`; downloads in the background - never a
   dialog over a match. `autoUpdate: false` never checks; run from source
   it never checks. The tray tooltip says when a version is waiting, and
   the tray menu shows the running version. SEEN in the packaged build:
