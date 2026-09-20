@@ -62,7 +62,15 @@ public static class DotaMem {
     "[Allies] ", "[All] ", "[Everyone] ", "[Team] ", "[Spectators] ", "[Coaches] "
   };
   static readonly List<byte[]> PATS = new List<byte[]>();
-  static DotaMem() { foreach (var t in TAGS) PATS.Add(Encoding.UTF8.GetBytes(t)); }
+  // Which bytes can START a pattern. The scan was a loop over the whole
+  // buffer PER PATTERN - seven passes over every byte of the process -
+  // and is one pass now: nearly every byte fails this lookup and costs
+  // nothing more. MEASURED on a 1 GB process, three sweeps each:
+  // 10.6/8.5/6.0s before, 1.46/1.47/1.48s after.
+  static readonly bool[] FIRST = new bool[256];
+  static DotaMem() {
+    foreach (var t in TAGS) { var b = Encoding.UTF8.GetBytes(t); PATS.Add(b); FIRST[b[0]] = true; }
+  }
 
   public static long LastMs, LastBytes; public static int LastRegions, LastHits;
 
@@ -85,9 +93,13 @@ public static class DotaMem {
     try { return Encoding.UTF8.GetString(buf, (int)s, (int)(e - s)); } catch { return null; }
   }
 
-  /// Scan. When `only` is non-empty, just those region bases are read -
-  /// that is what makes polling cheap once the first full scan has shown
-  /// where chat lives. Returns the lines found; fills the Last* counters.
+  /// Scan. `only` null reads everything; otherwise ONLY those region
+  /// bases are read - that is what makes polling cheap once the first
+  /// full scan has shown where chat lives, and an EMPTY set therefore
+  /// reads nothing at all. (It used to be `only.Count > 0`, so an empty
+  /// set fell through to reading all 4 GB - a "quick" scan that cost
+  /// exactly as much as a full one, measured at 8.3s over 1 GB.)
+  /// Returns the lines found; fills the Last* counters.
   /// `hot` receives the bases that produced a hit.
   public static List<string> Scan(int pid, HashSet<long> only, HashSet<long> hot) {
     var found = new List<string>();
@@ -107,7 +119,7 @@ public static class DotaMem {
         if (size <= 0) break;
 
         bool want = m.State == COMMIT && Readable(m.Protect) && size <= buf.Length;
-        if (want && only != null && only.Count > 0 && !only.Contains(bas)) want = false;
+        if (want && only != null && !only.Contains(bas)) want = false;
 
         if (want) {
           LastRegions++;
@@ -115,15 +127,18 @@ public static class DotaMem {
           if (ReadProcessMemory(h, m.BaseAddress, buf, (IntPtr)size, out got)) {
             long n = (long)got; LastBytes += n;
             bool any = false;
-            foreach (var p in PATS) {
-              int pl = p.Length; byte f = p[0];
-              for (long i = 0; i <= n - pl; i++) {
-                if (buf[i] != f) continue;
+            for (long i = 0; i < n; i++) {
+              if (!FIRST[buf[i]]) continue;
+              for (int k = 0; k < PATS.Count; k++) {
+                byte[] p = PATS[k];
+                int pl = p.Length;
+                if (buf[i] != p[0] || i + pl > n) continue;
                 bool okp = true;
                 for (int j = 1; j < pl; j++) if (buf[i + j] != p[j]) { okp = false; break; }
                 if (!okp) continue;
                 string s = Extract(buf, n, i, 48);
                 if (s != null) { found.Add(s); LastHits++; any = true; }
+                break;      // one anchor per position is enough
               }
             }
             if (any && hot != null) hot.Add(bas);
@@ -151,6 +166,21 @@ $hot = New-Object 'System.Collections.Generic.HashSet[long]'
 $lastFull = [DateTime]::MinValue
 $lastPid = 0
 
+# How long to wait before sweeping the whole process AGAIN when the last
+# sweep found no chat at all. There is plenty of time with nothing to
+# find: the menu, the loading screen, a match where nobody has spoken
+# yet. The rule was "sweep until something is found", which ran those
+# sweeps back to back for as long as that lasted - a core busy for as
+# long as the player sits in the menu. Doubling from one second to ten
+# still picks the first line up within seconds of it being said.
+$idleWaitMs = 0
+$IDLE_WAIT_MAX = 10000
+# Whether the reader has already been told we are looking. Said ONCE per
+# spell, not per sweep: the overlay draws a status over the game, and a
+# match where nobody has spoken yet would otherwise repeat it every few
+# seconds until somebody does.
+$announcedSearch = $false
+
 Emit @{ t = 'status'; state = 'waiting'; detail = 'looking for Dota' }
 
 while ($true) {
@@ -158,7 +188,7 @@ while ($true) {
   if (-not $proc) {
     if ($lastPid -ne 0) {
       # Dota closed: the addresses we learned mean nothing for the next one.
-      $hot.Clear(); $lastPid = 0; $lastFull = [DateTime]::MinValue
+      $hot.Clear(); $lastPid = 0; $lastFull = [DateTime]::MinValue; $idleWaitMs = 0; $announcedSearch = $false
       Emit @{ t = 'status'; state = 'waiting'; detail = 'Dota closed' }
     }
     Start-Sleep -Milliseconds 2000
@@ -166,16 +196,36 @@ while ($true) {
   }
 
   if ($proc.Id -ne $lastPid) {
-    $hot.Clear(); $lastFull = [DateTime]::MinValue
+    $hot.Clear(); $lastFull = [DateTime]::MinValue; $idleWaitMs = 0; $announcedSearch = $false
     $lastPid = $proc.Id
     Emit @{ t = 'status'; state = 'reading'; pid = $proc.Id; detail = 'attached' }
   }
 
   # A full sweep finds where chat lives; after that only those regions are
-  # read, which is the difference between ~11s and a poll you can run every
-  # second. Redone periodically because the game allocates as it runs.
-  $full = ($hot.Count -eq 0) -or (([DateTime]::UtcNow - $lastFull).TotalMilliseconds -gt $FullRescanMs)
-  if ($full) { Emit @{ t = 'status'; state = 'scanning'; pid = $proc.Id; detail = 'full sweep' } }
+  # read, which is the difference between seconds and a poll you can run
+  # every second. Redone periodically because the game allocates as it
+  # runs, and - while we still have nowhere to look - on the backoff
+  # above. MEASURED: a sweep costs about 1.5s per gigabyte.
+  $waitMs = if ($hot.Count -eq 0) { $idleWaitMs } else { $FullRescanMs }
+  $full = ([DateTime]::UtcNow - $lastFull).TotalMilliseconds -gt $waitMs
+
+  # Only a sweep that is looking for the chat is ANNOUNCED. The periodic
+  # one is upkeep, and the overlay draws a status line over the game for
+  # eight seconds: "Finding the chat in memory..." once a minute in the
+  # middle of a match reads as the tool having lost it.
+  $searching = $full -and ($hot.Count -eq 0)
+  if ($searching -and -not $announcedSearch) {
+    $announcedSearch = $true
+    Emit @{ t = 'status'; state = 'scanning'; pid = $proc.Id; detail = 'full sweep' }
+  }
+
+  # With nowhere to look and no sweep due, there is nothing to do: reading
+  # no regions would find no lines. Skipped rather than run, so the reader
+  # is not handed a stat every second saying nothing happened.
+  if (-not $full -and $hot.Count -eq 0) {
+    Start-Sleep -Milliseconds $IntervalMs
+    continue
+  }
 
   try {
     $only = if ($full) { $null } else { $hot }
@@ -189,6 +239,19 @@ while ($true) {
     foreach ($b in $fresh) { [void]$hot.Add($b) }
     # A hot region that stops producing is dropped at the next full sweep,
     # so this cannot grow into the whole address space.
+
+    if ($full) {
+      if ($hot.Count -eq 0) {
+        if ($idleWaitMs -eq 0) { $idleWaitMs = 1000 }
+        else { $idleWaitMs = [Math]::Min($idleWaitMs * 2, $IDLE_WAIT_MAX) }
+      } else {
+        $idleWaitMs = 0
+        # The last thing said was that we were looking for the chat, and
+        # that has stopped being true.
+        if ($announcedSearch) { Emit @{ t = 'status'; state = 'reading'; pid = $proc.Id; detail = 'found chat' } }
+        $announcedSearch = $false
+      }
+    }
 
     # Base64, not the text itself. A Cyrillic line written straight to
     # stdout comes back as mojibake ("ðøÐâð©ðÀð░" for "Луиза") whenever

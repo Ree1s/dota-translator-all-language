@@ -581,6 +581,37 @@ ok('the scanner is run through Windows PowerShell with no profile', () => {
 
 console.log('build');
 
+ok('the scanner script parses', () => {
+  // The whole chat source is ONE PowerShell file, and nothing else in
+  // this repo would notice it being broken: a syntax error there is not
+  // an error anybody sees, it is a tool that silently never reads a line.
+  // Skipped where PowerShell is not the shell - the tool is Windows-only,
+  // but the rest of the suite need not be.
+  const check = (file) => {
+    const script = `$e=$null; [void][System.Management.Automation.Language.Parser]::ParseFile('${file.replace(/'/g, "''")}',[ref]$null,[ref]$e); if($e.Count){ $e | ForEach-Object { $_.ToString() }; exit 1 }`;
+    try {
+      execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { encoding: 'utf8', stdio: 'pipe' });
+      return '';
+    } catch (err) {
+      if (err.code === 'ENOENT') return null;          // no PowerShell here
+      return String(err.stdout || err.message).trim() || 'parse failed';
+    }
+  };
+
+  const files = fs.readdirSync('src').filter((f) => f.endsWith('.ps1'));
+  assert.ok(files.length >= 1, 'expected the scanner, got ' + files.length);
+
+  // A checker that always says yes says nothing, so it is asked about a
+  // script that is definitely broken before it is believed about ours.
+  const broken = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'dt-ps-')), 'broken.ps1');
+  fs.writeFileSync(broken, 'if ($true) { "unclosed');
+  const control = check(broken);
+  if (control === null) return;                        // not Windows: nothing to say
+  assert.notEqual(control, '', 'the parse check passed a broken script');
+
+  for (const f of files) assert.equal(check(path.join('src', f)), '', f + ' does not parse');
+});
+
 ok('every script parses', () => {
   const files = fs.readdirSync('src').filter((f) => f.endsWith('.js') || f.endsWith('.cjs'));
   assert.ok(files.length >= 7, 'expected the whole src folder, got ' + files.length);

@@ -153,10 +153,15 @@ colour. The markup is what this anchors on, because **all-chat has no
 channel tag**: team chat reads `[Allies] name: text` while all-chat is just
 `name: text`, which is far too common a shape to search 4 GB for.
 
-A full sweep of the process takes 15-25 seconds, far too slow to poll. So
-the first sweep learns *which regions* hold chat, and after that only those
-are read - about 400-900 ms over a handful of regions. The whole process is
-swept again every `fullRescanMs`, because the game keeps allocating.
+A full sweep of the process costs about 1.5 seconds per gigabyte, and Dota
+is four to five of them - too slow to poll. So the first sweep learns
+*which regions* hold chat, and after that only those are read, which is
+tens of milliseconds over a handful of regions. The whole process is swept
+again every `fullRescanMs`, because the game keeps allocating.
+
+While there is no chat to be found at all - the menu, the loading screen,
+a match where nobody has spoken - the sweeps back off to one every ten
+seconds rather than running back to back.
 
 The first sweep of a match only **primes**: it remembers what has already
 been said without showing it, so starting the app mid-game does not dump the
