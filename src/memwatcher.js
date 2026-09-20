@@ -35,6 +35,19 @@ export function startWatchingMemory(cfg, { onResult, onStatus = () => {}, transl
     fullRescanMs: cfg.fullRescanMs,
     onStatus,
     onMessage: (msg) => pipe.push(msg),
+    windowMb: cfg.scanWindowMb,
+    wideEvery: cfg.scanWideEvery,
+    onPlacement: (p) => {
+      // The measurement that says whether scan windows are any good and
+      // how big they must be. Only a live game can produce it, so it is
+      // written down whenever somebody has asked to learn.
+      if (!cfg.learn) return;
+      try {
+        const distance = p.distance === null ? 'none' : p.distance;
+        fs.appendFileSync(learnPath,
+          `placement ${new Date().toISOString()} mode=${p.mode} inWindow=${p.inWindow ? 1 : 0} distance=${distance} channel=${p.channel}\n`);
+      } catch { /* best effort */ }
+    },
     onStat: (stat) => onStatus({ kind: 'stat', text: '', stat }),
     onUnknownTag: (tag) => {
       // A channel the code does not know is the one failure that would

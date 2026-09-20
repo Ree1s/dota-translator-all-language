@@ -23,7 +23,7 @@ start(cfg, {
   onStatus: (s) => {
     if (s.kind === 'stat') {
       const st = s.stat || {};
-      console.log(`[${time()}] scan ${st.full ? 'full' : 'quick'} ${st.ms}ms ${st.mb}MB ${st.regions} regions, ${st.hot} hot`);
+      console.log(`[${time()}] scan ${st.mode || (st.full ? 'full' : 'quick')} ${st.ms}ms ${st.mb}MB ${st.regions} regions, ${st.hot} hot`);
       return;
     }
     console.log(`[${time()}] ${s.text}${s.file ? ' (' + s.file + ')' : ''}`);

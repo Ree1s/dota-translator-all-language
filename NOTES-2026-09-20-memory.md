@@ -337,3 +337,30 @@ than the old notes suggest:
   different project, worked immediately.
 - The free tier rate-limits hard: 4 parallel requests failed about half the
   frames; one at a time was clean.
+
+## Night: windowed polls, a gentler reader, and a helper that dies with its parent
+
+Built and tested against the stand-in only. CLAUDE.md open issue 1 is
+the current account of it; what belongs here is what was measured.
+
+- **Windows read a fraction of a wide poll.** On the stand-in a windowed
+  poll is whatever the windows add up to (6 MB growing to 45 MB as "far"
+  lines add windows of their own) against 49 MB wide; on Dota the wide
+  poll is ~710 MB and the windowed one is NOT measured. Near lines came
+  up within one poll from a windowed scan; far lines only from the wide
+  poll, every fifth, with `inWindow: false` and the true distance
+  (6,291,456 bytes for a line placed 6 MB away).
+- **The placement log is the experiment.** `learn.log` rows say, for each
+  new line, which kind of scan found it, whether a window covered it and
+  how far it was from the nearest EARLIER hit. That is the number the
+  4 MB guess stands in for.
+- **Frame proxy** (a timed 32 MB copy in the stand-in): 1.27 GB swept
+  back to back on three threads at normal priority took frame p99 from
+  ~3.5-4.4ms to 4.6-6.1ms and rising; one thread at BelowNormal held it
+  at 4.4ms while reading half as fast; the new defaults were not
+  distinguishable from no reader. At ~250 MB/s NOTHING was
+  distinguishable from no reader, so the proxy does not reproduce what
+  the player felt in Dota and must not be used to declare this fixed.
+- **Parent pid:** a scanner watching a 4-second process was gone by 10s,
+  the control with no pid was not. The original stray could not be
+  reproduced from a node parent in this harness, with or without a game.

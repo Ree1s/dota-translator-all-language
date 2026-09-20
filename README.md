@@ -124,6 +124,8 @@ the memory reading runs through PowerShell, which Windows already has.
 | `source` | `memory` reads the game. `log` is the old console.log reader, which cannot see chat |
 | `scanIntervalMs` | how often to re-read the chat (2000) |
 | `fullRescanMs` | how often to sweep the whole process again (120000) |
+| `scanWindowMb` | most re-reads only look this many MB either side of where chat was last seen; 0 reads everything every time (4) |
+| `scanWideEvery` | every Nth re-read looks everywhere chat has ever been, to catch a line written somewhere new (5) |
 | `scripts` | which writing systems to translate. `["cyrillic"]` by default; `greek`, `han`, `hangul`, `arabic`, `thai` are also known |
 | `batchMs` | how long to gather lines before one call (400) |
 | `holdSeconds` | how long a line stays on screen (14) |

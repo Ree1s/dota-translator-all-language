@@ -9,7 +9,7 @@ use English. That is the whole point of it.
 
 ---
 
-# WHERE THIS STANDS (2026-09-20, end of the day)
+# WHERE THIS STANDS (2026-09-20, night)
 
 **It works end to end.** In a live bot match, Russian typed into chat was
 read out of the game's memory and translated in the terminal, and the
@@ -29,42 +29,71 @@ retry described below is for.
 
 ## Open issues, in the order they matter
 
-### 1. THE READER COSTS THE GAME FRAMES - this is the blocker
+### 1. THE READER COSTS THE GAME FRAMES - a fix is BUILT, and is NOT yet measured in a game
 
 User-reported the first time the overlay was ever left running while
 actually playing: *"my game seems laggy"*. Believe it; it is not
-imagination.
-
-Two causes, one avoidable:
-
-- A **leftover scanner from testing** was running beside the overlay's
-  own, so the game paid for two. Always check for strays (below).
-- Even one is heavy: **~710 MB read every 2 seconds across three
-  threads**, roughly 350 MB/s of memory bandwidth taken from a game that
-  wants all of it, with `ReadProcessMemory` walking Dota's own address
-  space to do it.
+imagination. What it was then: **~710 MB read every 2 seconds across
+three threads**, roughly 350 MB/s of memory bandwidth, at normal
+priority, plus a leftover scanner from testing doing the same beside it.
 
 **The lesson, which is the part worth keeping:** a poll's WALL time is
 not its cost to the game. 470ms looked cheap all afternoon, nothing here
 had measured a frame time, and the player noticed before any number did.
-Whatever is tried next, the measurement that decides it is frame time in
-the game, not milliseconds in the scanner.
+The measurement that decides anything is frame time in the game, not
+milliseconds in the scanner.
 
-Three ways out, ranked by what they buy:
+**What was built on 2026-09-20 (night), all tested against the stand-in
+and NONE of it yet against Dota:**
 
-1. **Scan a window around where hits were seen.** Remember the addresses
-   that produced lines and read a few tens of MB around them every poll,
-   falling back to the whole hot allocation only every Nth poll. Cheap to
-   build. Needs a live game to size the window - it is NOT known how far
-   a new line lands from the last one, only that it is usually a
-   different region inside the same allocation.
-2. **Find the chat log container and read it directly.** A few KB per
-   poll instead of scanning at all - nearly free, and the most fragile
-   across patches. This is the "locate the container" step the notes have
-   flagged from the start.
-3. **Fewer threads, longer interval.** Lowers contention, costs latency,
-   buys the least. `scanIntervalMs` and the thread count in
-   `memscan.ps1` are the knobs.
+- **Three kinds of scan** (`mode` in the stat): `full` sweeps the
+  process, `wide` reads the hot allocations (the old poll, ~710 MB), and
+  `win` reads only `scanWindowMb` (4) either side of every address a line
+  has been seen at. Every `scanWideEvery`th (5th) poll is wide, so a line
+  written somewhere new is late by at most five polls, not lost. Windows
+  follow the chat: every hit, from any scan, adds one; a full sweep
+  starts them again. `scanWindowMb: 0` is exactly the old behaviour.
+- **Polls run on one thread, sweeps on two, and the whole helper at
+  BelowNormal priority**, so it only gets a core nothing else wants.
+- **The worst case is known and is tolerable:** if windows turn out
+  worthless, this is a 10-second poll at a fifth of the old bandwidth.
+  If they work, it is a 2-second poll at a few percent of it.
+
+**THE ONE THING ONLY A LIVE GAME CAN SAY: how far a new line lands from
+the nearest old one.** The 4 MB is a guess. The measurement is built in:
+with `"learn": true`, every new line writes a `placement` row to
+`learn.log` - the scan mode that found it, whether a window covered it,
+and its distance in bytes from the nearest hit of any EARLIER scan (not
+this scan's: every line is in memory twice, a few hundred bytes apart,
+and measuring against its own second copy would make any window look
+perfect). Read it like this:
+
+- rows mostly `mode=win` -> windows work; size `scanWindowMb` to cover
+  the larger distances and stop.
+- rows mostly `mode=wide inWindow=0` -> the distances say how big a
+  window would have to be. If that is hundreds of MB, windows are dead
+  for Dota: write that down here and go to option 2 below.
+
+**Then measure frame time in the game**, windows on against
+`scanWindowMb: 0`, before believing any of it.
+
+What the stand-in's frame proxy said (`tools/fakedota.js`, a timed 32 MB
+copy per "frame"; a PROXY, and a weak one - Dota is not a memcpy loop):
+
+| reader | frame p50 | frame p99 |
+|---|---|---|
+| none | 2.1-2.3ms | 3.5-4.4ms |
+| 1.27 GB swept back to back, 3 threads, normal priority | 2.4-2.8ms | 4.6-6.1ms, rising |
+| same, 1 thread, BelowNormal (half the read rate) | 2.6ms | 4.4ms, steady |
+| new defaults (windowed, 45 MB polls) | 2.4ms | 3.7-4.9ms |
+
+It agrees in direction and proves nothing about Dota. At ~250 MB/s the
+proxy could not tell any configuration from the baseline at all, which is
+itself worth knowing: it does not reproduce whatever the player felt.
+
+Still open if windows fail: **find the chat log container and read it
+directly** - a few KB per poll, nearly free, the most fragile across
+patches.
 
 ### 2. Never run against the live game without asking
 
@@ -72,18 +101,21 @@ The game belongs to the person playing it. Do not start a scanner, the
 watcher or the overlay against a running Dota without the user's say-so,
 and stop everything when the measurement is done.
 
-A scanner outlives a force-killed parent, so check for strays: list
-`powershell.exe` processes whose command line contains `-File` and
-`memscan`, with their `ParentProcessId`. Note that a query whose own
-command line contains the word `memscan` matches its own filter - that
-cost a round of confusion; matching on `-File` as well is what keeps it
-honest.
+Check for strays before and after: list `powershell.exe` processes whose
+command line contains `-File` and `memscan`, with their
+`ParentProcessId`, **and exclude the query's own pid** - a query whose
+command line contains those words matches its own filter, and that has
+now cost a round of confusion twice.
 
-**Worth fixing while you are in there:** the helper does not die with its
-parent. Force-kill the node or Electron process and the PowerShell
-scanner keeps reading memory forever. A clean quit (`Alt+Shift+D`) is
-fine, because `watcher.stop()` kills the child. Passing the parent pid in
-and having the loop exit when that process is gone would close it.
+**The helper dies with its parent now.** It is passed `-ParentPid`, holds
+that process as an object (a pid is reused; a handle is not) and exits at
+the top of the next loop once it has gone. MEASURED, writing to a file so
+no broken pipe could help: watching a 4-second process, the scanner was
+gone by 10s; the control given no pid was still running. NOT reproduced:
+the original stray itself. Force-killing a node parent in this harness
+ended the scanner even with no pid passed, game or no game, so whatever
+kept the first stray alive (Electron as the parent is the obvious
+suspect) has not been seen again. The check costs nothing either way.
 
 ### 3. Not yet seen
 
@@ -116,7 +148,7 @@ npm start        # the overlay (Electron)
 npm run watch    # the same chain in a terminal - use this first
 npm run demo     # drives the chain from a fake source, no Dota needed
 npm run doctor   # no-key diagnostic
-npm test         # 65 tests, plain node assert, no runner
+npm test         # 70 tests, plain node assert, no runner
 ```
 
 Keep `npm test` green. It needs no game running and no API key.
@@ -128,11 +160,20 @@ Keep `npm test` green. It needs no game running and no API key.
 
 ### Testing the reader with no Dota running
 
-Copy `node.exe` to `fakedota.exe`, run a script that holds the chat
-strings verbatim in buffers and adds a new one every few seconds, then
-point the scanner at `-ProcessName fakedota` (`startMemorySource` takes a
-`spawnImpl`, so nothing needs a setting for it). That found three real
-faults in one sitting. **Do this before touching the live game.**
+Copy `node.exe` to `fakedota.exe` (anywhere outside the repo), run
+`fakedota.exe tools/fakedota.js`, and start the source with
+`processName: 'fakedota'`. The stand-in holds the chat strings verbatim
+in both forms, says a new one every three seconds - alternately NEAR the
+last and FAR from all of them, so windowed and wide polls each have
+something only they can find - and times a memory-heavy "frame" as a
+proxy for what the reader costs. It has found real faults every time it
+has been used. **Do this before touching the live game.**
+
+Two things the stand-in itself got wrong, so they are not rediscovered:
+going through `Buffer.from()` or printing a line leaves a second UTF-8
+copy of it in node's own buffers, right beside the last one, which made
+every "far" line look near; and ballast nothing reads is given back by
+V8 - a "1 GB" stand-in swept as 246 MB.
 
 `npm test` also parses every `.ps1` through PowerShell's own parser, with
 a deliberately broken script as a control first. The scanner is one file
@@ -192,6 +233,13 @@ though it cannot see chat.
   overlapping chunks now, and a string running to a seam is left to the
   next chunk rather than emitted truncated - a truncated line can still
   PARSE, which would put half a sentence on the overlay.
+- **A buffer that does not begin where a region begins skips its first
+  48 bytes.** The channel tag lives in the look-back before the anchor,
+  and a hit that has lost its look-back parses perfectly well as ALL
+  chat. A later chunk's first bytes are overlap the chunk before saw
+  whole; a window's are a radius away from whatever made it a window.
+  Likewise a string running to the end of a WINDOW is not whole, only
+  one running to the end of a region is.
 - The scan is **one pass** over the buffer, gated on a `bool[256]` of
   bytes that can start an anchor. It used to be one pass per anchor -
   seven passes over everything, six times slower.
@@ -212,10 +260,13 @@ though it cannot see chat.
 | full sweep, one thread | 12.6s |
 | poll of the hot allocations | **410-780ms**, ~710 MB, ~255 regions |
 | poll before the 64 MB region cap | 4.1s |
+| windowed poll | NOT measured on the game; 45 MB / ~80ms on the stand-in |
 | a sweep, single pass vs one per anchor | 1.5s vs 8.5s per gigabyte |
 
-Defaults are a 2s poll and a 2-minute sweep. **Those defaults are what
-the user called laggy**, so treat them as an upper bound, not a target.
+Defaults are a 2s poll and a 2-minute sweep. **With every poll wide and
+three threads, those defaults are what the user called laggy.** Polls are
+windowed and single-threaded now (open issue 1); whether that is enough
+is not known.
 
 ### Routes that are dead, with the measurement
 
@@ -256,7 +307,11 @@ you the first two are open questions, and they are not.
 - **Never put a backslash escape through a bash heredoc into a patch.**
   It has silently mangled a string literal three times in this project
   and in the user's other one, twice inside the very test written to
-  catch the first instance.
+  catch the first instance. Twice more on 2026-09-20, both through a
+  QUOTED heredoc feeding a node patch script: a newline escape inside a
+  template literal arrived as a real newline, and a null escape in a
+  match string stopped it matching. Use the Edit tool for any line with
+  a backslash in it.
 - **Never have two modules whose names differ only by case**
   (`lateResult.js` beside `LateResult.jsx`). Windows ignores case, the
   import resolves to the wrong file, and the failure looks like anything

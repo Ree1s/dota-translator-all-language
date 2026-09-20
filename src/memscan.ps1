@@ -15,18 +15,55 @@
 #
 # Protocol, one JSON object per line:
 #   {"t":"status","state":"waiting|scanning|reading","pid":N,"detail":"..."}
-#   {"t":"line","b64":"<the line, UTF-8, base64>"}
-#   {"t":"stat","full":bool,"ms":N,"mb":N,"regions":N,"hits":N,"hot":N}
+#   {"t":"line","b64":"<the line, UTF-8, base64>","a":<address>,"w":0|1}
+#   {"t":"stat","full":bool,"mode":"full|wide|win","ms":N,"mb":N,
+#    "regions":N,"hits":N,"hot":N,"winMb":N}
 #   {"t":"error","detail":"..."}
+#
+# Three kinds of scan, from dearest to cheapest:
+#   full  every byte of the process. Finds which ALLOCATIONS hold chat.
+#   wide  every region of those allocations (~710 MB in a live match).
+#   win   only a window around the addresses where a line has been seen.
+# "a" is where the line was found and "w" whether that was inside the
+# windows as they stood BEFORE the scan - together they are what says
+# whether windows are any good, which is NOT yet known (see CLAUDE.md).
 
 param(
   [string]$ProcessName = 'dota2',
   [int]$IntervalMs = 1000,
-  [int]$FullRescanMs = 60000
+  [int]$FullRescanMs = 60000,
+  # The process that started this one. When it is gone, so are we: a
+  # force-killed Electron used to leave this loop reading the game's
+  # memory for ever, and the game paid for it.
+  [int]$ParentPid = 0,
+  # Half-width of the window read around each remembered hit. 0 turns
+  # windows off and makes every poll a wide one, which is what every
+  # poll was before windows existed.
+  [int]$WindowMb = 4,
+  # Every Nth poll is wide whatever the windows say, so a line written
+  # somewhere new is late by at most N polls rather than lost until the
+  # next full sweep.
+  [int]$WideEvery = 5,
+  [int]$PollThreads = 1,
+  [int]$SweepThreads = 2,
+  [string]$Priority = 'BelowNormal'
 )
 
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+
+# The reader must never take a core the game wants. Below normal, its
+# threads run only when nothing of ordinary priority is ready to.
+try { [System.Diagnostics.Process]::GetCurrentProcess().PriorityClass = $Priority } catch { }
+
+$parent = $null
+if ($ParentPid -gt 0) {
+  # Held as an object, not re-looked-up by number: a pid is reused, and a
+  # handle to the process that was ours cannot be mistaken for the next
+  # process to be given its number.
+  try { $parent = Get-Process -Id $ParentPid -ErrorAction Stop } catch { exit 0 }
+}
+function ParentGone { return ($null -ne $parent) -and $parent.HasExited }
 
 Add-Type @"
 using System;
@@ -52,6 +89,7 @@ public static class DotaMem {
 
   const int VM_READ = 0x0010, QUERY = 0x0400, COMMIT = 0x1000, PRIVATE = 0x20000;
   const int MAX_STR = 512;   // a chat line is far shorter; this bounds a runaway read
+  const int LOOKBACK = 48;   // how far before the anchor the channel tag can sit
   // Regions BIGGER than the buffer used to be skipped whole. MEASURED on
   // the running game: 20 of them, 2,972 MB in all, the biggest 320 MB -
   // two fifths of the process never looked at, and nothing said so. They
@@ -92,6 +130,35 @@ public static class DotaMem {
 
   public static long LastMs, LastBytes; public static int LastRegions, LastHits;
 
+  /// A line and where it was. A = the anchor's address in the game,
+  /// W = inside the windows as they stood when the scan began, P = in
+  /// private memory (the only kind a line is ever WRITTEN to).
+  public class Hit { public string S; public long A; public bool W, P; }
+
+  // The windows: sorted, merged [start, end) ranges around every address
+  // a line has been seen at. Replaced whole, never edited, so a scan on
+  // several threads can read it without a lock.
+  static long[][] Win = new long[0][];
+
+  public static long SetWindows(IEnumerable<long> addrs, long radius) {
+    var a = new List<long>(addrs); a.Sort();
+    var w = new List<long[]>();
+    foreach (long x in a) {
+      // Page-aligned, because the region walk thinks in pages.
+      long s = Math.Max(0, x - radius) & ~0xFFFL, e = (x + radius + 0xFFF) & ~0xFFFL;
+      if (w.Count > 0 && s <= w[w.Count - 1][1]) { if (e > w[w.Count - 1][1]) w[w.Count - 1][1] = e; }
+      else w.Add(new long[] { s, e });
+    }
+    Win = w.ToArray();
+    long total = 0; foreach (var r in Win) total += r[1] - r[0];
+    return total;
+  }
+
+  static bool InWin(long[][] win, long addr) {
+    foreach (var r in win) { if (addr < r[0]) return false; if (addr < r[1]) return true; }
+    return false;
+  }
+
   static bool Readable(int protect) {
     int p = protect & 0xFF;
     return p == 0x02 || p == 0x04 || p == 0x20 || p == 0x40;
@@ -114,9 +181,19 @@ public static class DotaMem {
 
   /// One chunk, into the CALLER's list - nothing shared, so this is safe
   /// to run on several threads at once.
-  static bool ScanBuffer(byte[] buf, long n, bool last, List<string> found) {
+  ///
+  /// `whole` says the buffer begins where a region really begins. Where
+  /// it does not - a later chunk, or a window cut out of the middle of a
+  /// region - a hit in its first bytes has lost its look-back, and the
+  /// channel tag lives in the look-back: "[Allies] " cut away leaves a
+  /// line that parses perfectly well as ALL chat. Such a hit is left
+  /// alone. A later chunk's first bytes are the overlap, which the chunk
+  /// before saw whole; a window's are a radius away from anything that
+  /// made it a window.
+  static bool ScanBuffer(byte[] buf, long n, bool last, bool whole, long baseAddr,
+                         long[][] win, bool priv, List<Hit> found) {
     bool any = false;
-    for (long i = 0; i < n; i++) {
+    for (long i = whole ? 0 : LOOKBACK; i < n; i++) {
       if (!FIRST[buf[i]]) continue;
       for (int k = 0; k < PATS.Count; k++) {
         byte[] p = PATS[k];
@@ -126,12 +203,16 @@ public static class DotaMem {
         for (int j = 1; j < pl; j++) if (buf[i + j] != p[j]) { okp = false; break; }
         if (!okp) continue;
         bool cut;
-        string s = Extract(buf, n, i, 48, out cut);
+        string s = Extract(buf, n, i, LOOKBACK, out cut);
         // A string running to the end of a chunk is not whole. The next
         // chunk overlaps far enough to hold it entire, so it is left to
         // that one rather than emitted truncated - a truncated line can
         // still PARSE, which would put half a sentence on the overlay.
-        if (s != null && (last || !cut)) { found.Add(s); any = true; }
+        if (s != null && (last || !cut)) {
+          long a = baseAddr + i;
+          found.Add(new Hit { S = s, A = a, W = InWin(win, a), P = priv });
+          any = true;
+        }
         break;      // one anchor per position is enough
       }
     }
@@ -154,8 +235,10 @@ public static class DotaMem {
   ///
   /// Returns the lines found; fills the Last* counters.
   /// `hot` receives the allocation bases that produced a hit.
-  public static List<string> Scan(int pid, HashSet<long> only, HashSet<long> hot) {
-    var found = new List<string>();
+  /// `windowed` reads only the parts of those regions inside the windows.
+  public static List<Hit> Scan(int pid, HashSet<long> only, HashSet<long> hot, bool windowed, int threadsWanted) {
+    var found = new List<Hit>();
+    long[][] win = Win;       // one snapshot for the whole scan
     LastMs = 0; LastBytes = 0; LastRegions = 0; LastHits = 0;
     var sw = System.Diagnostics.Stopwatch.StartNew();
 
@@ -168,10 +251,17 @@ public static class DotaMem {
     // It is memory bandwidth as much as processor: 410 MB took 1.0s on
     // one thread, and a poll that eats a core is a poll that costs frames
     // in the game it is reading.
-    var work = new List<long[]>();       // {base, size, allocationBase, isPrivate}
-    long addr = 0;
+    // {base, size, allocationBase, isPrivate, startsRegion, endsRegion}
+    var work = new List<long[]>();
+    long addr = 0, stopAt = long.MaxValue;
+    if (windowed) {
+      // Nothing outside the windows will be read, so nothing outside
+      // them need be asked about either.
+      if (win.Length == 0) { LastMs = 0; CloseHandle(h); return found; }
+      addr = win[0][0]; stopAt = win[win.Length - 1][1];
+    }
     try {
-      while (true) {
+      while (addr < stopAt) {
         MBI m;
         if (VirtualQueryEx(h, (IntPtr)addr, out m, Marshal.SizeOf(typeof(MBI))) == 0) break;
         long size = (long)m.RegionSize, bas = (long)m.BaseAddress, ab = (long)m.AllocationBase;
@@ -179,7 +269,20 @@ public static class DotaMem {
 
         bool want = m.State == COMMIT && Readable(m.Protect);
         if (want && only != null && (!only.Contains(ab) || size > POLL_MAX_REGION)) want = false;
-        if (want) work.Add(new long[] { bas, size, ab, m.Type == PRIVATE ? 1 : 0 });
+        long priv = m.Type == PRIVATE ? 1 : 0;
+        if (want && !windowed) work.Add(new long[] { bas, size, ab, priv, 1, 1 });
+        if (want && windowed) {
+          // Asking about an address in the MIDDLE of a region answers
+          // from that page on, so `bas` is only known to start a region
+          // when it is not where a window made us begin.
+          long end = bas + size;
+          foreach (var r in win) {
+            if (r[1] <= bas) continue;
+            if (r[0] >= end) break;
+            long s = Math.Max(bas, r[0]), e = Math.Min(end, r[1]);
+            work.Add(new long[] { s, e - s, ab, priv, (s == bas && bas != win[0][0]) ? 1 : 0, e == end ? 1 : 0 });
+          }
+        }
 
         long next = bas + size;
         if (next <= addr) break;
@@ -189,14 +292,15 @@ public static class DotaMem {
       LastRegions = work.Count;
       long bytes = 0, hits = 0;
       var gate = new object();
-      int threads = Math.Max(1, Math.Min(4, Environment.ProcessorCount - 1));
+      int threads = Math.Max(1, Math.Min(Math.Min(4, threadsWanted), Environment.ProcessorCount - 1));
 
       Parallel.For<byte[]>(0, work.Count,
         new ParallelOptions { MaxDegreeOfParallelism = threads },
         () => new byte[CHUNK],                       // one buffer per worker
         (i, state, buf) => {
           long bas = work[i][0], size = work[i][1], ab = work[i][2];
-          var mine = new List<string>();
+          bool priv = work[i][3] == 1, starts = work[i][4] == 1, ends = work[i][5] == 1;
+          var mine = new List<Hit>();
           bool any = false;
           long read = 0;
           for (long off = 0; off < size; off += CHUNK - OVERLAP) {
@@ -206,7 +310,10 @@ public static class DotaMem {
             long n = (long)got;
             if (n <= 0) break;
             read += n;
-            if (ScanBuffer(buf, n, off + ask >= size, mine)) any = true;
+            // A string running off the end is only whole if that end is
+            // the region's; a window's end is just where we stopped.
+            bool last = ends && off + ask >= size;
+            if (ScanBuffer(buf, n, last, starts && off == 0, bas + off, win, priv, mine)) any = true;
             if (n < ask) break;          // short read: the rest is not there
           }
           lock (gate) {
@@ -240,6 +347,11 @@ function Emit($obj) {
 }
 
 $hot = New-Object 'System.Collections.Generic.HashSet[long]'
+# Every address a line has been seen at since the last full sweep. The
+# windows are rebuilt from this, so they follow the chat as it moves.
+$addrs = New-Object 'System.Collections.Generic.HashSet[long]'
+$winBytes = 0
+$polls = 0
 $lastFull = [DateTime]::MinValue
 $lastPid = 0
 
@@ -261,11 +373,12 @@ $announcedSearch = $false
 Emit @{ t = 'status'; state = 'waiting'; detail = 'looking for Dota' }
 
 while ($true) {
+  if (ParentGone) { exit 0 }
   $proc = Get-Process -Name $ProcessName -ErrorAction SilentlyContinue | Select-Object -First 1
   if (-not $proc) {
     if ($lastPid -ne 0) {
       # Dota closed: the addresses we learned mean nothing for the next one.
-      $hot.Clear(); $lastPid = 0; $lastFull = [DateTime]::MinValue; $idleWaitMs = 0; $announcedSearch = $false
+      $hot.Clear(); $addrs.Clear(); $winBytes = [DotaMem]::SetWindows($addrs, 0); $lastPid = 0; $lastFull = [DateTime]::MinValue; $idleWaitMs = 0; $announcedSearch = $false
       Emit @{ t = 'status'; state = 'waiting'; detail = 'Dota closed' }
     }
     Start-Sleep -Milliseconds 2000
@@ -273,7 +386,7 @@ while ($true) {
   }
 
   if ($proc.Id -ne $lastPid) {
-    $hot.Clear(); $lastFull = [DateTime]::MinValue; $idleWaitMs = 0; $announcedSearch = $false
+    $hot.Clear(); $addrs.Clear(); $winBytes = [DotaMem]::SetWindows($addrs, 0); $lastFull = [DateTime]::MinValue; $idleWaitMs = 0; $announcedSearch = $false
     $lastPid = $proc.Id
     Emit @{ t = 'status'; state = 'reading'; pid = $proc.Id; detail = 'attached' }
   }
@@ -305,15 +418,29 @@ while ($true) {
   }
 
   try {
+    # Which kind of scan. A poll is windowed unless windows are off, there
+    # are none yet, or it is this one's turn to be wide.
+    if ($full) { $mode = 'full'; $polls = 0 }
+    else {
+      $polls++
+      $mode = if ($WindowMb -le 0 -or $winBytes -le 0 -or ($polls % $WideEvery) -eq 0) { 'wide' } else { 'win' }
+    }
     $only = if ($full) { $null } else { $hot }
+    $threads = if ($full) { $SweepThreads } else { $PollThreads }
     $fresh = New-Object 'System.Collections.Generic.HashSet[long]'
-    $lines = [DotaMem]::Scan($proc.Id, $only, $fresh)
+    $lines = [DotaMem]::Scan($proc.Id, $only, $fresh, ($mode -eq 'win'), $threads)
 
     if ($full) {
       $hot.Clear()
+      $addrs.Clear()
       $lastFull = [DateTime]::UtcNow
     }
     foreach ($b in $fresh) { [void]$hot.Add($b) }
+    # A freed or half-overwritten line counts here although chatmem will
+    # throw it away: it still marks a place chat is written to.
+    $grew = $full
+    foreach ($h in $lines) { if ($h.P -and $addrs.Add($h.A)) { $grew = $true } }
+    if ($grew) { $winBytes = [DotaMem]::SetWindows($addrs, [long]$WindowMb * 1MB) }
     # A hot region that stops producing is dropped at the next full sweep,
     # so this cannot grow into the whole address space.
 
@@ -335,13 +462,13 @@ while ($true) {
     # the console codepage is not UTF-8, which depends on the machine and
     # on how the process was spawned. Base64 is ASCII and cannot be
     # re-encoded on the way out; the reader decodes it as UTF-8.
-    foreach ($s in $lines) {
-      $b64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($s))
-      Emit @{ t = 'line'; b64 = $b64 }
+    foreach ($h in $lines) {
+      $b64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($h.S))
+      Emit @{ t = 'line'; b64 = $b64; a = $h.A; w = [int]$h.W }
     }
 
     Emit @{
-      t = 'stat'; full = $full; ms = [DotaMem]::LastMs;
+      t = 'stat'; full = $full; mode = $mode; winMb = [int]($winBytes / 1MB); ms = [DotaMem]::LastMs;
       mb = [int]([DotaMem]::LastBytes / 1MB); regions = [DotaMem]::LastRegions;
       hits = [DotaMem]::LastHits; hot = $hot.Count
     }

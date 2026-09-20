@@ -18,15 +18,43 @@ export const SCRIPT = path.join(HERE, 'memscan.ps1');
 // optional install. The script uses nothing newer than 5.1.
 export const POWERSHELL = 'powershell.exe';
 
-export function scannerArgs(script = SCRIPT, { intervalMs = 1000, fullRescanMs = 60000 } = {}) {
-  return [
+export function scannerArgs(script = SCRIPT, {
+  intervalMs = 1000,
+  fullRescanMs = 60000,
+  parentPid = process.pid,
+  windowMb,
+  wideEvery,
+  processName,
+} = {}) {
+  const args = [
     '-NoProfile',
     '-NonInteractive',
     '-ExecutionPolicy', 'Bypass',
     '-File', script,
     '-IntervalMs', String(intervalMs),
     '-FullRescanMs', String(fullRescanMs),
+    // So the helper stops when we do, however we stop. child.kill() only
+    // happens on a clean quit; a force-killed Electron left the scanner
+    // reading the game's memory with nobody listening.
+    '-ParentPid', String(parentPid),
   ];
+  // Left to the script's own defaults unless somebody has an opinion.
+  if (Number.isFinite(windowMb)) args.push('-WindowMb', String(windowMb));
+  if (Number.isFinite(wideEvery)) args.push('-WideEvery', String(wideEvery));
+  if (processName) args.push('-ProcessName', processName);
+  return args;
+}
+
+/**
+ * How far a newly found line was from the nearest place a line had been
+ * seen before. This is the number that sizes the scan window, and the
+ * one thing about windows that only a live game can say.
+ */
+export function nearestDistance(addr, known) {
+  if (!Number.isFinite(addr) || !known || known.length === 0) return null;
+  let best = Infinity;
+  for (const k of known) best = Math.min(best, Math.abs(addr - k));
+  return best;
 }
 
 /**
@@ -47,6 +75,9 @@ export function parseEvent(raw) {
     // as mojibake on any machine whose console is not UTF-8.
     let text;
     try { text = Buffer.from(o.b64, 'base64').toString('utf8'); } catch { return null; }
+    // Where it was found, when the helper says. A user-space address is
+    // under 2^47, so a JS number holds it exactly.
+    if (typeof o.a === 'number') return { kind: 'line', text, addr: o.a, inWindow: o.w === 1 };
     return { kind: 'line', text };
   }
   if (o.t === 'status') return { kind: 'status', state: o.state, detail: o.detail, pid: o.pid };
@@ -71,6 +102,10 @@ export function startMemorySource({
   onStatus = () => {},
   onStat = () => {},
   onUnknownTag = () => {},
+  onPlacement = () => {},
+  windowMb,
+  wideEvery,
+  processName,
 } = {}) {
   const tracker = createLineTracker();
   const seenUnknown = new Set();
@@ -84,6 +119,15 @@ export function startMemorySource({
   let stopped = false;
   let buffer = '';
   let lastPid = 0;
+  // Addresses lines have been seen at, mirroring what the helper builds
+  // its windows from: this scan's are held back until its stat arrives,
+  // so a new line is measured against where chat WAS, not against the
+  // second copy of itself found in the same scan.
+  let known = [];
+  let pendingAddrs = [];
+  let pendingPlacements = [];
+
+  function forgetPlaces() { known = []; pendingAddrs = []; pendingPlacements = []; }
 
   function handle(ev) {
     if (!ev) return;
@@ -93,11 +137,13 @@ export function startMemorySource({
         // A different game: what we remembered belongs to the old one,
         // and its backlog must be primed past rather than announced.
         tracker.reset();
+        forgetPlaces();
         priming = true;
         lastPid = ev.pid;
       }
       if (ev.state === 'waiting') {
         tracker.reset();
+        forgetPlaces();
         priming = true;
         lastPid = 0;
         onStatus({ kind: 'waiting', text: 'Waiting for Dota 2.' });
@@ -113,6 +159,10 @@ export function startMemorySource({
       // The sweep is over, so everything it found is now remembered and
       // whatever turns up next is genuinely new.
       priming = false;
+      for (const p of pendingPlacements) onPlacement({ ...p, mode: ev.mode || (ev.full ? 'full' : 'wide') });
+      known = ev.full ? pendingAddrs : known.concat(pendingAddrs);
+      pendingAddrs = [];
+      pendingPlacements = [];
       onStat(ev);
       return;
     }
@@ -121,6 +171,7 @@ export function startMemorySource({
     if (ev.kind === 'line') {
       // One scan's findings arrive as separate events, so they are
       // filtered one at a time; the tracker is what makes that safe.
+      if (Number.isFinite(ev.addr)) pendingAddrs.push(ev.addr);
       const { lines, unknownTags } = readMemoryFindings([ev.text]);
       // A channel we have not named would otherwise never be translated
       // and nobody would know why. Said once per tag, not per line.
@@ -131,6 +182,13 @@ export function startMemorySource({
       }
       for (const line of tracker.accept(lines)) {
         if (priming) continue;        // remembered, deliberately not shown
+        // Every NEW line counts here, English ones too: where the game
+        // puts a line does not depend on what language it is in.
+        if (Number.isFinite(ev.addr)) {
+          pendingPlacements.push({
+            inWindow: ev.inWindow, distance: nearestDistance(ev.addr, known), channel: line.channel,
+          });
+        }
         // The Cyrillic gate, exactly as the log source used it: Dota's
         // own chat-wheel lines are already in the reader's language
         // ("Pushing mid"), and translating those would be noise.
@@ -142,7 +200,7 @@ export function startMemorySource({
 
   function start() {
     if (stopped) return;
-    child = spawnImpl(POWERSHELL, scannerArgs(SCRIPT, { intervalMs, fullRescanMs }), {
+    child = spawnImpl(POWERSHELL, scannerArgs(SCRIPT, { intervalMs, fullRescanMs, windowMb, wideEvery, processName }), {
       windowsHide: true,
       stdio: ['ignore', 'pipe', 'pipe'],
     });

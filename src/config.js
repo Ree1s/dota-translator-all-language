@@ -21,6 +21,12 @@ export const DEFAULTS = {
   // a quarter, and a chat line is on screen for about seven seconds.
   scanIntervalMs: 2000,     // how often to re-read the chat out of memory
   fullRescanMs: 120000,     // how often to sweep the whole process again
+  // Most polls read only this many MB either side of where a line has
+  // been seen, and every Nth reads the whole of the allocations that hold
+  // chat. 0 MB turns windows off. NOT yet sized against a live game: the
+  // 4 is a guess, and learn.log's "placement" lines are what replace it.
+  scanWindowMb: 4,
+  scanWideEvery: 5,
   scripts: ['cyrillic'],    // which writing systems to translate
   batchMs: 400,             // how long to gather lines before one call
   holdSeconds: 14,          // how long a line stays on the overlay

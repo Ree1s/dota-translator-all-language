@@ -9,7 +9,7 @@ import { parseChatLine, chatToTranslate, needsTranslation, libraryPaths, logCand
 import { buildRequest, replyTextFrom, translationsFrom, translateBatch } from './src/translate.js';
 import { createPipeline } from './src/pipeline.js';
 import { parseMemoryChatLine, parseMarkupChatLine, createLineTracker, readMemoryFindings, unknownChannelTag, PERSONA, MAX_LINE, MAX_NAME } from './src/chatmem.js';
-import { parseEvent, scannerArgs, POWERSHELL, startMemorySource } from './src/memsource.js';
+import { parseEvent, scannerArgs, nearestDistance, POWERSHELL, startMemorySource } from './src/memsource.js';
 import { EventEmitter } from 'node:events';
 import { mergeConfig, DEFAULTS } from './src/config.js';
 
@@ -579,6 +579,64 @@ ok('the scanner is run through Windows PowerShell with no profile', () => {
   assert.equal(POWERSHELL, 'powershell.exe');   // not pwsh: an optional install
 });
 
+ok('the scanner is told whose child it is, so it can stop when we are gone', () => {
+  // A force-killed parent never calls child.kill(). MEASURED: a scanner
+  // given a pid exits within a poll of that process going; one given
+  // none was still running ten seconds later.
+  const args = scannerArgs('S.ps1');
+  assert.equal(args[args.indexOf('-ParentPid') + 1], String(process.pid));
+});
+
+ok('window settings reach the scanner only when somebody has set them', () => {
+  assert.ok(!scannerArgs('S.ps1').includes('-WindowMb'));
+  const args = scannerArgs('S.ps1', { windowMb: 0, wideEvery: 3, processName: 'fakedota' });
+  assert.equal(args[args.indexOf('-WindowMb') + 1], '0');     // 0 is a setting, not an absence
+  assert.equal(args[args.indexOf('-WideEvery') + 1], '3');
+  assert.equal(args[args.indexOf('-ProcessName') + 1], 'fakedota');
+});
+
+ok('a line says where it was found and whether a window covered it', () => {
+  const b64 = Buffer.from('[Allies] a: гг', 'utf8').toString('base64');
+  const ev = parseEvent(JSON.stringify({ t: 'line', b64, a: 140711718912000, w: 1 }));
+  assert.equal(ev.addr, 140711718912000);      // above 2^32, below 2^53: exact
+  assert.equal(ev.inWindow, true);
+  assert.equal(parseEvent(JSON.stringify({ t: 'line', b64, a: 5, w: 0 })).inWindow, false);
+});
+
+ok('a new line is measured against where chat WAS, not against its own second copy', () => {
+  // Every line is in memory twice, plain and as markup, a few hundred
+  // bytes apart. Measured against this scan's own finds, every line
+  // would be "right next to a known hit" and the window would look
+  // perfect whatever the truth was.
+  assert.equal(nearestDistance(100, []), null);
+  assert.equal(nearestDistance(100, [40, 130, 900]), 30);
+
+  const placed = [];
+  const { source, feed } = fakeSource({ onPlacement: (p) => placed.push(p) });
+  const line = (s, a, w) => feed({ t: 'line', b64: Buffer.from(s, 'utf8').toString('base64'), a, w });
+  feed({ t: 'status', state: 'reading', pid: 7 });
+  line('[Allies] Иван: старое', 1000, 0);                        // backlog
+  feed({ t: 'stat', full: true, mode: 'full', ms: 1 });
+  assert.deepEqual(placed, [], 'the backlog is not a placement');
+
+  line('[Allies] Иван: далеко', 9000, 0);
+  line('[Allies] Иван: далеко', 9300, 0);                        // its second copy
+  assert.deepEqual(placed, [], 'a placement waits for its scan to end');
+  feed({ t: 'stat', full: false, mode: 'wide', ms: 1 });
+  assert.deepEqual(placed, [{ inWindow: false, distance: 8000, channel: 'team', mode: 'wide' }]);
+
+  line('[Allies] Pernille: Pushing mid', 9400, 1);               // English counts too
+  feed({ t: 'stat', full: false, mode: 'win', ms: 1 });
+  assert.deepEqual(placed[1], { inWindow: true, distance: 100, channel: 'team', mode: 'win' });
+  source.stop();
+});
+
+ok('windows have defaults, and a config can turn them off', () => {
+  assert.equal(mergeConfig({}).scanWindowMb, 4);
+  assert.equal(mergeConfig({}).scanWideEvery, 5);
+  assert.equal(mergeConfig({ scanWindowMb: 0 }).scanWindowMb, 0);
+});
+
 await okAsync('a call that never arrived is made once more, an answered one is not', async () => {
   // The first live game this ever read timed out on one of its two
   // lines, so this is the common case, not the rare one.
@@ -641,6 +699,9 @@ ok('every script parses', () => {
   const files = fs.readdirSync('src').filter((f) => f.endsWith('.js') || f.endsWith('.cjs'));
   assert.ok(files.length >= 7, 'expected the whole src folder, got ' + files.length);
   for (const f of files) execFileSync(process.execPath, ['--check', path.join('src', f)]);
+  // The stand-in game too: it is what the reader is tested against
+  // before the live game is, so it being broken costs a live session.
+  execFileSync(process.execPath, ['--check', path.join('tools', 'fakedota.js')]);
 });
 
 console.log('\n' + passed + ' passed');

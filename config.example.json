@@ -5,6 +5,8 @@
   "source": "memory",
   "scanIntervalMs": 2000,
   "fullRescanMs": 120000,
+  "scanWindowMb": 4,
+  "scanWideEvery": 5,
   "scripts": [
     "cyrillic"
   ],
