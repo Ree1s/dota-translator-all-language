@@ -8,6 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from './config.js';
 import { startWatching } from './watcher.js';
+import { startWatchingMemory } from './memwatcher.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const cfg = loadConfig();
@@ -69,7 +70,10 @@ function start() {
     send('status', { kind: 'error', text: 'No Gemini API key. Put one in config.json.' });
     return;
   }
-  watcher = startWatching(cfg, {
+  // 'memory' reads the running game, which is the only place the chat
+  // actually is; 'log' is the old console.log reader, kept as a fallback.
+  const start = cfg.source === 'log' ? startWatching : startWatchingMemory;
+  watcher = start(cfg, {
     onStatus: (s) => send('status', s),
     onResult: (row) => send('line', row),
   });

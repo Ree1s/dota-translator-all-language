@@ -2,7 +2,12 @@
   "geminiApiKey": "PASTE_YOUR_KEY_HERE",
   "model": "gemini-3.5-flash-lite",
   "logPath": "",
-  "scripts": ["cyrillic"],
+  "source": "memory",
+  "scanIntervalMs": 1000,
+  "fullRescanMs": 60000,
+  "scripts": [
+    "cyrillic"
+  ],
   "holdSeconds": 14,
   "maxLines": 6,
   "showOriginal": true,

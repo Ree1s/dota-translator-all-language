@@ -5,6 +5,7 @@
 
 import { loadConfig } from './config.js';
 import { startWatching } from './watcher.js';
+import { startWatchingMemory } from './memwatcher.js';
 
 const cfg = loadConfig();
 if (!cfg.geminiApiKey) {
@@ -14,8 +15,19 @@ if (!cfg.geminiApiKey) {
 
 const time = () => new Date().toTimeString().slice(0, 8);
 
-startWatching(cfg, {
-  onStatus: (s) => console.log(`[${time()}] ${s.text}${s.file ? ' (' + s.file + ')' : ''}`),
+// 'memory' reads the running game, which is the only place chat actually
+// is; 'log' is the old console.log reader, kept as a fallback.
+const start = cfg.source === 'log' ? startWatching : startWatchingMemory;
+
+start(cfg, {
+  onStatus: (s) => {
+    if (s.kind === 'stat') {
+      const st = s.stat || {};
+      console.log(`[${time()}] scan ${st.full ? 'full' : 'quick'} ${st.ms}ms ${st.mb}MB ${st.regions} regions, ${st.hot} hot`);
+      return;
+    }
+    console.log(`[${time()}] ${s.text}${s.file ? ' (' + s.file + ')' : ''}`);
+  },
   onResult: (row) => {
     console.log(`[${time()}] ${row.name}: ${row.en}`);
     if (cfg.showOriginal && row.translated) console.log(`           ${row.text}`);

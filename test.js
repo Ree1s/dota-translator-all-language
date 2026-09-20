@@ -8,6 +8,9 @@ import { execFileSync } from 'node:child_process';
 import { parseChatLine, chatToTranslate, needsTranslation, libraryPaths, logCandidates, LogTail, findDotaLog } from './src/chatlog.js';
 import { buildRequest, replyTextFrom, translationsFrom, translateBatch } from './src/translate.js';
 import { createPipeline } from './src/pipeline.js';
+import { parseMemoryChatLine, createLineTracker, readMemoryFindings, unknownChannelTag, MAX_LINE, MAX_NAME } from './src/chatmem.js';
+import { parseEvent, scannerArgs, POWERSHELL, startMemorySource } from './src/memsource.js';
+import { EventEmitter } from 'node:events';
 import { mergeConfig, DEFAULTS } from './src/config.js';
 
 let passed = 0;
@@ -298,6 +301,221 @@ ok('the env key wins over the file', () => {
   process.env.GEMINI_API_KEY = 'from-env';
   assert.equal(mergeConfig({ geminiApiKey: 'from-file' }).geminiApiKey, 'from-env');
   if (before === undefined) delete process.env.GEMINI_API_KEY; else process.env.GEMINI_API_KEY = before;
+});
+
+console.log('chatmem');
+
+ok('a line read out of memory splits into channel, name and message', () => {
+  assert.deepEqual(parseMemoryChatLine('  [Allies] unc status: не фидите, у них варды на руне'), {
+    channel: 'team', channelTag: 'Allies', name: 'unc status', text: 'не фидите, у них варды на руне',
+  });
+  assert.deepEqual(parseMemoryChatLine('[All] Иван: го рошан'), {
+    channel: 'all', channelTag: 'All', name: 'Иван', text: 'го рошан',
+  });
+});
+
+ok('a message keeping its own colon is not split twice', () => {
+  assert.equal(parseMemoryChatLine('[All] Vlad: 10:30 rosh').text, '10:30 rosh');
+});
+
+ok("Panorama's markup copy of a line is not read as a player", () => {
+  // The same line exists twice in memory; the markup copy must not win.
+  const markup = '[Allies] <span class="ChatPersona"><span class="PlayerColor4">준우</span></span>: gg';
+  assert.equal(parseMemoryChatLine(markup), null);
+});
+
+ok('freed and half-overwritten memory is not a chat line', () => {
+  assert.equal(parseMemoryChatLine('[Allies]  : x'), null);
+  assert.equal(parseMemoryChatLine('[Allies] name: ���'), null);
+  assert.equal(parseMemoryChatLine('[Allies] '), null);
+  assert.equal(parseMemoryChatLine('[Allies] name: '), null);
+  assert.equal(parseMemoryChatLine('e_dive_corrosive_rope02.vpcf'), null);
+  assert.equal(parseMemoryChatLine(''), null);
+  assert.equal(parseMemoryChatLine(null), null);
+});
+
+ok('an unknown channel tag is refused', () => {
+  // Closed list on purpose: an unknown tag is how a false positive gets in.
+  assert.equal(parseMemoryChatLine('[Steam] Loaded: 12 items'), null);
+  assert.equal(parseMemoryChatLine('[Console] thing: value'), null);
+});
+
+ok('a line longer than a player could send is not a line', () => {
+  assert.equal(parseMemoryChatLine('[All] n: ' + 'x'.repeat(MAX_LINE)), null);
+  assert.equal(parseMemoryChatLine('[All] ' + 'n'.repeat(MAX_NAME + 1) + ': hi'), null);
+});
+
+ok('the same line living at many addresses is ONE line', () => {
+  // The scan finds every copy; the player said it once.
+  const t = createLineTracker();
+  const one = parseMemoryChatLine('[Allies] unc status: иди мид');
+  assert.equal(t.accept([one, one, one]).length, 1);
+});
+
+ok('a line already seen is not handed over twice', () => {
+  const t = createLineTracker();
+  const one = parseMemoryChatLine('[Allies] unc status: иди мид');
+  assert.equal(t.accept([one, one]).length, 1);
+  assert.equal(t.accept([one, one]).length, 0);
+  assert.equal(t.accept([one]).length, 0);
+});
+
+ok('the same words repeated are shown once, on purpose', () => {
+  // The price of dedup-by-content. Counting copies to catch a genuine
+  // repeat does not work: the number of buffers a line lives in is not
+  // fixed, so a rising count cannot be told from ordinary churn, and that
+  // rule invents messages nobody sent.
+  const t = createLineTracker();
+  const one = parseMemoryChatLine('[Allies] unc status: иди мид');
+  assert.equal(t.accept([one]).length, 1);
+  assert.equal(t.accept([one, one]).length, 0);
+});
+
+ok('a line said again after the tracker has rolled over is new again', () => {
+  const t = createLineTracker({ capacity: 2 });
+  const one = parseMemoryChatLine('[Allies] unc status: иди мид');
+  assert.equal(t.accept([one]).length, 1);
+  t.accept([parseMemoryChatLine('[All] a: x'), parseMemoryChatLine('[All] b: y')]);
+  assert.equal(t.accept([one]).length, 1);
+});
+
+ok('two players saying the same words stay two lines', () => {
+  const t = createLineTracker();
+  const a = parseMemoryChatLine('[Allies] Иван: гг');
+  const b = parseMemoryChatLine('[Allies] Пётр: гг');
+  assert.equal(t.accept([a, b]).length, 2);
+});
+
+ok('the tracker does not grow without limit', () => {
+  const t = createLineTracker({ capacity: 10 });
+  for (let i = 0; i < 50; i++) t.accept([parseMemoryChatLine('[All] n: msg' + i)]);
+  assert.ok(t.size <= 10, 'kept ' + t.size);
+});
+
+ok('a new match forgets the last one', () => {
+  const t = createLineTracker();
+  const one = parseMemoryChatLine('[Allies] unc status: иди мид');
+  assert.equal(t.accept([one]).length, 1);
+  t.reset();
+  assert.equal(t.accept([one]).length, 1);
+});
+
+ok('findings are split into lines and rejects', () => {
+  const { lines, rejected } = readMemoryFindings([
+    '  [Allies] unc status: иди мид',
+    'e_dive_corrosive_rope02.vpcf',
+    '[All] Иван: го рошан',
+    '',
+  ]);
+  assert.equal(lines.length, 2);
+  assert.equal(rejected, 2);
+});
+
+ok('a channel we have not named is REPORTED, not silently dropped', () => {
+  // The closed tag list fails silently otherwise: a real channel would
+  // simply never be translated and nobody would know why.
+  assert.equal(unknownChannelTag('[Whisper] Иван: привет'), 'Whisper');
+  assert.equal(unknownChannelTag('[Allies] Иван: привет'), null);   // known
+  assert.equal(unknownChannelTag('not a line at all'), null);
+  const { unknownTags } = readMemoryFindings([
+    '[Whisper] a: привет', '[Whisper] b: пока', '[Allies] c: гг',
+  ]);
+  assert.deepEqual(unknownTags, ['Whisper']);   // once per tag, not per line
+});
+
+console.log('memsource');
+
+// A stand-in for the PowerShell helper: events are pushed in by hand, so
+// the whole source can be exercised with no Dota and no child process.
+function fakeSource(opts = {}) {
+  const seen = [];
+  const child = new EventEmitter();
+  child.stdout = new EventEmitter();
+  child.stdout.setEncoding = () => {};
+  child.stderr = new EventEmitter();
+  child.stderr.setEncoding = () => {};
+  child.kill = () => {};
+  const source = startMemorySource({
+    spawnImpl: () => child,
+    onMessage: (m) => seen.push(m),
+    ...opts,
+  });
+  const feed = (obj) => {
+    const line = obj.t === 'line' && obj.s !== undefined
+      ? { t: 'line', b64: Buffer.from(obj.s, 'utf8').toString('base64') }
+      : obj;
+    child.stdout.emit('data', JSON.stringify(line) + '\n');
+  };
+  return { source, feed, seen, child };
+}
+
+ok('a line event decodes from base64 as UTF-8', () => {
+  const s = '  [Allies] Луиза: не фидите';
+  const raw = JSON.stringify({ t: 'line', b64: Buffer.from(s, 'utf8').toString('base64') });
+  assert.deepEqual(parseEvent(raw), { kind: 'line', text: s });
+});
+
+ok('a half-written line on the pipe is not an error', () => {
+  assert.equal(parseEvent('{"t":"li'), null);
+  assert.equal(parseEvent(''), null);
+  assert.equal(parseEvent('   '), null);
+  assert.equal(parseEvent('not json'), null);
+  assert.equal(parseEvent('{"t":"line"}'), null);       // no payload
+});
+
+ok('status and stat events come through', () => {
+  assert.deepEqual(parseEvent('{"t":"status","state":"reading","pid":7}'),
+    { kind: 'status', state: 'reading', detail: undefined, pid: 7 });
+  assert.equal(parseEvent('{"t":"stat","ms":400}').kind, 'stat');
+  assert.deepEqual(parseEvent('{"t":"error","detail":"boom"}'), { kind: 'error', detail: 'boom' });
+});
+
+ok('the backlog a game already holds is primed past, not announced', () => {
+  // Attaching mid-match finds every line said so far. Showing them would
+  // dump the whole match onto the overlay the moment you start the app -
+  // the same reason LogTail starts at the END of the log.
+  const { source, feed, seen } = fakeSource();
+  feed({ t: 'status', state: 'reading', pid: 7 });
+  feed({ t: 'line', s: '[Allies] Иван: старое сообщение' });   // backlog
+  feed({ t: 'stat', full: true, ms: 1 });                       // sweep over
+  assert.deepEqual(seen, []);
+  feed({ t: 'line', s: '[Allies] Иван: новое сообщение' });     // said now
+  assert.deepEqual(seen.map((m) => m.text), ['новое сообщение']);
+  source.stop();
+});
+
+ok('a new game primes again rather than replaying the last one', () => {
+  const { source, feed, seen } = fakeSource();
+  feed({ t: 'status', state: 'reading', pid: 7 });
+  feed({ t: 'stat', full: true, ms: 1 });
+  feed({ t: 'line', s: '[Allies] Иван: первая игра' });
+  assert.equal(seen.length, 1);
+  feed({ t: 'status', state: 'reading', pid: 8 });              // Dota restarted
+  feed({ t: 'line', s: '[Allies] Иван: старое сообщение' });
+  feed({ t: 'stat', full: true, ms: 1 });
+  assert.equal(seen.length, 1, 'the new match backlog was announced');
+  source.stop();
+});
+
+ok('a line already in the language the reader speaks is never sent', () => {
+  // Dota's own chat wheel is localised per client, so "Pushing mid"
+  // arrives in English and a call to translate it would be pure noise.
+  const { source, feed, seen } = fakeSource();
+  feed({ t: 'status', state: 'reading', pid: 7 });
+  feed({ t: 'stat', full: true, ms: 1 });
+  feed({ t: 'line', s: '[Allies] Pernille: Pushing mid' });
+  feed({ t: 'line', s: '[Allies] Иван: го мид' });
+  assert.deepEqual(seen.map((m) => m.text), ['го мид']);
+  source.stop();
+});
+
+ok('the scanner is run through Windows PowerShell with no profile', () => {
+  const args = scannerArgs('S.ps1', { intervalMs: 250, fullRescanMs: 5000 });
+  assert.ok(args.includes('-NoProfile'));
+  assert.ok(args.includes('-NonInteractive'));
+  assert.equal(args[args.indexOf('-File') + 1], 'S.ps1');
+  assert.equal(args[args.indexOf('-IntervalMs') + 1], '250');
+  assert.equal(POWERSHELL, 'powershell.exe');   // not pwsh: an optional install
 });
 
 console.log('build');

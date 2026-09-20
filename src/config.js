@@ -13,6 +13,9 @@ export const DEFAULTS = {
   geminiApiKey: '',
   model: 'gemini-3.5-flash-lite',
   logPath: '',              // blank = find the Steam install
+  source: 'memory',         // 'memory' reads the game; 'log' reads console.log
+  scanIntervalMs: 1000,     // how often to re-read the chat out of memory
+  fullRescanMs: 60000,      // how often to sweep the whole process again
   scripts: ['cyrillic'],    // which writing systems to translate
   batchMs: 400,             // how long to gather lines before one call
   holdSeconds: 14,          // how long a line stays on the overlay
