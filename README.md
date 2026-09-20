@@ -122,7 +122,9 @@ the memory reading runs through PowerShell, which Windows already has.
 | `geminiApiKey` | your key. `GEMINI_API_KEY` in the environment wins over it |
 | `model` | `gemini-3.5-flash-lite` by default |
 | `source` | `memory` reads the game. `log` is the old console.log reader, which cannot see chat |
-| `scanIntervalMs` | how often to re-read the chat (1000) |
+| `chatPanel` | read the game's own chat list - a few KB, four times a second - instead of searching its memory for chat. The searching below only happens until the list is found, or if it cannot be (true) |
+| `panelIntervalMs` | how often to read the chat list (250) |
+| `scanIntervalMs` | how often to re-read the chat when searching (1000) |
 | `fullRescanMs` | how often to sweep the whole process again (120000) |
 | `scanWindowMb` | most re-reads only look this many MB either side of where chat was last seen; 0 reads everything every time (4) |
 | `scanWideCapMb` | the biggest memory region the look-everywhere re-read will open, in MB; 0 opens them all, 64 is lighter on the PC and can miss an all-chat line for a long time (0) |
@@ -156,7 +158,18 @@ colour. The markup is what this anchors on, because **all-chat has no
 channel tag**: team chat reads `[Allies] name: text` while all-chat is just
 `name: text`, which is far too common a shape to search 4 GB for.
 
-A full sweep reads every committed page Dota has - 7.5 GB in a real match
+**It reads the chat list itself where it can.** Dota's HUD keeps its chat
+as a list of lines (a UI panel called `ChatLinesPanel`). Once that list is
+found - one search of the game's memory, about ten seconds, at low
+priority - reading chat is a few kilobytes four times a second, and a line
+is on its way to the translator a fraction of a second after it is said.
+Measured in a bot match: 12 lines of 12, team and all chat, 0.06 to 0.29
+seconds each. Where the list sits inside the game is not documented and
+can move in any patch, so everything read is checked, and if the check
+fails the app goes back to the slower method below on its own.
+
+**The slower method: searching for the chat.** A full sweep reads every
+committed page Dota has - 7.5 GB in a real match
 - which takes about 3.8 seconds across three threads. Far too slow to
 poll, so the first sweep learns which **allocations** hold chat and after
 that only those are read: ~710 MB in under half a second.

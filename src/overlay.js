@@ -42,6 +42,7 @@ function addLine(row) {
 
 function addStatus(s) {
   if (s.kind === 'ready') return;          // nothing to say when it works
+  if (!s.text) return;                     // a stat or a find: numbers, not words
   const el = document.createElement('div');
   el.className = 'status';
   el.textContent = s.text;

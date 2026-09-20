@@ -23,7 +23,12 @@ start(cfg, {
   onStatus: (s) => {
     if (s.kind === 'stat') {
       const st = s.stat || {};
+      if (st.mode === 'panel') { console.log(`[${time()}] panel ${st.ms}ms ${st.kb}KB ${st.regions} children, ${st.hits} new`); return; }
       console.log(`[${time()}] scan ${st.mode || (st.full ? 'full' : 'quick')} ${st.ms}ms ${st.mb}MB ${st.regions} regions, ${st.hot} hot`);
+      return;
+    }
+    if (s.kind === 'find') {
+      console.log(`[${time()}] looked for the chat panel: ${s.find.panels} found, ${s.find.ms}ms ${s.find.mb}MB`);
       return;
     }
     console.log(`[${time()}] ${s.text}${s.file ? ' (' + s.file + ')' : ''}`);

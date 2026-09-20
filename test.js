@@ -595,6 +595,34 @@ ok('window settings reach the scanner only when somebody has set them', () => {
   assert.equal(args[args.indexOf('-ProcessName') + 1], 'fakedota');
 });
 
+ok('the chat panel is on unless somebody turns it off', () => {
+  assert.ok(!scannerArgs('S.ps1').includes('-Panel'));
+  assert.ok(!scannerArgs('S.ps1', { panel: true }).includes('-Panel'));
+  const args = scannerArgs('S.ps1', { panel: false, panelIntervalMs: 100 });
+  assert.equal(args[args.indexOf('-Panel') + 1], '0');
+  assert.equal(args[args.indexOf('-PanelIntervalMs') + 1], '100');
+});
+
+ok('a search for the chat panel is not a stat', () => {
+  // A stat says a read is over, and the first one ends priming. A search
+  // that arrived as one would end it BEFORE the panel had been read, and
+  // the whole match backlog would go up on the overlay as new.
+  const ev = parseEvent(JSON.stringify({ t: 'find', panels: 4, ms: 9286, mb: 13350 }));
+  assert.deepEqual(ev, { kind: 'find', panels: 4, ms: 9286, mb: 13350 });
+});
+
+ok('a line read from the chat panel comes out as the scanner\'s would', () => {
+  // Exactly what the panel reader emits for a real all-chat line: the
+  // 48 bytes before the anchor, to the end of the string.
+  const raw = 'ro_furion.png" /><span class="ChatTarget"> <span class="ChatPersona"><span class="PlayerColor0">' +
+    "<font color='#3375FF'>unc status</font></span></span></span>: у кого есть дасты 07331</span>";
+  const { lines } = readMemoryFindings([raw]);
+  assert.equal(lines.length, 1);
+  assert.equal(lines[0].channel, 'all');
+  assert.equal(lines[0].name, 'unc status');
+  assert.equal(lines[0].text, 'у кого есть дасты 07331');
+});
+
 ok('a line says where it was found and whether a window covered it', () => {
   const b64 = Buffer.from('[Allies] a: гг', 'utf8').toString('base64');
   const ev = parseEvent(JSON.stringify({ t: 'line', b64, a: 140711718912000, w: 1 }));
@@ -724,6 +752,18 @@ ok('the scanner script parses', () => {
   assert.notEqual(control, '', 'the parse check passed a broken script');
 
   for (const f of files) assert.equal(check(f), '', f + ' does not parse');
+
+  // And none holds a NUL or anything that is not ASCII. Both have
+  // happened, both PARSE, and both are invisible: a "\0" that went
+  // through a shell on its way into a patch arrived as a real NUL inside
+  // a C# string, and Cyrillic in a script with no BOM is read as ANSI, so
+  // the stand-in spoke mojibake and the reader rightly ignored it.
+  // Comments may show what mojibake looks like; code may not contain any.
+  for (const f of files) {
+    const lines = fs.readFileSync(f, 'latin1').split('\n');
+    const bad = lines.findIndex((l) => !/^\s*(#|\/\/)/.test(l) && /[^\t\r\x20-\x7e]/.test(l));
+    assert.equal(bad, -1, `${f}:${bad + 1} has a byte that is not plain ASCII, outside a comment`);
+  }
 });
 
 ok('every script parses', () => {

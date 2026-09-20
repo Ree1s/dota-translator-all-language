@@ -27,9 +27,46 @@ primed away rather than dumped on screen. The second line went up
 untranslated - that was a model call that timed out, which is what the
 retry described below is for.
 
+**And since 2026-09-20 (late) it reads the chat's own CONTAINER**, not
+the process: a few KB four times a second instead of 340-490 MB every
+second. In a bot match, lines typed by the rig at known times:
+
+| | found | say -> found | read per poll |
+|---|---|---|---|
+| scanning, best configuration | 10/10 | median 1.3-2.7s, worst 7.3-23s | 340-490 MB, plus a 1-2.8 GB wide poll |
+| **the chat panel** | **12/12** | **60-290ms, median ~200ms** | **~1 KB idle, ~3 KB with a new line, 0ms** |
+
+Team and all chat alike. The price is one search for the panel per match
+(two sweeps of private memory: 9.0-13.0s, 13.3 GB, two threads,
+BelowNormal), and fragility: seven hard-coded offsets. The scanner is
+still there underneath and takes over by itself when the panel cannot be
+found or stops validating. Details under "THE CONTAINER" below.
+
 ## Open issues, in the order they matter
 
-### 1. THE READER finds every line now, but scanning cannot be both instant and light - the chat CONTAINER is next
+### 0. What the panel reader has NOT been through
+
+- **Anything but one bot match on one evening.** Not a whole match, not
+  a match boundary, not the menu -> loading -> hero pick -> game path,
+  which is where `Settled` and the 20s re-find either work or do not.
+  Nothing about that path has been SEEN; it is designed from the four
+  panels that exist mid-match.
+- **How the game feels.** Nobody has played with it. The read is ~3 KB,
+  but the FIND is 9-13s of sweeping, and if it lands in a fight it may
+  be felt. It should land in the loading screen. Frame time is still the
+  measurement that decides, and has still never been taken.
+- **A patch.** The offsets are from one build (2026-09-20). The day they
+  move, `find` reports 0 panels and the scanner carries on; `npm run
+  watch` prints both. Re-derive with `tools/ptrscan.ps1`: the chain is
+  string -> text object -> client panel -> UI panel, and `-Parents`
+  prints the tree above any panel once +0x10/+0x18/+0x28 are right.
+- **Identical lines are still shown once** ("gg" twice is one "gg"):
+  the tracker dedups by content, and it has to, because the panel throws
+  all its children away and makes them again when it trims (below).
+- A line whose text is REWRITTEN in place, same panel and same string
+  address, would be missed. Not seen to happen.
+
+### 1. Scanning, which is now the FALLBACK: it finds every line, but cannot be both instant and light
 
 User-reported the first time the overlay was ever left running while
 actually playing: *"my game seems laggy"*. Believe it; it is not
@@ -200,8 +237,8 @@ it and prints say -> found per line plus processor use;
   four-core laptop. Scanning cannot be both instant and light: every gain
   in latency above was bought with more reading.
 
-**So the next piece of work is the chat container (option 2), not more
-tuning.** Read the chat log's own structure - a few KB per poll - and
+**So the next piece of work WAS the chat container (option 2), not more
+tuning - and it is done; see THE CONTAINER below.** Read the chat log's own structure - a few KB per poll - and
 both problems go at once. The tools above make that tractable: type a
 line at a known time, find every copy, and look at what POINTS to them.
 The plain copies (team) and the markup copies sit in different places;
@@ -231,16 +268,109 @@ on Dota (2026-09-20, late).**
   module address - a vtable - in the 0x200 before the holder) and to
   array starts. A class is named by MODULE OFFSET, which survives a
   restart where an address does not.
-- Cost on the game, ESTIMATED not measured: one sweep of private memory
-  plus one full sweep per level, so ~4 sweeps, ~30-40s of heavy reading.
+- Cost on the game, MEASURED: see "Cost of the hunt itself" below.
 - What to read from the live run: does one class @ offset repeat once
   per line at level 1 (the label)? Is there an array start at level 2-3,
   and what class holds it? Is anything held in module data (a ROOT -
   then no sweep is ever needed to find the panel again)? Run it twice, a
   minute and a few lines apart: what stayed put is the container.
-- The READER is deliberately not written yet. Dota's layout may be a
-  list, not an array, and the text may hang off the label by more than
-  one hop; a reader written to the stand-in's shape would be a guess.
+- The reader was deliberately not written until the game had been
+  looked at, and that was right: the real chain is three hops, not one,
+  and the stand-in's first layout was wrong in every offset.
+
+**THE CONTAINER, MEASURED ON THE LIVE GAME (bot match, 2026-09-20
+18:46-18:55; six lines typed by the rig, three team and three all).**
+
+```
+ChatLinesPanel (a panorama UI panel)
+  +0x00 vtable  panorama.dll+0x45ca68     (every UI panel has this one)
+  +0x08 -> its client panel
+  +0x10 -> its id, a plain C string: "ChatLinesPanel"
+  +0x18 -> its parent UI panel
+  +0x28 int   child count        (15)
+  +0x30 -> array of child UI panels, IN ORDER SAID
+  +0x38 int   capacity           (16)
+child UI panel  +0x08 -> client panel    vtable client.dll+0x4fafcf0
+client panel    +0x90 -> text object     vtable panorama.dll+0x4674b0
+text object     +0x10 -> the line: UTF-8, null-terminated, the markup
+```
+
+- **13 live lines, 13 text objects, 14 client panels, 14 UI panels, one
+  array.** Team and all chat, the rig's lines and the bots', no
+  exceptions: there is no second place for all chat here. 15 children
+  against 14 lines: the first child is something else (3 children of
+  its own, no chat text); a reader must skip what has no line in it.
+- The whole line is `<span class="GameAlliesChat Sent Visitor"><panel
+  class="HeroBadge" /><img class="HeroIcon" src=...hero_furion.png" />
+  <span class="ChatTarget">[Allies] <span class="ChatPersona">...` - so
+  the CHANNEL IS ALSO IN THE FIRST CLASS (`GameAllChat` /
+  `GameAlliesChat`), and `Sent` / `Received` says whose line it is.
+- Re-read ten minutes of tool-building later: same panel, same array,
+  same count. Stable while nothing is said.
+- **A poll is 24 bytes of panel + 8 bytes per line**, and ~1 KB per NEW
+  line. Against 340-490 MB.
+- **How to find it with no vtable offset and no chat yet:** find the
+  string `ChatLinesPanel`, find what points at it, take holder - 0x10,
+  and validate (its parent at +0x18 and its children all begin with the
+  same 8 bytes it does). Offsets +0x08/+0x10/+0x18/+0x28/+0x30, +0x90
+  and +0x10 are the patch-fragile part; the scanner stays as the
+  fallback for the day they move.
+- Also seen, not followed: every text object is pointed at from a table
+  around 0x551f212xxxx (entries 0x40 apart, no class nearby) - some
+  registry of them. And the markup TEMPLATE (`{s:target_class}
+  {s:sender_class}...{g:dota_filtered_string:message}`) is in memory ten
+  times: the message is a dialog variable, which is where REPLACE IN
+  PLACE will have to look.
+- Cost of the hunt itself: strings 7.6s / 6.7 GB (private only), each
+  pointer level 2.7-4.8s / 7.8 GB, two threads, BelowNormal.
+- **There are FOUR ChatLinesPanels, under three roots** (`ptrscan
+  -Parents`): `HudChat` and the hero pick's `PreGame > ... > Chat`, both
+  under `DotaHud`; `LoadingScreenChat` under `DotaLoadingScreen`; and
+  the menu's under `DotaDashboard`. Every one has the same six wrappers
+  above it (ChatLinesWrapper, ChatLinesContainer, ChatChannelArea,
+  ChatLinesArea, ChatMainPanel, two unnamed). Mid-match only HudChat had
+  children. Each panel has its OWN copy of the id string, so a re-find
+  cannot skip the string sweep.
+- **So finding A panel is not finding THE panel.** In the menu the
+  dashboard's exists and the match's does not yet. The reader is
+  `Settled` only when a panel is under `DotaHud` or has children; until
+  then it sweeps again every 20s (`-PanelRefindMs`) - in the menu, where
+  a sweep costs nobody a frame. While settled it never sweeps.
+- **AT 24 CHILDREN THE PANEL TRIMS TO 16 AND MAKES EVERY CHILD AGAIN**
+  (seen three times: 23 -> 16 with "15 new"). Same panel, same address;
+  new child panels, new strings. That is the "five lines surfaced in ONE
+  poll ... the SAME SLOTS, reused" of the second live match, explained:
+  it was never a redraw on opening the chat box, it was the trim. A line
+  said in the same poll as a trim still came through (60ms).
+- The three roots sit together in a 3-entry vector (count 3, capacity 4)
+  at a heap address with no class near it, and nothing in any module's
+  data points at it; three stale copies of the vector header exist with
+  counts 1, 2, 3. A static root was NOT found. Not needed now: the
+  re-find rule above covers it. Worth another look only if the 9-13s
+  find ever has to go.
+
+**THE PANEL READER (`src/memscan.ps1`, "THE CHAT PANEL"), and what it
+did on the live game:**
+
+- Find: sweep private memory for `ChatLinesPanel\0`, sweep again for
+  aligned pointers to any hit, holder - 0x10 is a candidate, `Valid`
+  decides. Poll: header (0x40), child array, three pointer reads per
+  child; a child is re-read only when its string POINTER changes; a
+  child with no chat line in it is asked 8 times and then left alone.
+- The line it emits is cut exactly as the scanner cuts one (48 bytes
+  before `class="ChatPersona"` to the null), so `chatmem.js` and
+  everything after it did not change at all.
+- A search is a `find` event, NOT a `stat`: the first stat ends priming,
+  and a find arriving as one would put the whole backlog on the overlay.
+- Settings: `chatPanel` (true), `panelIntervalMs` (250).
+  `tools/panelwatch.mjs [process] [seconds] [--no-panel]` is the reader
+  with no model, timestamps to the ms; `tools/fakechat.ps1` is the
+  stand-in it was proven on first (found in 20ms, lines out in ~160ms).
+- Live, run 1 (8 lines, 4s apart): 181, 164, 277, 290, 116, 117, 226,
+  231ms. Run 2 (4 lines): 103, 275, 60, 254ms. Send time is the rig's
+  Enter; found time is node receiving the line. Idle poll 0.7-1 KB, a
+  new line ~3 KB, a trim ~31 KB, every one "0ms".
+- No strays after any run (checked, excluding the query's own pid).
 
 **Then measure frame time in the game**, windows on against
 `scanWindowMb: 0`, before believing any of it.
@@ -316,7 +446,7 @@ npm start        # the overlay (Electron)
 npm run watch    # the same chain in a terminal - use this first
 npm run demo     # drives the chain from a fake source, no Dota needed
 npm run doctor   # no-key diagnostic
-npm test         # 72 tests, plain node assert, no runner
+npm test         # 75 tests, plain node assert, no runner
 ```
 
 Keep `npm test` green. It needs no game running and no API key.
@@ -327,8 +457,9 @@ Keep `npm test` green. It needs no game running and no API key.
   `saychat.ps1` (types lines into the real game), `latency.mjs` (say ->
   found, and processor use), `whereis.mjs` (where every copy of a line
   is), `fakechat.ps1` (native stand-in with a real chat container),
-  `ptrscan.ps1` + `ptrview.mjs` (what points at a chat line). saychat,
-  latency, whereis and ptrscan touch the live game: bot matches, with
+  `ptrscan.ps1` + `ptrview.mjs` (what points at a chat line; `-Dump`,
+  `-Parents`), `panelwatch.mjs` (the reader with no model, to the ms).
+  saychat, latency, whereis, ptrscan and panelwatch touch the live game: bot matches, with
   say-so.
 - **PowerShell variables ignore case**: `$targets` IS the `[string]$Targets`
   parameter, and assigning an array to it joins it into one string. Cost
@@ -370,8 +501,9 @@ model).
 
 ## How it works
 
-`src/memscan.ps1` reads the running game's memory and prints one JSON
-object per line it finds; `src/memsource.js` keeps that helper alive and
+`src/memscan.ps1` reads the running game's memory - the chat panel when
+it can find it, a search of the process when it cannot - and prints one
+JSON object per line it finds; `src/memsource.js` keeps that helper alive and
 turns its findings into `{name, text, channel}`; `src/chatmem.js` decides
 what is a real line; `src/pipeline.js` batches; `src/translate.js` makes
 one Gemini call; `src/main.js` + `overlay.*` draw it.
@@ -489,7 +621,17 @@ you the first two are open questions, and they are not.
   QUOTED heredoc feeding a node patch script: a newline escape inside a
   template literal arrived as a real newline, and a null escape in a
   match string stopped it matching. Use the Edit tool for any line with
-  a backslash in it.
+  a backslash in it. **And a sixth time on 2026-09-20 (late), through
+  `node -e "..."`, which is the same trap without the heredoc:** a `\0`
+  in a C# string arrived in `memscan.ps1` as a real NUL byte. It PARSED.
+  `grep` calling the file "binary" was the only sign. `npm test` now
+  fails on a NUL or a non-ASCII byte in the code of any `.ps1`.
+- **An escape typed into a tool call is a letter by the time it is
+  saved.** `И` written into `fakechat.ps1` landed as the Cyrillic
+  letter, PowerShell read the BOM-less file as ANSI, and the stand-in
+  spoke double-encoded Russian - which the reader, correctly, did not
+  take for Russian. An hour of "why does the reader drop every line".
+  Cyrillic in a `.ps1` is hex code points (`U("0418 ...")`), nothing else.
 - **Never read a test result through a pipe.** `npm test | tail` exits
   with tail's status, so `&& git commit` after it commits a red suite.
   It did, once (af2a78f, fixed in the next commit). Send the output to a

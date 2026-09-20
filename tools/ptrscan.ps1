@@ -35,6 +35,8 @@ param(
   [string]$Targets = '',
   [string]$Dump = '',
   [int]$DumpLen = 0x200,
+  # UI panels to print the ancestors of (comma-separated addresses).
+  [string]$Parents = '',
   # Only strings matching this become level-1 targets ('' = all of them).
   [string]$Match = '',
   [int]$MaxTargets = 4000,
@@ -375,6 +377,24 @@ try {
       $note = [PtrScan]::Module($v)
       $ascii = -join ($bytes[$i..($i + 7)] | ForEach-Object { if ($_ -ge 0x20 -and $_ -lt 0x7f) { [char]$_ } else { '.' } })
       Write-Output ('+0x{0:x3}  {1:x16}  {2}  {3}' -f $i, $v, $ascii, $note)
+    }
+    exit 0
+  }
+
+  if ($Parents) {
+    # Up the UI tree from a panel, by the MEASURED layout: id at +0x10,
+    # parent at +0x18, child count at +0x28. A few hundred bytes in all.
+    foreach ($start in ($Parents -split ',')) {
+      $at = ParseAddr $start
+      for ($depth = 0; $depth -lt 64 -and $at -ne 0; $depth++) {
+        $b = [PtrScan]::Read($at, 0x40)
+        if ($b.Length -lt 0x40) { Write-Output ('  ' * $depth + ('0x{0:x} unreadable' -f $at)); break }
+        $idBytes = [PtrScan]::Read([BitConverter]::ToInt64($b, 0x10), 64)
+        $n = [Array]::IndexOf($idBytes, [byte]0); if ($n -lt 0) { $n = $idBytes.Length }
+        $id = if ($n -gt 0) { [System.Text.Encoding]::UTF8.GetString($idBytes, 0, $n) } else { '' }
+        Write-Output ('{0}0x{1:x}  id="{2}"  children={3}  {4}' -f ('  ' * $depth), $at, $id, [BitConverter]::ToInt32($b, 0x28), [PtrScan]::Module([BitConverter]::ToInt64($b, 0)))
+        $at = [BitConverter]::ToInt64($b, 0x18)
+      }
     }
     exit 0
   }

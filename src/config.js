@@ -42,6 +42,11 @@ export const DEFAULTS = {
   // 1.3s to ~2.8 GB / 3.3s. A line twenty seconds late is a line lost, so
   // the default is the one that finds them. 64 is the lighter setting.
   scanWideCapMb: 0,
+  // Read the chat PANEL itself - a few KB a poll - whenever it can be
+  // found, and scan only until it is or if it cannot be. MEASURED on the
+  // live game; see CLAUDE.md. false is the scanner alone.
+  chatPanel: true,
+  panelIntervalMs: 250,     // a panel poll is nearly free, so: often
   scripts: ['cyrillic'],    // which writing systems to translate
   // Lines said in the same breath go in one call. 400 was chosen before
   // anybody had played with it; in a fight every tenth of a second shows.

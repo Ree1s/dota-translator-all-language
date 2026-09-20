@@ -25,6 +25,8 @@ export function scannerArgs(script = SCRIPT, {
   windowMb,
   wideEvery,
   wideCapMb,
+  panel,
+  panelIntervalMs,
   processName,
 } = {}) {
   const args = [
@@ -43,6 +45,8 @@ export function scannerArgs(script = SCRIPT, {
   if (Number.isFinite(windowMb)) args.push('-WindowMb', String(windowMb));
   if (Number.isFinite(wideEvery)) args.push('-WideEvery', String(wideEvery));
   if (Number.isFinite(wideCapMb)) args.push('-WideCapMb', String(wideCapMb));
+  if (panel === false) args.push('-Panel', '0');
+  if (Number.isFinite(panelIntervalMs)) args.push('-PanelIntervalMs', String(panelIntervalMs));
   if (processName) args.push('-ProcessName', processName);
   return args;
 }
@@ -86,6 +90,9 @@ export function parseEvent(raw) {
   }
   if (o.t === 'status') return { kind: 'status', state: o.state, detail: o.detail, pid: o.pid };
   if (o.t === 'stat') return { kind: 'stat', ...o, t: undefined };
+  // A search for the chat panel: what it cost and whether it found one.
+  // NOT a stat - a stat says a read is over, which ends priming.
+  if (o.t === 'find') return { kind: 'find', panels: o.panels, ms: o.ms, mb: o.mb };
   if (o.t === 'error') return { kind: 'error', detail: o.detail };
   return null;
 }
@@ -107,6 +114,9 @@ export function startMemorySource({
   onStat = () => {},
   onUnknownTag = () => {},
   onPlacement = () => {},
+  onFind = () => {},
+  panel,
+  panelIntervalMs,
   windowMb,
   wideEvery,
   wideCapMb,
@@ -171,6 +181,7 @@ export function startMemorySource({
       onStat(ev);
       return;
     }
+    if (ev.kind === 'find') { onFind(ev); return; }
     if (ev.kind === 'error') { onStatus({ kind: 'error', text: ev.detail }); return; }
 
     if (ev.kind === 'line') {
@@ -207,7 +218,7 @@ export function startMemorySource({
 
   function start() {
     if (stopped) return;
-    child = spawnImpl(POWERSHELL, scannerArgs(SCRIPT, { intervalMs, fullRescanMs, windowMb, wideEvery, wideCapMb, processName }), {
+    child = spawnImpl(POWERSHELL, scannerArgs(SCRIPT, { intervalMs, fullRescanMs, windowMb, wideEvery, wideCapMb, panel, panelIntervalMs, processName }), {
       windowsHide: true,
       stdio: ['ignore', 'pipe', 'pipe'],
     });

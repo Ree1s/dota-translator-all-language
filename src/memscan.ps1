@@ -19,7 +19,14 @@
 #    "r":<region base>,"rs":<region size>,"ab":<allocation base>,"p":0|1}
 #   {"t":"stat","full":bool,"mode":"full|wide|win","ms":N,"mb":N,
 #    "regions":N,"hits":N,"hot":N,"winMb":N}
+#   {"t":"find","panels":N,"ms":N,"mb":N}      a search for the chat panel
+#   {"t":"stat","mode":"panel","ms":N,"kb":N,"hits":N,"panels":"0xADDR:count ..."}
 #   {"t":"error","detail":"..."}
+#
+# THE CHAT PANEL COMES FIRST (see "THE CHAT PANEL" below): when the game's
+# own chat container can be found, a poll is a few KB of it and none of
+# the scans below run at all. They are what happens until it is found,
+# and the fallback for the day its layout changes.
 #
 # Three kinds of scan, from dearest to cheapest:
 #   full  every byte of the process. Finds which ALLOCATIONS hold chat.
@@ -47,6 +54,14 @@ param(
   [int]$WideEvery = 5,
   # The biggest region a WIDE poll will read, in MB; 0 reads them all.
   [int]$WideCapMb = 64,
+  # Read the chat panel itself when it can be found (see THE CHAT PANEL
+  # below). 0 is the scanner alone, as it was before the panel was known.
+  [int]$Panel = 1,
+  # A panel poll is a few KB, so it can be far more often than a scan.
+  [int]$PanelIntervalMs = 250,
+  # How often to look for the panel again while the only ones known are
+  # the menu's. Two sweeps each time - but in the menu, not in a match.
+  [int]$PanelRefindMs = 20000,
   [int]$PollThreads = 1,
   [int]$SweepThreads = 2,
   [string]$Priority = 'BelowNormal'
@@ -355,6 +370,238 @@ public static class DotaMem {
     sw.Stop(); LastMs = sw.ElapsedMilliseconds;
     return found;
   }
+
+  // ---------------------------------------------------------------------
+  // THE CHAT PANEL: read the chat's own container, not the process.
+  //
+  // MEASURED on the live game with tools/ptrscan.ps1 (see CLAUDE.md): the
+  // HUD's chat is a Panorama UI panel whose id is "ChatLinesPanel". Its
+  // children are the lines, in the order they were said - team and all
+  // chat alike - and each line's text is three pointers away:
+  //
+  //   panel  +0x10 -> id string   +0x18 -> parent   +0x28 count   +0x30 -> children
+  //   child  +0x08 -> client panel  +0x90 -> text object  +0x10 -> the line
+  //
+  // A poll is the panel's header, 8 bytes per line and three small reads
+  // per line: a few KB, against the 340-490 MB a windowed poll had grown
+  // to. These offsets are the fragile part, so nothing here is trusted:
+  // a panel must have the right id, a parent and children that begin
+  // with the same 8 bytes (the vtable) it does, and a line must parse.
+  // When that stops being true the panel is dropped and the scanner
+  // above, which knows no offsets at all, takes over again.
+  public static int UI_CLIENT = 0x08, UI_ID = 0x10, UI_PARENT = 0x18, UI_COUNT = 0x28, UI_KIDS = 0x30;
+  public static int CLIENT_TEXT = 0x90, TEXT_STR = 0x10;
+  const int MAX_KIDS = 4096, LINE_MAX = 2048, GIVE_UP = 8;
+  static readonly byte[] PANEL_ID = Encoding.UTF8.GetBytes("ChatLinesPanel\0");
+  static readonly byte[] PERSONA = Encoding.UTF8.GetBytes("class=\"ChatPersona\"");
+
+  public static List<long> Panels = new List<long>();
+  /// Each panel and how many children it had at the last read, as
+  /// "0xADDR:16 0xADDR:7" - for the log, where two panels and a count that
+  /// jumps are otherwise one number that makes no sense.
+  public static string PanelCounts = "";
+  // child panel -> the string it showed when last read. A panel that is
+  // given another line, or an address that is handed to a new panel,
+  // shows up as a different string pointer.
+  static Dictionary<long, long> LastStr = new Dictionary<long, long>();
+  static Dictionary<long, int> Tries = new Dictionary<long, int>();
+
+  /// True once there is a panel that belongs to a MATCH: one under the
+  /// root called DotaHud, or one with anything in it. MEASURED: there are
+  /// four ChatLinesPanels - the HUD's, the hero pick's (both under
+  /// DotaHud), the loading screen's and the dashboard's - and the last two
+  /// exist in the menu, where finding them would otherwise satisfy the
+  /// reader for good and the match's own panel, made later, would never be
+  /// looked for. Until this is true the caller keeps looking.
+  public static bool Settled = false;
+  static HashSet<long> InMatch = new HashSet<long>();
+  static readonly byte[] HUD_ROOT = Encoding.UTF8.GetBytes("DotaHud\0");
+
+  public static void ForgetPanels() { Panels.Clear(); LastStr.Clear(); Tries.Clear(); InMatch.Clear(); Settled = false; }
+
+  static bool UnderHud(IntPtr h, long p) {
+    var q = new byte[8]; var id = new byte[HUD_ROOT.Length];
+    for (int depth = 0; depth < 64; depth++) {
+      long parent = RQ(h, p + UI_PARENT, q);
+      if (parent == 0) break;
+      p = parent;
+    }
+    if (!Rd(h, RQ(h, p + UI_ID, q), id, id.Length)) return false;
+    for (int i = 0; i < id.Length; i++) if (id[i] != HUD_ROOT[i]) return false;
+    return true;
+  }
+
+  static bool Rd(IntPtr h, long addr, byte[] buf, int len) {
+    IntPtr got;
+    return addr > 0x10000 && ReadProcessMemory(h, (IntPtr)addr, buf, (IntPtr)len, out got) && (long)got == len;
+  }
+  static long RQ(IntPtr h, long addr, byte[] q) { return Rd(h, addr, q, 8) ? BitConverter.ToInt64(q, 0) : 0; }
+
+  static bool Valid(IntPtr h, long p, out int count, out long kids) {
+    count = 0; kids = 0;
+    var b = new byte[0x40]; var q = new byte[8];
+    if (!Rd(h, p, b, b.Length)) return false;
+    long vt = BitConverter.ToInt64(b, 0), parent = BitConverter.ToInt64(b, UI_PARENT);
+    count = BitConverter.ToInt32(b, UI_COUNT); kids = BitConverter.ToInt64(b, UI_KIDS);
+    if (vt == 0 || parent == 0 || count < 0 || count > MAX_KIDS) return false;
+    var id = new byte[PANEL_ID.Length];
+    if (!Rd(h, BitConverter.ToInt64(b, UI_ID), id, id.Length)) return false;
+    for (int i = 0; i < id.Length; i++) if (id[i] != PANEL_ID[i]) return false;
+    if (RQ(h, parent, q) != vt) return false;
+    if (count > 0 && RQ(h, RQ(h, kids, q), q) != vt) return false;
+    return true;
+  }
+
+  delegate void Visit(byte[] buf, long n, long baseAddr);
+
+  static long SweepPrivate(IntPtr h, int threadsWanted, Visit visit) {
+    var work = new List<long[]>();
+    long addr = 0;
+    while (true) {
+      MBI m;
+      if (VirtualQueryEx(h, (IntPtr)addr, out m, Marshal.SizeOf(typeof(MBI))) == 0) break;
+      long size = (long)m.RegionSize, bas = (long)m.BaseAddress;
+      if (size <= 0) break;
+      if (m.State == COMMIT && Readable(m.Protect) && m.Type == PRIVATE) work.Add(new long[] { bas, size });
+      long next = bas + size;
+      if (next <= addr) break;
+      addr = next;
+    }
+    long bytes = 0; var gate = new object();
+    int threads = Math.Max(1, Math.Min(Math.Min(4, threadsWanted), Environment.ProcessorCount - 1));
+    Parallel.For<byte[]>(0, work.Count, new ParallelOptions { MaxDegreeOfParallelism = threads },
+      () => new byte[CHUNK],
+      (i, state, buf) => {
+        long read = 0;
+        // CHUNK - OVERLAP is a multiple of 8, so an aligned word stays
+        // aligned in every chunk.
+        for (long off = 0; off < work[i][1]; off += CHUNK - OVERLAP) {
+          long ask = Math.Min((long)CHUNK, work[i][1] - off);
+          IntPtr got;
+          if (!ReadProcessMemory(h, (IntPtr)(work[i][0] + off), buf, (IntPtr)ask, out got)) break;
+          long n = (long)got; if (n <= 0) break;
+          read += n;
+          visit(buf, n, work[i][0] + off);
+          if (n < ask) break;
+        }
+        lock (gate) bytes += read;
+        return buf;
+      },
+      buf => { });
+    return bytes;
+  }
+
+  /// Find the chat panel: the id string, then what points at it. Two
+  /// sweeps of private memory, ONCE - not per poll. Needs no chat to
+  /// have been said, and no address or module offset from a past run.
+  public static int FindPanels(int pid, int threadsWanted) {
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+    ForgetPanels(); LastBytes = 0; LastRegions = 0; LastHits = 0;
+    IntPtr h = OpenProcess(VM_READ | QUERY, false, pid);
+    if (h == IntPtr.Zero) throw new Exception("OpenProcess failed: " + Marshal.GetLastWin32Error());
+    try {
+      var ids = new HashSet<long>(); var gate = new object();
+      long bytes = SweepPrivate(h, threadsWanted, (buf, n, bas) => {
+        int pl = PANEL_ID.Length;
+        for (long i = 0; i + pl <= n; i++) {
+          if (buf[i] != PANEL_ID[0]) continue;
+          bool ok = true;
+          for (int j = 1; j < pl; j++) if (buf[i + j] != PANEL_ID[j]) { ok = false; break; }
+          if (ok) lock (gate) ids.Add(bas + i);
+        }
+      });
+      if (ids.Count > 0) {
+        var t = new long[ids.Count]; ids.CopyTo(t); Array.Sort(t);
+        long lo = t[0], hi = t[t.Length - 1];
+        var cands = new HashSet<long>();
+        bytes += SweepPrivate(h, threadsWanted, (buf, n, bas) => {
+          for (long i = 0; i + 8 <= n; i += 8) {
+            if (buf[i + 7] != 0 || buf[i + 6] != 0) continue;     // not a user-mode address
+            long v = BitConverter.ToInt64(buf, (int)i);
+            if (v < lo || v > hi || Array.BinarySearch(t, v) < 0) continue;
+            lock (gate) cands.Add(bas + i - UI_ID);
+          }
+        });
+        foreach (long c in cands) {
+          int count; long kids;
+          if (!Valid(h, c, out count, out kids)) continue;
+          Panels.Add(c);
+          if (UnderHud(h, c)) InMatch.Add(c);
+        }
+      }
+      LastBytes = bytes;
+    } finally { CloseHandle(h); }
+    sw.Stop(); LastMs = sw.ElapsedMilliseconds;
+    return Panels.Count;
+  }
+
+  /// One poll of the panels. A panel that no longer validates is dropped;
+  /// the caller sees Panels.Count fall to zero and goes back to scanning.
+  public static List<Hit> ReadPanels(int pid) {
+    var found = new List<Hit>();
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+    LastBytes = 0; LastRegions = 0; LastHits = 0;
+    IntPtr h = OpenProcess(VM_READ | QUERY, false, pid);
+    if (h == IntPtr.Zero) throw new Exception("OpenProcess failed: " + Marshal.GetLastWin32Error());
+    try {
+      var q = new byte[8]; var line = new byte[LINE_MAX];
+      var live = new HashSet<long>();
+      long bytes = 0; string counts = ""; bool settled = false;
+      for (int pi = Panels.Count - 1; pi >= 0; pi--) {
+        int count; long kids;
+        if (!Valid(h, Panels[pi], out count, out kids)) { InMatch.Remove(Panels[pi]); Panels.RemoveAt(pi); continue; }
+        if (count > 0 || InMatch.Contains(Panels[pi])) settled = true;
+        bytes += 0x40 + 32;
+        LastRegions += count;
+        counts = "0x" + Panels[pi].ToString("x") + ":" + count + (counts.Length > 0 ? " " : "") + counts;
+        if (count == 0) continue;
+        var arr = new byte[count * 8];
+        if (!Rd(h, kids, arr, arr.Length)) continue;        // the array moved under us: next poll
+        bytes += arr.Length;
+        for (int k = 0; k < count; k++) {
+          long c = BitConverter.ToInt64(arr, k * 8);
+          live.Add(c);
+          long str = RQ(h, RQ(h, RQ(h, c + UI_CLIENT, q) + CLIENT_TEXT, q) + TEXT_STR, q);
+          bytes += 24;
+          long was;
+          if (str == 0 || (LastStr.TryGetValue(c, out was) && was == str)) continue;
+
+          // To the end of the page if 2 KB runs off readable memory.
+          int n = LINE_MAX;
+          if (!Rd(h, str, line, n)) { n = (int)(4096 - (str & 0xFFF)); if (n > LINE_MAX || !Rd(h, str, line, n)) n = 0; }
+          bytes += n;
+          int len = 0; while (len < n && line[len] != 0) len++;
+          int at = -1;
+          for (int i = 0; len < n && i + PERSONA.Length <= len && at < 0; i++) {
+            if (line[i] != PERSONA[0]) continue;
+            bool ok = true;
+            for (int j = 1; j < PERSONA.Length; j++) if (line[i + j] != PERSONA[j]) { ok = false; break; }
+            if (ok) at = i;
+          }
+          bool cut; string s = at < 0 ? null : Extract(line, len, at, LOOKBACK, out cut);
+          if (s == null) {
+            // Not a chat line, or a line whose text is not there YET. Asked
+            // again a few times, then left alone until its string changes.
+            int tries; Tries.TryGetValue(c, out tries); Tries[c] = ++tries;
+            if (tries >= GIVE_UP) { LastStr[c] = str; Tries.Remove(c); }
+            continue;
+          }
+          found.Add(new Hit { S = s, A = str, W = true, P = true });
+          LastStr[c] = str; Tries.Remove(c);
+        }
+      }
+      // An address is reused: a panel that has gone must be forgotten, or
+      // the line that gets its address next is taken for the old one.
+      if (Panels.Count > 0) {
+        var gone = new List<long>();
+        foreach (long c in LastStr.Keys) if (!live.Contains(c)) gone.Add(c);
+        foreach (long c in gone) { LastStr.Remove(c); Tries.Remove(c); }
+      }
+      LastBytes = bytes; LastHits = found.Count; PanelCounts = counts; Settled = settled;
+    } finally { CloseHandle(h); }
+    sw.Stop(); LastMs = sw.ElapsedMilliseconds;
+    return found;
+  }
 }
 "@
 
@@ -389,6 +636,13 @@ $IDLE_WAIT_MAX = 10000
 # match where nobody has spoken yet would otherwise repeat it every few
 # seconds until somebody does.
 $announcedSearch = $false
+# The same, for the chat panel: when to look for it again, and whether
+# the reader has been told we are looking.
+$panelRetryAt = [DateTime]::MinValue
+$panelWaitMs = 0
+$panelFirst = $false
+$panelStatAt = [DateTime]::MinValue
+$announcedPanel = $false
 
 Emit @{ t = 'status'; state = 'waiting'; detail = 'looking for Dota' }
 
@@ -398,7 +652,7 @@ while ($true) {
   if (-not $proc) {
     if ($lastPid -ne 0) {
       # Dota closed: the addresses we learned mean nothing for the next one.
-      $hot.Clear(); $addrs.Clear(); $winBytes = [DotaMem]::SetWindows($addrs, 0); $lastPid = 0; $lastFull = [DateTime]::MinValue; $idleWaitMs = 0; $announcedSearch = $false
+      [DotaMem]::ForgetPanels(); $panelRetryAt = [DateTime]::MinValue; $panelWaitMs = 0; $announcedPanel = $false; $hot.Clear(); $addrs.Clear(); $winBytes = [DotaMem]::SetWindows($addrs, 0); $lastPid = 0; $lastFull = [DateTime]::MinValue; $idleWaitMs = 0; $announcedSearch = $false
       Emit @{ t = 'status'; state = 'waiting'; detail = 'Dota closed' }
     }
     Start-Sleep -Milliseconds 2000
@@ -406,9 +660,62 @@ while ($true) {
   }
 
   if ($proc.Id -ne $lastPid) {
-    $hot.Clear(); $addrs.Clear(); $winBytes = [DotaMem]::SetWindows($addrs, 0); $lastFull = [DateTime]::MinValue; $idleWaitMs = 0; $announcedSearch = $false
+    [DotaMem]::ForgetPanels(); $panelRetryAt = [DateTime]::MinValue; $panelWaitMs = 0; $announcedPanel = $false; $hot.Clear(); $addrs.Clear(); $winBytes = [DotaMem]::SetWindows($addrs, 0); $lastFull = [DateTime]::MinValue; $idleWaitMs = 0; $announcedSearch = $false
     $lastPid = $proc.Id
     Emit @{ t = 'status'; state = 'reading'; pid = $proc.Id; detail = 'attached' }
+  }
+
+  # The panel first. While there is one, NOTHING else runs: no sweeps, no
+  # windows, only the panel's own few KB. Looking for it costs two sweeps
+  # of private memory, so a miss (the menu, a loading screen) is asked
+  # again on a backoff, 15s to 2 minutes, and the scanner below carries
+  # on meanwhile exactly as it did before there was a panel reader.
+  if ($Panel -gt 0) {
+    try {
+      # No panel, or none that belongs to a match yet: look (again).
+      if (([DotaMem]::Panels.Count -eq 0 -or -not [DotaMem]::Settled) -and [DateTime]::UtcNow -ge $panelRetryAt) {
+        if (-not $announcedPanel) { $announcedPanel = $true; Emit @{ t = 'status'; state = 'scanning'; pid = $proc.Id; detail = 'looking for the chat panel' } }
+        $n = [DotaMem]::FindPanels($proc.Id, $SweepThreads)
+        Emit @{ t = 'find'; panels = $n; ms = [DotaMem]::LastMs; mb = [int]([DotaMem]::LastBytes / 1MB) }
+        if ($n -gt 0) {
+          # Found, but perhaps only the menu's: asked again in a while
+          # unless the first read says one of them is a match's.
+          $panelRetryAt = [DateTime]::UtcNow.AddMilliseconds($PanelRefindMs)
+          $panelWaitMs = 0; $panelFirst = $true; $announcedPanel = $false
+          Emit @{ t = 'status'; state = 'reading'; pid = $proc.Id; detail = 'found the chat panel' }
+        } else {
+          $panelWaitMs = [Math]::Min([Math]::Max(15000, $panelWaitMs * 2), 120000)
+          $panelRetryAt = [DateTime]::UtcNow.AddMilliseconds($panelWaitMs)
+        }
+      }
+      if ([DotaMem]::Panels.Count -gt 0) {
+        $lines = [DotaMem]::ReadPanels($proc.Id)
+        foreach ($h in $lines) {
+          $b64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($h.S))
+          Emit @{ t = 'line'; b64 = $b64; a = $h.A; w = 1; r = 0; rs = 0; ab = 0; p = 1 }
+        }
+        # A stat per poll would be four a second saying nothing. One after
+        # the first read (it is what tells the reader the backlog is over),
+        # one whenever a line turned up, and one every ten seconds.
+        if ($panelFirst -or $lines.Count -gt 0 -or ([DateTime]::UtcNow - $panelStatAt).TotalMilliseconds -gt 10000) {
+          $panelFirst = $false; $panelStatAt = [DateTime]::UtcNow
+          Emit @{
+            t = 'stat'; full = $false; mode = 'panel'; winMb = 0; ms = [DotaMem]::LastMs; mb = 0
+            kb = [Math]::Round([DotaMem]::LastBytes / 1KB, 1); regions = [DotaMem]::LastRegions
+            hits = [DotaMem]::LastHits; hot = 0; panels = [DotaMem]::PanelCounts
+          }
+        }
+        if ([DotaMem]::Panels.Count -gt 0) { Start-Sleep -Milliseconds $PanelIntervalMs; continue }
+        # The panel has gone (the match ended, or the layout is not what it
+        # was). Look again at once, and scan in the meantime.
+        $panelRetryAt = [DateTime]::UtcNow; $lastFull = [DateTime]::MinValue
+        Emit @{ t = 'status'; state = 'scanning'; pid = $proc.Id; detail = 'the chat panel went away' }
+      }
+    } catch {
+      Emit @{ t = 'error'; detail = $_.Exception.Message }
+      Start-Sleep -Milliseconds 1000
+      continue
+    }
   }
 
   # A full sweep finds where chat lives; after that only those regions are
