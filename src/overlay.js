@@ -52,6 +52,27 @@ function span(cls, text) {
   return el;
 }
 
+// The hero's portrait before the name, as the game's chat has it. The
+// game's own copies are inside its packed archives, so they come from
+// Valve's public image server, by the same internal name the chat line
+// carries ("furion", not "Nature's Prophet") - fetched once each and
+// cached by the browser. A line with no hero (the scanner fallback cannot
+// see one), or an image that will not load, leaves the space empty so the
+// names still line up.
+const HERO_IMAGES = 'https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/';
+function face(hero) {
+  const el = document.createElement('span');
+  el.className = 'face';
+  if (hero) {
+    const img = document.createElement('img');
+    img.alt = '';
+    img.onerror = () => img.remove();
+    img.src = HERO_IMAGES + hero + '.png';
+    el.appendChild(img);
+  }
+  return el;
+}
+
 function build(row, state) {
   const el = document.createElement('div');
   el.className = 'row ' + state + (row.channel === 'team' ? ' team' : '');
@@ -59,6 +80,7 @@ function build(row, state) {
   // The game tags team chat and leaves all chat bare; beside the game's
   // own lines, so do we. In a panel of its own the tag is worth having.
   const bareLook = document.body.classList.contains('bare');
+  if (cfg.showHeroes) el.appendChild(face(row.hero));
   if (TAGS[row.channel] && !(bareLook && row.channel === 'all')) el.appendChild(span('tag', TAGS[row.channel]));
   const name = span('name', row.name + ':');
   // Beside the game's own chat, the game's own colours exactly: outlined
@@ -222,7 +244,12 @@ window.dt.onLayout((l) => {
     // scale 1.33) - scaling it again spread the lines a third too far apart.
     const pitch = Math.min(...l.rows.map((r) => r.height).filter((h) => h > 0));
     if (Number.isFinite(pitch)) box.style.lineHeight = pitch + 'px';
-    box.style.paddingLeft = (TEXT_LEFT * l.scale) + 'px';
+    // MEASURED on the game's own lines: 7 units of padding, a portrait
+    // 43.5 wide by 24.5 high (16:9), and the text at 49.
+    const room = cfg.showHeroes ? 7 : TEXT_LEFT;
+    box.style.paddingLeft = (room * l.scale) + 'px';
+    document.documentElement.style.setProperty('--face-w', ((TEXT_LEFT - 7 - 1.5) * l.scale) + 'px');
+    document.documentElement.style.setProperty('--face-gap', (1.5 * l.scale) + 'px');
     return;
   }
   renderCover();

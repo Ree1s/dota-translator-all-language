@@ -82,6 +82,9 @@ export const DEFAULTS = {
   // still nothing to position. "box" is the old panel in a corner.
   display: 'above',
   showOriginal: true,
+  // The speaker's hero portrait before their name, as in the game's chat.
+  // The images come from Valve's public image server; false asks for none.
+  showHeroes: true,
   fontSize: 16,
   opacity: 0.92,
   // chat = directly above the game's own chat; or a corner: top-left,

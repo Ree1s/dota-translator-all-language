@@ -82,6 +82,7 @@ function createWindow() {
       holdSeconds: cfg.holdSeconds,
       maxLines: cfg.maxLines,
       showOriginal: cfg.showOriginal,
+      showHeroes: cfg.showHeroes,
       fontSize: cfg.fontSize,
       opacity: cfg.opacity,
       position: cfg.position,

@@ -19,6 +19,7 @@
   "fadeWithGame": true,
   "maxLines": 6,
   "display": "above",
+  "showHeroes": true,
   "showOriginal": true,
   "fontSize": 16,
   "opacity": 0.92,

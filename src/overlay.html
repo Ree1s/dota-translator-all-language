@@ -44,6 +44,8 @@
   #box:empty { display: none; }
   .row { padding: 1px 0; transition: opacity 500ms linear; }
   .row.out { opacity: 0; }
+  .face { display: inline-block; vertical-align: middle; width: var(--face-w, 2.4em); aspect-ratio: 16 / 9; margin-right: var(--face-gap, 6px); position: relative; top: -0.06em; }
+  .face img { width: 100%; height: 100%; display: block; object-fit: cover; border: 1px solid rgba(0, 0, 0, 0.75); border-radius: 1px; }
   .tag { color: var(--all); margin-right: 5px; }
   .team .tag { color: var(--allies); }
   .name { font-weight: 600; margin-right: 5px; }

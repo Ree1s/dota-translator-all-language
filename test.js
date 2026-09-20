@@ -651,6 +651,14 @@ ok('a line the chat list says was just appended is new, whatever its words', () 
   assert.equal(said.length, 2);
 });
 
+ok('a line carries its hero when the reader could see one, and only a sane one', () => {
+  const b64 = Buffer.from('[Allies] a: gg', 'utf8').toString('base64');
+  assert.equal(parseEvent(JSON.stringify({ t: 'line', a: 1, b64, h: 'furion' })).hero, 'furion');
+  assert.equal(parseEvent(JSON.stringify({ t: 'line', a: 1, b64, h: '' })).hero, undefined);
+  // It ends up in a URL, so it is a name or it is nothing.
+  assert.equal(parseEvent(JSON.stringify({ t: 'line', a: 1, b64, h: '../../x?y=' })).hero, undefined);
+});
+
 ok('a search for the chat panel is not a stat', () => {
   // A stat says a read is over, and the first one ends priming. A search
   // that arrived as one would end it BEFORE the panel had been read, and

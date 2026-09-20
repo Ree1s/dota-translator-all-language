@@ -177,7 +177,9 @@ public static class DotaMem {
   /// alone cannot say whether two lines shared a region or a heap.
   /// N = this line was APPENDED to the game's chat list since the last
   /// poll, so it is new whatever it says. Only the panel reader can know.
-  public class Hit { public string S; public long A, R, RS, AB; public bool W, P, N; }
+  /// H = the hero whose portrait the game draws before the line
+  /// ("furion"), when the whole string was there to read it from.
+  public class Hit { public string S, H; public long A, R, RS, AB; public bool W, P, N; }
 
   // The windows: sorted, merged [start, end) ranges around every address
   // a line has been seen at. Replaced whole, never edited, so a scan on
@@ -467,6 +469,23 @@ public static class DotaMem {
 
   public static void ForgetPanels() { Panels.Clear(); LastStr.Clear(); Tries.Clear(); InMatch.Clear(); HudChatOf.Clear(); PrevCount.Clear(); PrevLast.Clear(); Appended.Clear(); NewestText.Clear(); LayoutCount = -1; LayoutDirty = 0; LayoutJson = null; Settled = false; }
 
+  // The line begins, long before the 48 bytes that are passed on,
+  // with its portrait: <img class="HeroIcon" src="...npc_dota_hero_furion.png" />.
+  // The name after the prefix is the one Valve's own image server uses.
+  static readonly byte[] HERO = Encoding.ASCII.GetBytes("npc_dota_hero_");
+  static string HeroIn(byte[] line, int len) {
+    for (int i = 0; i + HERO.Length < len; i++) {
+      if (line[i] != HERO[0]) continue;
+      bool ok = true;
+      for (int j = 1; j < HERO.Length; j++) if (line[i + j] != HERO[j]) { ok = false; break; }
+      if (!ok) continue;
+      int s = i + HERO.Length, e = s;
+      while (e < len && e - s < 40 && ((line[e] >= (byte)'a' && line[e] <= (byte)'z') || line[e] == (byte)'_')) e++;
+      return e > s ? Encoding.ASCII.GetString(line, s, e - s) : null;
+    }
+    return null;
+  }
+
   static long HudChatAbove(IntPtr h, long p) {
     var q = new byte[8]; var id = new byte[HUD_CHAT.Length];
     for (int depth = 0; depth < 16; depth++) {
@@ -666,7 +685,7 @@ public static class DotaMem {
             if (trimmed && NewestText.TryGetValue(Panels[pi], out before) && before != s) fresh = true;
             NewestText[Panels[pi]] = s;
           }
-          found.Add(new Hit { S = s, A = str, W = true, P = true, N = fresh });
+          found.Add(new Hit { S = s, H = HeroIn(line, len), A = str, W = true, P = true, N = fresh });
           LastStr[c] = str; Tries.Remove(c);
         }
 
@@ -837,7 +856,7 @@ while ($true) {
         }
         foreach ($h in $lines) {
           $b64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($h.S))
-          Emit @{ t = 'line'; b64 = $b64; a = $h.A; w = 1; r = 0; rs = 0; ab = 0; p = 1; n = [int]$h.N }
+          Emit @{ t = 'line'; b64 = $b64; a = $h.A; w = 1; r = 0; rs = 0; ab = 0; p = 1; n = [int]$h.N; h = [string]$h.H }
         }
         # A stat per poll would be four a second saying nothing. One after
         # the first read (it is what tells the reader the backlog is over),

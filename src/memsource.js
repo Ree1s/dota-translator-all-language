@@ -84,7 +84,7 @@ export function parseEvent(raw) {
     // Where it was found, when the helper says. A user-space address is
     // under 2^47, so a JS number holds it exactly.
     if (typeof o.a === 'number') {
-      return { kind: 'line', text, fresh: o.n === 1, addr: o.a, inWindow: o.w === 1, region: o.r, regionSize: o.rs, alloc: o.ab, isPrivate: o.p === 1 };
+      return { kind: 'line', text, fresh: o.n === 1, ...(typeof o.h === 'string' && /^[a-z_]{2,40}$/.test(o.h) ? { hero: o.h } : {}), addr: o.a, inWindow: o.w === 1, region: o.r, regionSize: o.rs, alloc: o.ab, isPrivate: o.p === 1 };
     }
     return { kind: 'line', text };
   }
@@ -233,7 +233,7 @@ export function startMemorySource({
         // own chat-wheel lines are already in the reader's language
         // ("Pushing mid"), and translating those would be noise.
         if (!needsTranslation(line.text, scripts)) continue;
-        onMessage({ name: line.name, text: line.text, channel: line.channel, slot: line.slot });
+        onMessage({ name: line.name, text: line.text, channel: line.channel, slot: line.slot, ...(ev.hero ? { hero: ev.hero } : {}) });
       }
     }
   }

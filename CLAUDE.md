@@ -166,6 +166,20 @@ once, as said, italic, and turns into `english (original)`.
   English arrived, then 250ms of fade; a translation that arrives very
   late still gets 2.5s. SEEN: at 7.2s the game's line half faded and ours
   up, at 7.8s both gone. That leaves ~6s of English after a 1.1s model.
+- **Hero portraits before the name, as the game has them** (the user
+  asked; `showHeroes`, default true). Each line's markup begins with
+  `<img class="HeroIcon" src="...npc_dota_hero_furion.png" />`, long before
+  the 48 bytes that are passed on, so the panel reader pulls the name out
+  (`HeroIn`, line event `h`) - the SCANNER fallback cannot, and leaves the
+  space empty so names still line up. The game's own portraits are inside
+  its VPK archives, so they come from Valve's public image server,
+  `cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/<name>.png`
+  (256x144, the same internal name; checked: 200 for furion and centaur).
+  It is the app's only network use besides the model, and the README and
+  the landing page say so. Sized from the game: 7 units of padding, 43.5
+  wide, 16:9, text at 49. `parseEvent` only takes `[a-z_]` for a hero - it
+  goes into a URL. SEEN over the live match: same portrait, size and
+  place as the game's own line beneath it.
 - What it gives up: the English is up to six rows above the line it
   translates when the chat is nearly empty. What it avoids is everything
   that went wrong with cover: the strip, the guess at when the game's
@@ -739,7 +753,7 @@ npm start        # the overlay (Electron)
 npm run watch    # the same chain in a terminal - use this first
 npm run demo     # drives the chain from a fake source, no Dota needed
 npm run doctor   # no-key diagnostic
-npm test         # 87 tests, plain node assert, no runner
+npm test         # 88 tests, plain node assert, no runner
 ```
 
 Keep `npm test` green. It needs no game running and no API key.

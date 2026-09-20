@@ -165,6 +165,7 @@ no processor time, and reading the chat costs about 0.3% of one core.
 | `holdSeconds` | how long a line stays on screen (14) |
 | `fadeWithGame` | in `above` mode a translated line disappears when Dota's own line does, about 7 seconds after it is said, and `holdSeconds` is ignored. `false` keeps it for `holdSeconds` (true) |
 | `maxLines` | how many lines the overlay holds (6) |
+| `showHeroes` | the speaker's hero portrait before their name, as Dota's chat has it. The pictures are fetched from Valve's public image server the first time each hero speaks; `false` fetches nothing (true) |
 | `showOriginal` | show what was actually said, in brackets after the English: `go mid (иди мид)`. Nothing is added when the line was English already (true) |
 | `display` | `above` (the default): the translated lines as plain outlined text, like the game's own, directly above Dota's chat - placed from where the game says its chat is, so there is nothing to position. `box`: a dark panel in a corner (see `position`). `cover` lays the English over each line of Dota's own chat, exactly where the line is: `go mid (иди мид)`. It reads where the chat is from the game, so there is nothing to position. `box` draws a separate chat box instead (see `position`). `replace` - the English written into Dota's own chat line - is planned and not built; it falls back to the box |
 | `position` | where the chat box goes. `chat` (the default) is directly above Dota's own chat, growing upwards; or a corner: `top-left`, `top-right`, `bottom-left`, `bottom-right` |
