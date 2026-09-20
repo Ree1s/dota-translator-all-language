@@ -640,6 +640,8 @@ $announcedSearch = $false
 # The same, for the chat panel: when to look for it again, and whether
 # the reader has been told we are looking.
 $panelRetryAt = [DateTime]::MinValue
+$panelFoundAt = [DateTime]::MinValue
+$panelFoundAtBytes = 0
 $panelWaitMs = 0
 $panelFirst = $false
 $panelStatAt = [DateTime]::MinValue
@@ -679,10 +681,24 @@ while ($true) {
   # on meanwhile exactly as it did before there was a panel reader.
   if ($Panel -gt 0) {
     try {
-      # No panel, or none that belongs to a match yet: look (again).
-      if (([DotaMem]::Panels.Count -eq 0 -or -not [DotaMem]::Settled) -and [DateTime]::UtcNow -ge $panelRetryAt) {
+      # No panel, or none that belongs to a match yet: look (again) - but
+      # with only the menu's panels in hand, look again only if the game
+      # has MOVED. A search is ~10s of sweeping; every 20s for as long as
+      # the player sits in the menu would be half of all the time there.
+      # Loading a match changes the game's memory by hundreds of MB, the
+      # menu does not, so that is the trigger; and every 3 minutes anyway,
+      # because this is a heuristic and NOT yet seen across a real boundary.
+      $due = [DateTime]::UtcNow -ge $panelRetryAt
+      if ($due -and [DotaMem]::Panels.Count -gt 0 -and -not [DotaMem]::Settled) {
+        $proc.Refresh()
+        $moved = [Math]::Abs($proc.PrivateMemorySize64 - $panelFoundAtBytes) -gt 150MB
+        $stale = ([DateTime]::UtcNow - $panelFoundAt).TotalMilliseconds -gt 180000
+        if (-not ($moved -or $stale)) { $due = $false; $panelRetryAt = [DateTime]::UtcNow.AddMilliseconds($PanelRefindMs / 4) }
+      }
+      if (([DotaMem]::Panels.Count -eq 0 -or -not [DotaMem]::Settled) -and $due) {
         if (-not $announcedPanel) { $announcedPanel = $true; Emit @{ t = 'status'; state = 'scanning'; pid = $proc.Id; detail = 'looking for the chat panel' } }
         $n = [DotaMem]::FindPanels($proc.Id, $SweepThreads)
+        $proc.Refresh(); $panelFoundAtBytes = $proc.PrivateMemorySize64; $panelFoundAt = [DateTime]::UtcNow
         Emit @{ t = 'find'; panels = $n; ms = [DotaMem]::LastMs; mb = [int]([DotaMem]::LastBytes / 1MB) }
         if ($n -gt 0) {
           # Found, but perhaps only the menu's: asked again in a while
