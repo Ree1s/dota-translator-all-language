@@ -10,7 +10,11 @@ import { loadOffsets } from './offsets.js';
 
 const cfg = loadConfig();
 if (!cfg.geminiApiKey) {
-  console.error('No Gemini API key. Put one in config.json or set GEMINI_API_KEY.');
+  // A key saved by the setup window is encrypted for the app by Windows,
+  // and a terminal cannot read it back.
+  console.error(cfg.geminiApiKeyEnc
+    ? 'The key was saved by the app, encrypted, and only the app can read it. For this terminal mode, set GEMINI_API_KEY.'
+    : 'No Gemini API key. Run "npm start" and paste it into the window that opens, or set GEMINI_API_KEY.');
   process.exit(1);
 }
 

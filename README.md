@@ -85,22 +85,24 @@ the memory reading runs through PowerShell, which Windows already has.
      access"** on every model while still happily listing them. If that
      happens, make the key in a different project.
 
-3. **Configure:**
-
-   ```bash
-   cp config.example.json config.json
-   ```
-
-   Paste the key into `geminiApiKey`. Or set `GEMINI_API_KEY` in the
-   environment, which wins over the file, so the key need never be written
-   to disk.
-
-4. **Install and run:**
+3. **Install and run:**
 
    ```bash
    npm install
    npm start
    ```
+
+4. **Paste your key into the window that opens.** The first time, the app
+   asks for it: paste, press **Check and save**, and it tries the key with
+   one real translation before saving it, so you know it works - or says in
+   plain words why it does not. The key is stored on your PC only, encrypted
+   by Windows for your user. The same window is behind the tray icon later,
+   for changing the key or where the translations appear.
+
+   Prefer files? `cp config.example.json config.json` and put the key in
+   `geminiApiKey`, or set `GEMINI_API_KEY` in the environment, which wins
+   over both and never touches the disk. `npm run watch` (the terminal
+   mode) needs one of those two: it cannot read the encrypted key.
 
 `-condebug` is **not** needed. That was for the old log reader.
 
@@ -163,7 +165,7 @@ no processor time, and reading the chat costs about 0.3% of one core.
 | `scanWindowMb` | most re-reads only look this many MB either side of where chat was last seen; 0 reads everything every time (4) |
 | `scanWideCapMb` | the biggest memory region the look-everywhere re-read will open, in MB; 0 opens them all, 64 is lighter on the PC and can miss an all-chat line for a long time (0) |
 | `scanWideEvery` | every Nth re-read looks everywhere chat has ever been, to catch a line written somewhere new (5) |
-| `scripts` | which writing systems to translate. `["cyrillic"]` by default; `greek`, `han`, `hangul`, `arabic`, `thai` are also known |
+| `scripts` | which writing systems to translate. `["cyrillic", "han"]` by default - Russian, which is what this is built for, and Chinese, because so many pasted voice lines are. `greek`, `hangul`, `arabic` and `thai` are also known |
 | `callsPerMinute` | how many calls a minute your key allows. The free tier is 15. The busier the chat, the more lines share one call, so a loud game stays inside it (15) |
 | `batchMs` | how long to gather lines before one call (80) |
 | `holdSeconds` | how long a line stays on screen (14) |

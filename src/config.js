@@ -7,10 +7,17 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-export const CONFIG_PATH = path.join(ROOT, 'config.json');
+// DT_CONFIG points the app at another file: for trying the first-run
+// window without touching the real settings or the real key.
+export const CONFIG_PATH = process.env.DT_CONFIG || path.join(ROOT, 'config.json');
 
 export const DEFAULTS = {
   geminiApiKey: '',
+  // The same key as the setup window saves it: encrypted by Windows for
+  // this user (Electron safeStorage, which is DPAPI), base64. Only the app
+  // can read it back - a terminal run (npm run watch) cannot, and wants the
+  // plain field above or GEMINI_API_KEY.
+  geminiApiKeyEnc: '',
   model: 'gemini-3.5-flash-lite',
   logPath: '',              // blank = find the Steam install
   source: 'memory',         // 'memory' reads the game; 'log' reads console.log
@@ -56,7 +63,10 @@ export const DEFAULTS = {
   // gemini-3.5-flash-lite, MEASURED by running into it. As the minute's
   // calls are spent, lines wait a little longer and share a call.
   callsPerMinute: 15,
-  scripts: ['cyrillic'],    // which writing systems to translate
+  // Which writing systems to translate. Russian is what this is FOR;
+  // Chinese is on as well because so much of what is pasted into chat -
+  // voice lines above all - is Chinese (the user, 2026-09-20).
+  scripts: ['cyrillic', 'han'],
   // Lines said in the same breath go in one call. 400 was chosen before
   // anybody had played with it; in a fight every tenth of a second shows.
   // 80 since calls run three at a time: a burst no longer has to share
@@ -119,6 +129,21 @@ export function mergeConfig(raw) {
   // An env var wins, so a key need never be written to disk.
   if (process.env.GEMINI_API_KEY) out.geminiApiKey = process.env.GEMINI_API_KEY;
   return out;
+}
+
+/**
+ * Change some settings in config.json and leave the rest of the file as
+ * the player wrote it: their own keys, their own order. A file that is
+ * missing or will not parse is started afresh rather than failed on -
+ * this is what the setup window saves through, and it is there for
+ * people who should never have to see the file.
+ */
+export function saveConfig(patch, file = CONFIG_PATH) {
+  let raw = {};
+  try { const was = JSON.parse(fs.readFileSync(file, 'utf8')); if (was && typeof was === 'object' && !Array.isArray(was)) raw = was; } catch { /* afresh */ }
+  const next = { ...raw, ...patch };
+  fs.writeFileSync(file, JSON.stringify(next, null, 2) + '\n');
+  return mergeConfig(next);
 }
 
 export function loadConfig(file = CONFIG_PATH) {

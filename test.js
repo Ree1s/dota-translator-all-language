@@ -963,6 +963,67 @@ ok('every script parses', () => {
   for (const f of fs.readdirSync('tools').filter((x) => /\.m?js$/.test(x))) execFileSync(process.execPath, ['--check', path.join('tools', f)]);
 });
 
+console.log('setup');
+
+const { checkKey, tidyKey, looksLikeKey, explainKeyError } = await import('./src/keycheck.js');
+const { saveConfig } = await import('./src/config.js');
+
+ok('a pasted key is tidied the way people actually paste them', () => {
+  assert.equal(tidyKey('  abcDEF123_-x  '), 'abcDEF123_-x');
+  assert.equal(tidyKey('"abcDEF123",'), 'abcDEF123');       // copied out of a config file, quotes and comma and all
+  assert.equal(tidyKey('abc\n'), 'abc');
+  assert.equal(tidyKey(undefined), '');
+  assert.ok(looksLikeKey('A'.repeat(39)));
+  assert.ok(!looksLikeKey('too short'));
+  assert.ok(!looksLikeKey('has a space in the middle of it somewhere'));
+});
+
+await okAsync('a key is tried for real before it is called good, and nothing is asked for an obvious non-key', async () => {
+  let asked = 0;
+  const works = async (items, opts) => { asked++; assert.equal(opts.apiKey, 'K'.repeat(30)); return items.map((it) => ({ ...it, en: 'gg wp', translated: true })); };
+  const good = await checkKey('  "' + 'K'.repeat(30) + '", ', { translate: works });
+  assert.deepEqual([good.ok, good.en, good.key], [true, 'gg wp', 'K'.repeat(30)]);
+  assert.equal((await checkKey('', { translate: works })).ok, false);
+  assert.equal((await checkKey('not a key', { translate: works })).ok, false);
+  assert.equal(asked, 1, 'Google was asked about something that was plainly not a key');
+});
+
+await okAsync('a key that fails says what to DO, in the two ways this project has met', async () => {
+  const failing = (message) => async () => { throw new Error(message); };
+  const a = await checkKey('K'.repeat(30), { translate: failing('Your prepayment credits are depleted.') });
+  assert.match(a.why, /NO billing account/);
+  const b = await checkKey('K'.repeat(30), { translate: failing('Your project has been denied access.') });
+  assert.match(b.why, /different project/);
+  assert.match(explainKeyError('API key not valid. Please pass a valid API key.'), /Copy it again/);
+  assert.match(explainKeyError('You exceeded your current quota'), /Wait a minute/);
+  assert.match(explainKeyError('could not reach the model'), /internet/);
+  // And it never throws at a button.
+  assert.equal((await checkKey('K'.repeat(30), { translate: async () => [] })).ok, false);
+});
+
+ok('saving from the setup window leaves the rest of the player\'s config alone', () => {
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'dt-cfg-')), 'config.json');
+  fs.writeFileSync(file, JSON.stringify({ fontSize: 20, myOwnNote: 'keep me', geminiApiKey: 'old' }));
+  const cfg = saveConfig({ geminiApiKey: '', geminiApiKeyEnc: 'ZW5j', display: 'box' }, file);
+  const onDisk = JSON.parse(fs.readFileSync(file, 'utf8'));
+  assert.deepEqual(onDisk, { fontSize: 20, myOwnNote: 'keep me', geminiApiKey: '', geminiApiKeyEnc: 'ZW5j', display: 'box' });
+  assert.equal(cfg.fontSize, 20);
+  // No file yet, or one that will not parse: started afresh, not failed on.
+  const none = path.join(path.dirname(file), 'new.json');
+  saveConfig({ display: 'above' }, none);
+  assert.deepEqual(JSON.parse(fs.readFileSync(none, 'utf8')), { display: 'above' });
+  fs.writeFileSync(file, '{ broken');
+  saveConfig({ display: 'above' }, file);
+  assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), { display: 'above' });
+});
+
+ok('the setup page cannot load anything from anywhere', () => {
+  // It is where a key is typed. No web fonts, no scripts but its own.
+  const html = fs.readFileSync(path.join('src', 'setup.html'), 'utf8');
+  assert.match(html, /Content-Security-Policy" content="default-src 'none'/);
+  assert.doesNotMatch(html, /https?:\/\//);
+});
+
 console.log('offsets');
 
 const { parseOffsets, offsetsArg, loadOffsets, bundledOffsets } = await import('./src/offsets.js');

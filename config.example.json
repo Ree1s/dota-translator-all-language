@@ -12,7 +12,8 @@
   "scanWideEvery": 5,
   "scanWideCapMb": 0,
   "scripts": [
-    "cyrillic"
+    "cyrillic",
+    "han"
   ],
   "callsPerMinute": 15,
   "batchMs": 80,

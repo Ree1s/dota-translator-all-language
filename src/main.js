@@ -3,11 +3,12 @@
 // show above it: an exclusive fullscreen game owns the screen and no
 // window can sit on it.
 
-import { app, BrowserWindow, screen, ipcMain, globalShortcut } from 'electron';
+import { app, BrowserWindow, screen, ipcMain, globalShortcut, safeStorage, shell, Tray, Menu, nativeImage } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { loadConfig } from './config.js';
+import { loadConfig, saveConfig } from './config.js';
+import { checkKey, tidyKey } from './keycheck.js';
 import { startWatching } from './watcher.js';
 import { startWatchingMemory } from './memwatcher.js';
 import { loadOffsets, bundledOffsets } from './offsets.js';
@@ -78,7 +79,9 @@ function createWindow() {
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   if (cfg.clickThrough) win.setIgnoreMouseEvents(true, { forward: true });
   win.loadFile(path.join(here, 'overlay.html'));
-  win.once('ready-to-show', () => {
+  // On every load, not once: changing the look in the setup window reloads
+  // this page, and a fresh page knows nothing.
+  win.webContents.on('did-finish-load', () => {
     win.webContents.send('config', {
       holdSeconds: cfg.holdSeconds,
       maxLines: cfg.maxLines,
@@ -89,9 +92,24 @@ function createWindow() {
       position: cfg.position,
       display: cfg.display,
       fadeWithGame: cfg.fadeWithGame,
+      textLeft: TEXT_LEFT,
     });
-    start();
+    if (lastFonts) win.webContents.send('fonts', lastFonts);
+    if (!started) { started = true; start(); }
   });
+}
+
+let started = false;
+let lastFonts = '';
+
+// The look changed in the setup window: put the window back where that
+// look wants it and start its page again, clean.
+function applyDisplay(display) {
+  if (display === cfg.display || !win || win.isDestroyed()) { cfg.display = display; return; }
+  cfg.display = display;
+  coverAt = '';
+  win.setBounds(place(screen.getPrimaryDisplay().bounds));
+  win.reload();
 }
 
 // DT_DEBUG=1 prints everything sent to the chat box, for the day it shows
@@ -150,14 +168,21 @@ function send(channel, payload) {
   if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
 }
 
+function restartWatcher() {
+  if (watcher) { watcher.stop(); watcher = null; }
+  start();
+}
+
 async function start() {
   // A few seconds at most, and never fatal: see src/offsets.js.
-  cfg.offsets = await loadOffsets({ url: cfg.offsetsUrl });
+  if (!cfg.offsets) cfg.offsets = await loadOffsets({ url: cfg.offsetsUrl });
   ({ chatLeft: CHAT_LEFT, chatBottom: CHAT_BOTTOM, chatHigh: CHAT_HIGH, textLeft: TEXT_LEFT } = cfg.offsets.layout);
   send('config', { textLeft: TEXT_LEFT });
   if (DEBUG) console.log('offsets', cfg.offsets.source, 'v' + cfg.offsets.version, cfg.offsets.updated);
+  cfg.geminiApiKey = storedKey();
   if (!cfg.geminiApiKey) {
-    send('status', { kind: 'error', text: 'No Gemini API key. Put one in config.json.' });
+    // Not an error to be read off an overlay: a window that asks for it.
+    openSetup();
     return;
   }
   if (cfg.display === 'replace') {
@@ -177,7 +202,7 @@ async function start() {
     onGamePath: (exe) => {
       // dota2.exe is in game/bin/win64; the fonts are in game/dota/panorama/fonts.
       const dir = path.resolve(path.dirname(exe), '..', '..', 'dota', 'panorama', 'fonts');
-      if (fs.existsSync(path.join(dir, 'radiance-bold.otf'))) send('fonts', pathToFileURL(dir).href);
+      if (fs.existsSync(path.join(dir, 'radiance-bold.otf'))) { lastFonts = pathToFileURL(dir).href; send('fonts', lastFonts); }
     },
     // Up only while the game is the window in front.
     onFocus: (on) => {
@@ -192,12 +217,98 @@ async function start() {
 app.whenReady().then(() => {
   createWindow();
   // Alt+D hides and shows it, for a screenshot or a clear view of a fight.
-  globalShortcut.register('Alt+D', () => {
-    if (!win || win.isDestroyed()) return;
-    hidden = !hidden;
-    if (hidden) win.hide(); else if (inFront) win.showInactive();
-  });
+  globalShortcut.register('Alt+D', toggleHidden);
+  makeTray();
   globalShortcut.register('Alt+Shift+D', () => app.quit());
+});
+
+// ---- THE SETUP WINDOW ------------------------------------------------
+// Where a player gives the app its key without ever seeing config.json
+// (the user, 2026-09-20: "simpler for non techie user to just enter api
+// key in the ui"). It opens by itself when there is no key, and from the
+// tray icon after that. The key is TRIED before it is saved - one real
+// translation - so "saved" means "works", and it is stored encrypted by
+// Windows for this user (safeStorage = DPAPI) rather than in plain text.
+let setupWin = null;
+let tray = null;
+
+function storedKey() {
+  if (cfg.geminiApiKey) return cfg.geminiApiKey;            // config.json or GEMINI_API_KEY, in plain
+  if (!cfg.geminiApiKeyEnc || !safeStorage.isEncryptionAvailable()) return '';
+  try { return safeStorage.decryptString(Buffer.from(cfg.geminiApiKeyEnc, 'base64')); } catch { return ''; }
+}
+
+function openSetup() {
+  if (setupWin && !setupWin.isDestroyed()) { setupWin.show(); setupWin.focus(); return; }
+  setupWin = new BrowserWindow({
+    width: 600, height: 700, resizable: false, maximizable: false, fullscreenable: false,
+    title: 'Dota Translator', backgroundColor: '#0a0d10', autoHideMenuBar: true, show: false,
+    webPreferences: { preload: path.join(here, 'setup-preload.cjs'), contextIsolation: true, sandbox: true },
+  });
+  setupWin.removeMenu();
+  setupWin.loadFile(path.join(here, 'setup.html'));
+  setupWin.once('ready-to-show', () => setupWin.show());
+  // Nothing in this window goes anywhere but the page it was given.
+  setupWin.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  setupWin.webContents.on('will-navigate', (e) => e.preventDefault());
+  setupWin.on('closed', () => { setupWin = null; });
+}
+
+function makeTray() {
+  // Drawn here, 16x16, so the app needs no image file: an amber square
+  // with a dark "T". BGRA, as createFromBitmap wants it.
+  const n = 16, px = Buffer.alloc(n * n * 4);
+  for (let y = 0; y < n; y++) {
+    for (let x = 0; x < n; x++) {
+      const ink = (y >= 3 && y <= 5 && x >= 3 && x <= 12) || (x >= 7 && x <= 8 && y >= 3 && y <= 12);
+      const [b, g, r] = ink ? [0x03, 0x17, 0x23] : [0x4c, 0xb4, 0xf0];
+      px.set([b, g, r, 0xff], (y * n + x) * 4);
+    }
+  }
+  tray = new Tray(nativeImage.createFromBitmap(px, { width: n, height: n }));
+  tray.setToolTip('Dota Translator');
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: 'Settings and key...', click: openSetup },
+    { label: 'Hide or show the translations (Alt+D)', click: toggleHidden },
+    { type: 'separator' },
+    { label: 'Quit', click: () => app.quit() },
+  ]));
+  tray.on('click', openSetup);
+}
+
+function toggleHidden() {
+  if (!win || win.isDestroyed()) return;
+  hidden = !hidden;
+  if (hidden) win.hide(); else if (inFront) win.showInactive();
+}
+
+ipcMain.handle('setup:state', () => ({ hasKey: Boolean(storedKey()), display: cfg.display }));
+ipcMain.handle('setup:close', () => { if (setupWin && !setupWin.isDestroyed()) setupWin.close(); });
+ipcMain.handle('setup:guide', () => {
+  // The copy that came with the app: it is there with no internet, and it
+  // is the one that matches this version.
+  shell.openExternal(pathToFileURL(path.join(here, '..', 'docs', 'key.html')).href);
+});
+ipcMain.handle('setup:save', async (_e, payload) => {
+  const display = payload && payload.display === 'box' ? 'box' : 'above';
+  const typed = tidyKey(payload && payload.key);
+  // No new key typed and one already saved: only the look is changing.
+  if (!typed && storedKey()) {
+    saveConfig({ display });
+    applyDisplay(display);
+    return { ok: true, checked: false };
+  }
+  const r = await checkKey(typed, { model: cfg.model });
+  if (!r.ok) return r;
+  const canEncrypt = safeStorage.isEncryptionAvailable();
+  saveConfig(canEncrypt
+    ? { geminiApiKeyEnc: safeStorage.encryptString(r.key).toString('base64'), geminiApiKey: '', display }
+    : { geminiApiKey: r.key, display });
+  cfg.geminiApiKey = r.key;
+  applyDisplay(display);
+  restartWatcher();
+  // The key itself does not go back to the page.
+  return { ok: true, checked: true, sample: r.sample, en: r.en };
 });
 
 app.on('will-quit', () => {

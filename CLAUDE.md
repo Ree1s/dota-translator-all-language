@@ -749,6 +749,58 @@ and there is no installer. Auto-update wants a packaged build first
 (electron-builder or similar), which is also what the landing page is
 missing for players who are not developers. Do the two together.
 
+## The setup window: the key goes in through the app (2026-09-20)
+
+The user: "simpler for non techie user to just enter api key in the ui ...
+some window with similar ui as dota translator page". Editing
+`config.json` in Notepad was the step most likely to lose somebody, and a
+missing quote there failed silently.
+
+- **`src/setup.html` + `setup.js` + `setup-preload.cjs`**, opened by
+  `main.js`: by itself when no key can be found, and from a **tray icon**
+  ("Settings and key...", hide/show, Quit) after that. The tray icon is
+  drawn in code (16x16 BGRA, amber with a dark T) - there is no image
+  file in the app.
+- **The key is TRIED before it is saved** (`src/keycheck.js`): one real
+  translation of "гг вп". Saved means works. When it does not, the reason
+  is turned into something to DO - the 402 (billing project) and 403 (new
+  project refused) traps this project lost an hour each to, a mistyped
+  key, quota, no internet. Pasted keys are tidied first (quotes, a
+  trailing comma, a line break: people copy them out of config files).
+- **Stored encrypted**, `geminiApiKeyEnc` in config.json, by Electron
+  `safeStorage` (DPAPI: this Windows user only); plain `geminiApiKey` is
+  blanked when that works and used only if encryption is unavailable.
+  `GEMINI_API_KEY` and a plain `geminiApiKey` still work and still win.
+  **`npm run watch` CANNOT read the encrypted key** (no Electron) and says
+  so. `saveConfig` changes only what it is given and keeps the rest of the
+  player's file, their own extra keys included.
+- The page has a CSP of `default-src 'none'`, no web fonts and no URLs at
+  all (`npm test` checks), cannot navigate or open windows, and is never
+  handed the saved key back - only whether one exists.
+- It also picks the look (`above` or `box`); changing it re-places the
+  overlay window and reloads its page, which is why the overlay now sends
+  its config on every `did-finish-load` rather than once.
+- `DT_CONFIG=<file>` points the app at another config: how the first-run
+  window was looked at without touching the real settings or key.
+- SEEN: the window opening by itself against an empty config, on screen,
+  looking as designed. **NOT exercised by me: pasting a real key and
+  saving it** - typing credentials into a field is not something I do;
+  the check-and-save path is covered by tests with a stand-in translator,
+  and the user's own paste is the first real run of it. Also not seen:
+  the tray icon itself.
+- It STOLE FOCUS from the user's game when the test copy opened it. In
+  real use it only opens unasked when there is no key, i.e. before the
+  first match ever - but do not open it from code while a match is on.
+
+**Chinese is on by default beside Russian** (`scripts: ["cyrillic",
+"han"]`; the user: "a lot of chat wheels are chinese ... but main selling
+point is russian"). The prompt says most chat is Russian and some Chinese,
+and that a pasted Chinese voice line is translated briefly, not explained.
+REAL OUTPUT: 夸张哦~ -> "Exaggerated~", 漂亮! -> "Nice!", 打得不错 -> "Well
+played". The user's own config.json listed only cyrillic and was given
+`han` too. The landing page still leads with Russian; its FAQ says
+Chinese works out of the box.
+
 ## The key guide (`docs/key.html`, 2026-09-20)
 
 The user asked for "a guide how to get api key with pictures". Linked from
@@ -847,7 +899,7 @@ npm start        # the overlay (Electron)
 npm run watch    # the same chain in a terminal - use this first
 npm run demo     # drives the chain from a fake source, no Dota needed
 npm run doctor   # no-key diagnostic
-npm test         # 93 tests, plain node assert, no runner
+npm test         # 98 tests, plain node assert, no runner
 ```
 
 Keep `npm test` green. It needs no game running and no API key.
@@ -878,7 +930,9 @@ Keep `npm test` green. It needs no game running and no API key.
   parameter, and assigning an array to it joins it into one string. Cost
   a run in ptrscan.
 - Source files are LF. There is no build step and nothing compiled.
-- The Gemini key lives in `config.json` (gitignored) or `GEMINI_API_KEY`.
+- The Gemini key is pasted into the app's setup window (saved encrypted
+  in `config.json`, which is gitignored), or lives there in plain as
+  `geminiApiKey`, or in `GEMINI_API_KEY`.
 
 ### Testing the reader with no Dota running
 
