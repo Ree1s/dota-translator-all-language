@@ -97,8 +97,30 @@ lines). Team chat: windows work. All chat: they do not, on two samples.**
   force-killed and the scanner was gone within 5 seconds.
 - Two translations took 6s and 14s to appear after the line was FOUND.
   That is the model (a timeout and its retry), not the reader.
-- **How the game FELT was not reported**, and that is still the
-  measurement that decides this.
+- How the game felt: see the next paragraph.
+
+**What the user said after that match, and what was changed for it
+(2026-09-20 evening):** the game felt *"ok, the same as without
+translator"* at a 2s poll with a wide poll every fifth. And: chat must
+be *"pretty much instant"* - a delayed message is never seen in a fight
+- and **team and all chat matter equally**. So late all chat is a fault
+to fix, not a trade to accept. Changed, NOT yet played with:
+
+- `scanIntervalMs` 2000 -> 1000. Wide poll still every fifth, so all
+  chat is up to ~6.5s late until it can be windowed too. If the game now
+  hitches every six seconds or so, suspect the wide poll first.
+- **The model was most of the worst delays.** MEASURED, six single-line
+  calls: 0.7-1.0s five times, and once no answer at all. A call is quick
+  or lost, so the first try gets 2.5s (was 12s) and the retry 8s. A lost
+  call now costs ~3.5s, not ~13s. `thinkingConfig` is REJECTED by
+  gemini-3.5-flash-lite ("invalid argument") - do not try it again.
+- `batchMs` 400 -> 150.
+- Every placement row now carries `addr`, `region`, `regionMb` and
+  `alloc`. **The next match's job is all chat:** a dozen all-chat lines,
+  then see whether they share an allocation, a region size, or a
+  distance from EACH OTHER. If they do, give all chat its own windows.
+  If they do not, the windowed route cannot make all chat instant and
+  the chat container (below) is the way.
 
 **Then measure frame time in the game**, windows on against
 `scanWindowMb: 0`, before believing any of it.
@@ -174,7 +196,7 @@ npm start        # the overlay (Electron)
 npm run watch    # the same chain in a terminal - use this first
 npm run demo     # drives the chain from a fake source, no Dota needed
 npm run doctor   # no-key diagnostic
-npm test         # 70 tests, plain node assert, no runner
+npm test         # 72 tests, plain node assert, no runner
 ```
 
 Keep `npm test` green. It needs no game running and no API key.

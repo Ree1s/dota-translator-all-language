@@ -15,7 +15,8 @@
 #
 # Protocol, one JSON object per line:
 #   {"t":"status","state":"waiting|scanning|reading","pid":N,"detail":"..."}
-#   {"t":"line","b64":"<the line, UTF-8, base64>","a":<address>,"w":0|1}
+#   {"t":"line","b64":"<the line, UTF-8, base64>","a":<address>,"w":0|1,
+#    "r":<region base>,"rs":<region size>,"ab":<allocation base>}
 #   {"t":"stat","full":bool,"mode":"full|wide|win","ms":N,"mb":N,
 #    "regions":N,"hits":N,"hot":N,"winMb":N}
 #   {"t":"error","detail":"..."}
@@ -133,7 +134,10 @@ public static class DotaMem {
   /// A line and where it was. A = the anchor's address in the game,
   /// W = inside the windows as they stood when the scan began, P = in
   /// private memory (the only kind a line is ever WRITTEN to).
-  public class Hit { public string S; public long A; public bool W, P; }
+  /// R/RS = the region it was in and that region's size, AB = the
+  /// allocation. Where a line lands is the open question, and an address
+  /// alone cannot say whether two lines shared a region or a heap.
+  public class Hit { public string S; public long A, R, RS, AB; public bool W, P; }
 
   // The windows: sorted, merged [start, end) ranges around every address
   // a line has been seen at. Replaced whole, never edited, so a scan on
@@ -251,7 +255,7 @@ public static class DotaMem {
     // It is memory bandwidth as much as processor: 410 MB took 1.0s on
     // one thread, and a poll that eats a core is a poll that costs frames
     // in the game it is reading.
-    // {base, size, allocationBase, isPrivate, startsRegion, endsRegion}
+    // {base, size, allocationBase, isPrivate, startsRegion, endsRegion, regionBase, regionSize}
     var work = new List<long[]>();
     long addr = 0, stopAt = long.MaxValue;
     if (windowed) {
@@ -270,7 +274,7 @@ public static class DotaMem {
         bool want = m.State == COMMIT && Readable(m.Protect);
         if (want && only != null && (!only.Contains(ab) || size > POLL_MAX_REGION)) want = false;
         long priv = m.Type == PRIVATE ? 1 : 0;
-        if (want && !windowed) work.Add(new long[] { bas, size, ab, priv, 1, 1 });
+        if (want && !windowed) work.Add(new long[] { bas, size, ab, priv, 1, 1, bas, size });
         if (want && windowed) {
           // Asking about an address in the MIDDLE of a region answers
           // from that page on, so `bas` is only known to start a region
@@ -280,7 +284,7 @@ public static class DotaMem {
             if (r[1] <= bas) continue;
             if (r[0] >= end) break;
             long s = Math.Max(bas, r[0]), e = Math.Min(end, r[1]);
-            work.Add(new long[] { s, e - s, ab, priv, (s == bas && bas != win[0][0]) ? 1 : 0, e == end ? 1 : 0 });
+            work.Add(new long[] { s, e - s, ab, priv, (s == bas && bas != win[0][0]) ? 1 : 0, e == end ? 1 : 0, bas, size });
           }
         }
 
@@ -313,7 +317,9 @@ public static class DotaMem {
             // A string running off the end is only whole if that end is
             // the region's; a window's end is just where we stopped.
             bool last = ends && off + ask >= size;
+            int had = mine.Count;
             if (ScanBuffer(buf, n, last, starts && off == 0, bas + off, win, priv, mine)) any = true;
+            for (int q = had; q < mine.Count; q++) { mine[q].R = work[i][6]; mine[q].RS = work[i][7]; mine[q].AB = ab; }
             if (n < ask) break;          // short read: the rest is not there
           }
           lock (gate) {
@@ -464,7 +470,7 @@ while ($true) {
     # re-encoded on the way out; the reader decodes it as UTF-8.
     foreach ($h in $lines) {
       $b64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($h.S))
-      Emit @{ t = 'line'; b64 = $b64; a = $h.A; w = [int]$h.W }
+      Emit @{ t = 'line'; b64 = $b64; a = $h.A; w = [int]$h.W; r = $h.R; rs = $h.RS; ab = $h.AB }
     }
 
     Emit @{

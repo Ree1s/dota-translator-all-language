@@ -113,13 +113,23 @@ export async function askGemini({ apiKey, model = MODEL, request, fetchImpl = gl
 // another one.
 const WORTH_RETRYING = ['the model took too long', 'could not reach the model'];
 
+// How long the FIRST try is given. MEASURED, six single-line calls to
+// gemini-3.5-flash-lite: five answered in 0.7-1.0s and one never answered
+// at all. A call is therefore either quick or lost, and waiting 12s to
+// find out which put a line on the overlay 14 seconds after it was said -
+// in a fight, that is never. Given 2.5s, a lost call costs 2.5s plus one
+// ordinary call. The second try gets longer, because by then a slow
+// answer is better than none.
+export const FIRST_TRY_MS = 2500;
+export const SECOND_TRY_MS = 8000;
+
 export async function askGeminiTwice(opts) {
   try {
-    return await askGemini(opts);
+    return await askGemini({ timeoutMs: FIRST_TRY_MS, ...opts });
   } catch (err) {
     const why = String((err && err.message) || err);
     if (!WORTH_RETRYING.includes(why)) throw err;
-    return askGemini(opts);
+    return askGemini({ ...opts, timeoutMs: Math.max(SECOND_TRY_MS, opts.timeoutMs || 0) });
   }
 }
 

@@ -77,7 +77,9 @@ export function parseEvent(raw) {
     try { text = Buffer.from(o.b64, 'base64').toString('utf8'); } catch { return null; }
     // Where it was found, when the helper says. A user-space address is
     // under 2^47, so a JS number holds it exactly.
-    if (typeof o.a === 'number') return { kind: 'line', text, addr: o.a, inWindow: o.w === 1 };
+    if (typeof o.a === 'number') {
+      return { kind: 'line', text, addr: o.a, inWindow: o.w === 1, region: o.r, regionSize: o.rs, alloc: o.ab };
+    }
     return { kind: 'line', text };
   }
   if (o.t === 'status') return { kind: 'status', state: o.state, detail: o.detail, pid: o.pid };
@@ -187,6 +189,8 @@ export function startMemorySource({
         if (Number.isFinite(ev.addr)) {
           pendingPlacements.push({
             inWindow: ev.inWindow, distance: nearestDistance(ev.addr, known), channel: line.channel,
+            ...(Number.isFinite(ev.region)
+              ? { addr: ev.addr, region: ev.region, regionSize: ev.regionSize, alloc: ev.alloc } : {}),
           });
         }
         // The Cyrillic gate, exactly as the log source used it: Dota's

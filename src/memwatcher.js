@@ -44,8 +44,13 @@ export function startWatchingMemory(cfg, { onResult, onStatus = () => {}, transl
       if (!cfg.learn) return;
       try {
         const distance = p.distance === null ? 'none' : p.distance;
+        // Hex, because these are compared by eye against each other.
+        const hex = (n) => '0x' + Number(n).toString(16);
+        const where = Number.isFinite(p.region)
+          ? ` addr=${hex(p.addr)} region=${hex(p.region)} regionMb=${(p.regionSize / 1048576).toFixed(1)} alloc=${hex(p.alloc)}`
+          : '';
         fs.appendFileSync(learnPath,
-          `placement ${new Date().toISOString()} mode=${p.mode} inWindow=${p.inWindow ? 1 : 0} distance=${distance} channel=${p.channel}\n`);
+          `placement ${new Date().toISOString()} mode=${p.mode} inWindow=${p.inWindow ? 1 : 0} distance=${distance} channel=${p.channel}${where}\n`);
       } catch { /* best effort */ }
     },
     onStat: (stat) => onStatus({ kind: 'stat', text: '', stat }),

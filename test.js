@@ -6,7 +6,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
 import { parseChatLine, chatToTranslate, needsTranslation, libraryPaths, logCandidates, LogTail, findDotaLog } from './src/chatlog.js';
-import { buildRequest, replyTextFrom, translationsFrom, translateBatch } from './src/translate.js';
+import { buildRequest, replyTextFrom, translationsFrom, translateBatch, FIRST_TRY_MS, SECOND_TRY_MS } from './src/translate.js';
 import { createPipeline } from './src/pipeline.js';
 import { parseMemoryChatLine, parseMarkupChatLine, createLineTracker, readMemoryFindings, unknownChannelTag, PERSONA, MAX_LINE, MAX_NAME } from './src/chatmem.js';
 import { parseEvent, scannerArgs, nearestDistance, POWERSHELL, startMemorySource } from './src/memsource.js';
@@ -629,6 +629,36 @@ ok('a new line is measured against where chat WAS, not against its own second co
   feed({ t: 'stat', full: false, mode: 'win', ms: 1 });
   assert.deepEqual(placed[1], { inWindow: true, distance: 100, channel: 'team', mode: 'win' });
   source.stop();
+});
+
+ok('a placement carries the region and allocation the line was in', () => {
+  // An address alone cannot say whether two lines shared a region or a
+  // heap, and that is the question all chat has left open.
+  const placed = [];
+  const { source, feed } = fakeSource({ onPlacement: (p) => placed.push(p) });
+  feed({ t: 'status', state: 'reading', pid: 7 });
+  feed({ t: 'stat', full: true, mode: 'full', ms: 1 });
+  feed({ t: 'line', b64: Buffer.from('Иван: гг', 'utf8').toString('base64'), a: 5000, w: 0, r: 4096, rs: 8192, ab: 4096 });
+  feed({ t: 'stat', full: false, mode: 'wide', ms: 1 });
+  assert.deepEqual(placed, [{
+    inWindow: false, distance: null, channel: 'all', addr: 5000, region: 4096, regionSize: 8192, alloc: 4096, mode: 'wide',
+  }]);
+  source.stop();
+});
+
+await okAsync('the first try is given seconds, not twelve, and the second is given longer', async () => {
+  // MEASURED: a call answers in about a second or never. Waiting 12s to
+  // learn which put a line up 14 seconds after it was said.
+  const given = [];
+  const hangsOnce = async (url, init) => {
+    given.push(init.signal);
+    if (given.length === 1) { const e = new Error('x'); e.name = 'AbortError'; throw e; }
+    return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: '[{"i":0,"en":"gg"}]' }] } }] }) };
+  };
+  assert.ok(FIRST_TRY_MS <= 3000 && SECOND_TRY_MS > FIRST_TRY_MS);
+  const rows = await translateBatch([{ name: 'A', text: 'гг' }], { apiKey: 'k', fetchImpl: hangsOnce });
+  assert.equal(given.length, 2);
+  assert.equal(rows[0].en, 'gg');
 });
 
 ok('windows have defaults, and a config can turn them off', () => {

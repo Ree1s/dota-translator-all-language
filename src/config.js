@@ -19,7 +19,15 @@ export const DEFAULTS = {
   // 7.5 GB takes 3.8s. At a one-second poll the reader is busy half the
   // time, which is a lot to ask of a machine running a game; at two it is
   // a quarter, and a chat line is on screen for about seven seconds.
-  scanIntervalMs: 2000,     // how often to re-read the chat out of memory
+  //
+  // That was when every poll read everything. Most polls are windowed
+  // now - 50 to 150 MB, 100 to 200ms, one thread, below normal priority -
+  // and the user's word on a live match at 2s was "the same as without
+  // the translator", and that chat must be near enough instant to be
+  // read in a fight. So one second. Every fifth poll is still the wide
+  // one (~1.3 GB, ~1.6s); if the game hitches every six seconds or so,
+  // that is the first thing to suspect.
+  scanIntervalMs: 1000,     // how often to re-read the chat out of memory
   fullRescanMs: 120000,     // how often to sweep the whole process again
   // Most polls read only this many MB either side of where a line has
   // been seen, and every Nth reads the whole of the allocations that hold
@@ -28,7 +36,9 @@ export const DEFAULTS = {
   scanWindowMb: 4,
   scanWideEvery: 5,
   scripts: ['cyrillic'],    // which writing systems to translate
-  batchMs: 400,             // how long to gather lines before one call
+  // Lines said in the same breath go in one call. 400 was chosen before
+  // anybody had played with it; in a fight every tenth of a second shows.
+  batchMs: 150,             // how long to gather lines before one call
   holdSeconds: 14,          // how long a line stays on the overlay
   maxLines: 6,
   showOriginal: true,

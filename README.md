@@ -122,12 +122,12 @@ the memory reading runs through PowerShell, which Windows already has.
 | `geminiApiKey` | your key. `GEMINI_API_KEY` in the environment wins over it |
 | `model` | `gemini-3.5-flash-lite` by default |
 | `source` | `memory` reads the game. `log` is the old console.log reader, which cannot see chat |
-| `scanIntervalMs` | how often to re-read the chat (2000) |
+| `scanIntervalMs` | how often to re-read the chat (1000) |
 | `fullRescanMs` | how often to sweep the whole process again (120000) |
 | `scanWindowMb` | most re-reads only look this many MB either side of where chat was last seen; 0 reads everything every time (4) |
 | `scanWideEvery` | every Nth re-read looks everywhere chat has ever been, to catch a line written somewhere new (5) |
 | `scripts` | which writing systems to translate. `["cyrillic"]` by default; `greek`, `han`, `hangul`, `arabic`, `thai` are also known |
-| `batchMs` | how long to gather lines before one call (400) |
+| `batchMs` | how long to gather lines before one call (150) |
 | `holdSeconds` | how long a line stays on screen (14) |
 | `maxLines` | how many lines the overlay holds (6) |
 | `showOriginal` | print the Russian under the English (true) |

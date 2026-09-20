@@ -3,13 +3,14 @@
   "model": "gemini-3.5-flash-lite",
   "logPath": "",
   "source": "memory",
-  "scanIntervalMs": 2000,
+  "scanIntervalMs": 1000,
   "fullRescanMs": 120000,
   "scanWindowMb": 4,
   "scanWideEvery": 5,
   "scripts": [
     "cyrillic"
   ],
+  "batchMs": 150,
   "holdSeconds": 14,
   "maxLines": 6,
   "showOriginal": true,
