@@ -747,7 +747,10 @@ while ($true) {
   if ($proc.Id -ne $lastPid) {
     [DotaMem]::ForgetPanels(); $panelRetryAt = [DateTime]::MinValue; $panelWaitMs = 0; $announcedPanel = $false; $hot.Clear(); $addrs.Clear(); $winBytes = [DotaMem]::SetWindows($addrs, 0); $lastFull = [DateTime]::MinValue; $idleWaitMs = 0; $announcedSearch = $false
     $lastPid = $proc.Id
-    Emit @{ t = 'status'; state = 'reading'; pid = $proc.Id; detail = 'attached' }
+    # Where the game is installed goes with it: the overlay takes the game's
+    # own chat font from there rather than shipping a copy of Valve's.
+    $exe = ''; try { $exe = [string]$proc.Path } catch { }
+    Emit @{ t = 'status'; state = 'reading'; pid = $proc.Id; detail = 'attached'; path = $exe }
   }
 
   # The panel first. While there is one, NOTHING else runs: no sweeps, no

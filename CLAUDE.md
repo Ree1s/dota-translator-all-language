@@ -104,6 +104,15 @@ once, as said, italic, and turns into `english (original)`.
   third still pending in the first and English in the second. Row spacing
   was a third too loose (a height already in screen pixels was scaled
   again); fixed after the screenshots and NOT seen since.
+- **The font is the game's own, from the game's own folder.** The user
+  said the fonts did not match: Dota's chat is Valve's Radiance, which
+  exists only inside the install (`game/dota/panorama/fonts/radiance-*.otf`).
+  The helper reports the exe path with its `attached` status, `main.js`
+  derives the fonts folder and the renderer adds `@font-face` rules for
+  it. NEVER copy those files into the repo. SEEN: third screenshot, same
+  face as the game's lines below it, rows at the game's pitch. In this
+  mode all chat carries no tag and names use Dota's exact slot colours,
+  as the game does (the last of these changed after the screenshot).
 - What it gives up: the English is up to six rows above the line it
   translates when the chat is nearly empty. What it avoids is everything
   that went wrong with cover: the strip, the guess at when the game's

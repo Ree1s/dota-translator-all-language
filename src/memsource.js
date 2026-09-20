@@ -88,7 +88,7 @@ export function parseEvent(raw) {
     }
     return { kind: 'line', text };
   }
-  if (o.t === 'status') return { kind: 'status', state: o.state, detail: o.detail, pid: o.pid };
+  if (o.t === 'status') return { kind: 'status', state: o.state, detail: o.detail, pid: o.pid, ...(typeof o.path === 'string' && o.path ? { path: o.path } : {}) };
   if (o.t === 'stat') return { kind: 'stat', ...o, t: undefined };
   // A search for the chat panel: what it cost and whether it found one.
   // NOT a stat - a stat says a read is over, which ends priming.
@@ -125,6 +125,7 @@ export function startMemorySource({
   onLayout = () => {},
   onSeen = () => {},
   onFocus = () => {},
+  onGamePath = () => {},
   panel,
   panelIntervalMs,
   windowMb,
@@ -158,6 +159,7 @@ export function startMemorySource({
     if (!ev) return;
 
     if (ev.kind === 'status') {
+      if (ev.path) onGamePath(ev.path);
       if (ev.pid && ev.pid !== lastPid) {
         // A different game: what we remembered belongs to the old one,
         // and its backlog must be primed past rather than announced.

@@ -5,7 +5,8 @@
 
 import { app, BrowserWindow, screen, ipcMain, globalShortcut } from 'electron';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import fs from 'node:fs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { loadConfig } from './config.js';
 import { startWatching } from './watcher.js';
 import { startWatchingMemory } from './memwatcher.js';
@@ -158,6 +159,14 @@ function start() {
     onPending: (row) => send('pending', row),
     onLayout,
     onSeen: (s) => { if (cfg.display === 'cover') send('seen', s); },
+    // The game's chat is set in Valve's Radiance, which is not on anybody's
+    // machine except inside the game. It is loaded from THERE - the
+    // player's own copy - and never copied into this repo.
+    onGamePath: (exe) => {
+      // dota2.exe is in game/bin/win64; the fonts are in game/dota/panorama/fonts.
+      const dir = path.resolve(path.dirname(exe), '..', '..', 'dota', 'panorama', 'fonts');
+      if (fs.existsSync(path.join(dir, 'radiance-bold.otf'))) send('fonts', pathToFileURL(dir).href);
+    },
     // Up only while the game is the window in front.
     onFocus: (on) => {
       inFront = on;

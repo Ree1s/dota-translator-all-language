@@ -56,9 +56,16 @@ function build(row, state) {
   const el = document.createElement('div');
   el.className = 'row ' + state + (row.channel === 'team' ? ' team' : '');
   if (row.id) el.dataset.id = String(row.id);
-  if (TAGS[row.channel]) el.appendChild(span('tag', TAGS[row.channel]));
+  // The game tags team chat and leaves all chat bare; beside the game's
+  // own lines, so do we. In a panel of its own the tag is worth having.
+  const bareLook = document.body.classList.contains('bare');
+  if (TAGS[row.channel] && !(bareLook && row.channel === 'all')) el.appendChild(span('tag', TAGS[row.channel]));
   const name = span('name', row.name + ':');
-  name.style.color = readable(SLOT_COLOURS[row.slot] || '#7fd4ff');
+  // Beside the game's own chat, the game's own colours exactly: outlined
+  // text carries the dark blue as well there as it does in Dota. Lifting
+  // them is for the dark panel, where they sink.
+  const colour = SLOT_COLOURS[row.slot] || '#7fd4ff';
+  name.style.color = document.body.classList.contains('bare') ? colour : readable(colour);
   el.appendChild(name);
   el.appendChild(span('say', state === 'pending' ? row.text : row.en));
   // "english (as it was said)", on one line, the way it is wanted in the
@@ -213,6 +220,15 @@ window.dt.onSeen((s) => {
   if (!firstSeen.has(keyOf(s))) firstSeen.set(keyOf(s), Date.now());
   if (firstSeen.size > 200) firstSeen.delete(firstSeen.keys().next().value);
   if (addrKey.size > 200) addrKey.delete(addrKey.keys().next().value);
+});
+window.dt.onFonts((dir) => {
+  // The game's own faces, from the game's own folder. "Radiance" is already
+  // first in the font stack, so until (or unless) these load it is Segoe UI.
+  const css = [['regular', 400, 'normal'], ['regularitalic', 400, 'italic'], ['semibold', 600, 'normal'], ['bold', 700, 'normal'], ['bolditalic', 700, 'italic']]
+    .map(([file, weight, style]) => `@font-face { font-family: "Radiance"; src: url("${dir}/radiance-${file}.otf"); font-weight: ${weight}; font-style: ${style}; }`).join(' ');
+  const el = document.createElement('style');
+  el.textContent = css;
+  document.head.appendChild(el);
 });
 window.dt.onPending(addPending);
 window.dt.onLine(addLine);
