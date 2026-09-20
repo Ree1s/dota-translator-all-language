@@ -8,4 +8,5 @@ contextBridge.exposeInMainWorld('setup', {
   save: (payload) => ipcRenderer.invoke('setup:save', payload),
   guide: () => ipcRenderer.invoke('setup:guide'),
   close: () => ipcRenderer.invoke('setup:close'),
+  fit: () => ipcRenderer.invoke('setup:fit'),
 });

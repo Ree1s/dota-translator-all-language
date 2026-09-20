@@ -865,6 +865,15 @@ missing quote there failed silently.
   the check-and-save path is covered by tests with a stand-in translator,
   and the user's own paste is the first real run of it. Also not seen:
   the tray icon itself.
+- **The window sizes itself to its page** (the user: "currently the window
+  is scrollable - just have it fit the content"): 680 wide, and `fitSetup`
+  sets the height to the BODY's measured height (561 with no message),
+  again whenever a result appears, capped to the screen. Measure the body,
+  not `documentElement.scrollHeight`: a page never reports itself shorter
+  than its window, so that can grow a window but never shrink one.
+  `DT_SHOT=<file>` makes the window photograph itself - the way to look at
+  it while a game covers the screen (a screen capture showed Dota, and a
+  search by window title found the USER'S installed copy, not the dev one).
 - It STOLE FOCUS from the user's game when the test copy opened it. In
   real use it only opens unasked when there is no key, i.e. before the
   first match ever - but do not open it from code while a match is on.

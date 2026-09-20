@@ -7,6 +7,7 @@ const key = $('key'), result = $('result'), save = $('save');
 function say(kind, html) {
   result.className = kind;
   result.innerHTML = html;
+  window.setup.fit();          // the window grows with what it has to say
 }
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -15,6 +16,7 @@ window.setup.state().then((s) => {
   const mode = document.querySelector(`input[name=display][value="${s.display === 'box' ? 'box' : 'above'}"]`);
   if (mode) mode.checked = true;
   if (!s.hasKey) key.focus();
+  window.setup.fit();
 });
 
 $('show').addEventListener('click', () => {

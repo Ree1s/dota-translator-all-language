@@ -17,8 +17,8 @@
     --mono: 'Cascadia Mono', Consolas, monospace;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; }
-  body { background: radial-gradient(700px 360px at 85% -10%, rgba(240, 180, 76, 0.12), transparent 60%), var(--bg); color: var(--text); font-family: var(--sans); font-size: 15.5px; line-height: 1.5; padding: 30px 34px 26px; display: flex; flex-direction: column; -webkit-user-select: none; user-select: none; }
+  html, body { overflow: hidden; }
+  body { background: radial-gradient(700px 360px at 85% -10%, rgba(240, 180, 76, 0.12), transparent 60%), var(--bg); color: var(--text); font-family: var(--sans); font-size: 15.5px; line-height: 1.5; padding: 30px 38px 26px; display: flex; flex-direction: column; -webkit-user-select: none; user-select: none; }
   .brand { font-family: var(--serif); font-size: 19px; color: var(--dim); display: flex; align-items: center; gap: 10px; }
   .brand b { color: var(--accent); font-weight: 500; font-style: italic; }
   h1 { font-family: var(--serif); font-weight: 500; font-size: 36px; line-height: 1.08; margin-top: 18px; letter-spacing: -0.01em; }
@@ -46,7 +46,7 @@
   #result.bad { display: block; border-left-color: var(--warn); background: rgba(229, 139, 107, 0.07); }
   #result.busy { display: block; border-left-color: var(--accent); color: var(--dim); }
   #result code { font-family: var(--mono); color: var(--text); }
-  .actions { margin-top: auto; padding-top: 22px; display: flex; gap: 10px; align-items: center; }
+  .actions { margin-top: 0; padding-top: 24px; display: flex; gap: 10px; align-items: center; }
   .actions .grow { flex: 1; }
   .trust { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--faint); font-size: 12.5px; }
 </style>

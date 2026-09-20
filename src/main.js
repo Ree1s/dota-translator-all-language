@@ -262,18 +262,39 @@ function storedKey() {
 function openSetup() {
   if (setupWin && !setupWin.isDestroyed()) { setupWin.show(); setupWin.focus(); return; }
   setupWin = new BrowserWindow({
-    width: 600, height: 700, resizable: false, maximizable: false, fullscreenable: false,
+    // Wide enough that nothing wraps awkwardly; the HEIGHT is whatever the
+    // page turns out to need (fitSetup) - a fixed one was a guess, and the
+    // guess was short: the window scrolled.
+    width: 680, height: 720, useContentSize: true, resizable: false, maximizable: false, fullscreenable: false,
     title: 'Dota Translator', backgroundColor: '#0a0d10', autoHideMenuBar: true, show: false,
     webPreferences: { preload: path.join(here, 'setup-preload.cjs'), contextIsolation: true, sandbox: true },
   });
   setupWin.removeMenu();
   setupWin.loadFile(path.join(here, 'setup.html'));
-  setupWin.once('ready-to-show', () => setupWin.show());
+  setupWin.once('ready-to-show', async () => { await fitSetup(); if (setupWin && !setupWin.isDestroyed()) setupWin.show(); });
   // Nothing in this window goes anywhere but the page it was given.
   setupWin.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   setupWin.webContents.on('will-navigate', (e) => e.preventDefault());
   setupWin.on('closed', () => { setupWin = null; });
 }
+
+// Make the setup window exactly as tall as its page, capped to the screen.
+// Asked again when the page says its content changed (a result appearing).
+async function fitSetup() {
+  if (!setupWin || setupWin.isDestroyed()) return;
+  try {
+    const want = await setupWin.webContents.executeJavaScript('Math.ceil(document.body.getBoundingClientRect().height)');
+    const room = screen.getPrimaryDisplay().workAreaSize.height - 60;
+    const [w] = setupWin.getContentSize();
+    setupWin.setContentSize(w, Math.max(400, Math.min(want, room)));
+    // DT_SHOT=<file>: the window photographs itself - the only way to look
+    // at it while a game covers the screen.
+    if (process.env.DT_SHOT) setTimeout(async () => { try { fs.writeFileSync(process.env.DT_SHOT, (await setupWin.webContents.capturePage()).toPNG()); } catch { /* closed */ } }, 600);
+    if (DEBUG) console.log('setup window: page needs', want, 'screen allows', room, '-> content', setupWin.getContentSize().join('x'));
+    setupWin.center();
+  } catch { /* closed meanwhile */ }
+}
+ipcMain.handle('setup:fit', fitSetup);
 
 function makeTray() {
   // The app's own icon: two chat bubbles, what was said behind what you
