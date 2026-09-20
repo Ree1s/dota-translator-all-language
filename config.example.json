@@ -3,8 +3,8 @@
   "model": "gemini-3.5-flash-lite",
   "logPath": "",
   "source": "memory",
-  "scanIntervalMs": 1000,
-  "fullRescanMs": 60000,
+  "scanIntervalMs": 2000,
+  "fullRescanMs": 120000,
   "scripts": [
     "cyrillic"
   ],

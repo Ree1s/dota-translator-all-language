@@ -579,6 +579,31 @@ ok('the scanner is run through Windows PowerShell with no profile', () => {
   assert.equal(POWERSHELL, 'powershell.exe');   // not pwsh: an optional install
 });
 
+await okAsync('a call that never arrived is made once more, an answered one is not', async () => {
+  // The first live game this ever read timed out on one of its two
+  // lines, so this is the common case, not the rare one.
+  let tries = 0;
+  const flaky = async () => {
+    tries++;
+    if (tries === 1) { const e = new Error('boom'); e.name = 'AbortError'; throw e; }
+    return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: '[{"i":0,"en":"go mid"}]' }] } }] }) };
+  };
+  const rows = await translateBatch([{ name: 'A', text: 'иди мид' }], { apiKey: 'k', fetchImpl: flaky, timeoutMs: 5 });
+  assert.equal(tries, 2, 'the timed-out call was not tried again');
+  assert.equal(rows[0].en, 'go mid');
+  assert.equal(rows[0].translated, true);
+});
+
+await okAsync('a refusal is the answer and is not asked twice', async () => {
+  let tries = 0;
+  const refuses = async () => {
+    tries++;
+    return { ok: false, status: 429, json: async () => ({ error: { message: 'quota' } }) };
+  };
+  await assert.rejects(() => translateBatch([{ name: 'A', text: 'иди мид' }], { apiKey: 'k', fetchImpl: refuses }));
+  assert.equal(tries, 1, 'a quota answer was asked for twice');
+});
+
 console.log('build');
 
 ok('the scanner script parses', () => {

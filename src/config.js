@@ -14,8 +14,13 @@ export const DEFAULTS = {
   model: 'gemini-3.5-flash-lite',
   logPath: '',              // blank = find the Steam install
   source: 'memory',         // 'memory' reads the game; 'log' reads console.log
-  scanIntervalMs: 1000,     // how often to re-read the chat out of memory
-  fullRescanMs: 60000,      // how often to sweep the whole process again
+  // MEASURED on a live match: a poll of the allocations known to hold
+  // chat reads ~710 MB in under half a second, and a sweep of the whole
+  // 7.5 GB takes 3.8s. At a one-second poll the reader is busy half the
+  // time, which is a lot to ask of a machine running a game; at two it is
+  // a quarter, and a chat line is on screen for about seven seconds.
+  scanIntervalMs: 2000,     // how often to re-read the chat out of memory
+  fullRescanMs: 120000,     // how often to sweep the whole process again
   scripts: ['cyrillic'],    // which writing systems to translate
   batchMs: 400,             // how long to gather lines before one call
   holdSeconds: 14,          // how long a line stays on the overlay

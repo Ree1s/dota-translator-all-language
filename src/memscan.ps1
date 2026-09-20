@@ -33,6 +33,8 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 public static class DotaMem {
   [DllImport("kernel32.dll", SetLastError=true)] static extern IntPtr OpenProcess(int a, bool i, int pid);
@@ -48,8 +50,24 @@ public static class DotaMem {
     public int State, Protect, Type, __b;
   }
 
-  const int VM_READ = 0x0010, QUERY = 0x0400, COMMIT = 0x1000;
+  const int VM_READ = 0x0010, QUERY = 0x0400, COMMIT = 0x1000, PRIVATE = 0x20000;
   const int MAX_STR = 512;   // a chat line is far shorter; this bounds a runaway read
+  // Regions BIGGER than the buffer used to be skipped whole. MEASURED on
+  // the running game: 20 of them, 2,972 MB in all, the biggest 320 MB -
+  // two fifths of the process never looked at, and nothing said so. They
+  // are read in chunks now; the chunks overlap by more than the longest
+  // string, so one lying on a seam is still seen entire.
+  const int CHUNK = 16 * 1024 * 1024;
+  const int OVERLAP = 8192;
+  // What a POLL will read of a hot allocation. The allocations holding
+  // chat also hold the game's bulk pools: 336 MB of small regions and
+  // about 2 GB in a handful of enormous ones, which took a poll to 4.1
+  // seconds. Every chat line yet measured was in a small region - 3.7 MB,
+  // 32 MB, 3.9 MB - and a pool of a quarter of a gigabyte is not where a
+  // short string is written. This is a heuristic, not a law, and it is
+  // the FULL sweep's job to be the thing that has no heuristics in it:
+  // that one reads every byte, giant regions included.
+  const long POLL_MAX_REGION = 64L * 1024 * 1024;
 
   // Panorama's markup wraps EVERY chat line whatever its channel, so it
   // is the one anchor that finds both. MEASURED: the plain pre-formatted
@@ -79,7 +97,7 @@ public static class DotaMem {
     return p == 0x02 || p == 0x04 || p == 0x20 || p == 0x40;
   }
 
-  static string Extract(byte[] buf, long n, long at, int back) {
+  static string Extract(byte[] buf, long n, long at, int back, out bool cut) {
     // Forward to the end of the string; backwards only as far as `back`
     // asks and only over printable bytes. The first version walked back
     // to the previous null and, where there was none, dragged in whatever
@@ -89,18 +107,53 @@ public static class DotaMem {
     while (s > 0 && at - s < back && buf[s - 1] != 0 && buf[s - 1] >= 0x20) s--;
     long e = at;
     while (e < n && buf[e] != 0 && e - s < MAX_STR) e++;
+    cut = (e >= n);
     if (e <= s) return null;
     try { return Encoding.UTF8.GetString(buf, (int)s, (int)(e - s)); } catch { return null; }
   }
 
-  /// Scan. `only` null reads everything; otherwise ONLY those region
-  /// bases are read - that is what makes polling cheap once the first
-  /// full scan has shown where chat lives, and an EMPTY set therefore
-  /// reads nothing at all. (It used to be `only.Count > 0`, so an empty
-  /// set fell through to reading all 4 GB - a "quick" scan that cost
-  /// exactly as much as a full one, measured at 8.3s over 1 GB.)
+  /// One chunk, into the CALLER's list - nothing shared, so this is safe
+  /// to run on several threads at once.
+  static bool ScanBuffer(byte[] buf, long n, bool last, List<string> found) {
+    bool any = false;
+    for (long i = 0; i < n; i++) {
+      if (!FIRST[buf[i]]) continue;
+      for (int k = 0; k < PATS.Count; k++) {
+        byte[] p = PATS[k];
+        int pl = p.Length;
+        if (buf[i] != p[0] || i + pl > n) continue;
+        bool okp = true;
+        for (int j = 1; j < pl; j++) if (buf[i + j] != p[j]) { okp = false; break; }
+        if (!okp) continue;
+        bool cut;
+        string s = Extract(buf, n, i, 48, out cut);
+        // A string running to the end of a chunk is not whole. The next
+        // chunk overlaps far enough to hold it entire, so it is left to
+        // that one rather than emitted truncated - a truncated line can
+        // still PARSE, which would put half a sentence on the overlay.
+        if (s != null && (last || !cut)) { found.Add(s); any = true; }
+        break;      // one anchor per position is enough
+      }
+    }
+    return any;
+  }
+
+  /// Scan. `only` null reads everything; otherwise only the regions
+  /// belonging to those ALLOCATIONS are read, and an empty set therefore
+  /// reads nothing at all. (The filter used to be `only.Count > 0`, so an
+  /// empty set fell through to reading all 4 GB - a "quick" scan costing
+  /// exactly as much as a full one.)
+  ///
+  /// ALLOCATIONS, not regions, and that is the whole point. MEASURED in a
+  /// live match: a new chat line does NOT land in the region the last
+  /// sweep found one in - over 95 polls of the hot regions, not one new
+  /// line appeared, and both times chat turned up it was a full sweep
+  /// that found it. The heap RESERVATION is stable where the region is
+  /// not, and the two holding chat came to 336 MB of a 4,527 MB process:
+  /// 7.4%, about half a second to read.
+  ///
   /// Returns the lines found; fills the Last* counters.
-  /// `hot` receives the bases that produced a hit.
+  /// `hot` receives the allocation bases that produced a hit.
   public static List<string> Scan(int pid, HashSet<long> only, HashSet<long> hot) {
     var found = new List<string>();
     LastMs = 0; LastBytes = 0; LastRegions = 0; LastHits = 0;
@@ -109,45 +162,69 @@ public static class DotaMem {
     IntPtr h = OpenProcess(VM_READ | QUERY, false, pid);
     if (h == IntPtr.Zero) throw new Exception("OpenProcess failed: " + Marshal.GetLastWin32Error());
 
-    byte[] buf = new byte[64 * 1024 * 1024];
+    // Two phases. The WALK is cheap and strictly sequential (each
+    // VirtualQueryEx asks about the address after the last region); the
+    // READING is where all the time goes, and is done on several threads.
+    // It is memory bandwidth as much as processor: 410 MB took 1.0s on
+    // one thread, and a poll that eats a core is a poll that costs frames
+    // in the game it is reading.
+    var work = new List<long[]>();       // {base, size, allocationBase, isPrivate}
     long addr = 0;
     try {
       while (true) {
         MBI m;
         if (VirtualQueryEx(h, (IntPtr)addr, out m, Marshal.SizeOf(typeof(MBI))) == 0) break;
-        long size = (long)m.RegionSize, bas = (long)m.BaseAddress;
+        long size = (long)m.RegionSize, bas = (long)m.BaseAddress, ab = (long)m.AllocationBase;
         if (size <= 0) break;
 
-        bool want = m.State == COMMIT && Readable(m.Protect) && size <= buf.Length;
-        if (want && only != null && !only.Contains(bas)) want = false;
+        bool want = m.State == COMMIT && Readable(m.Protect);
+        if (want && only != null && (!only.Contains(ab) || size > POLL_MAX_REGION)) want = false;
+        if (want) work.Add(new long[] { bas, size, ab, m.Type == PRIVATE ? 1 : 0 });
 
-        if (want) {
-          LastRegions++;
-          IntPtr got;
-          if (ReadProcessMemory(h, m.BaseAddress, buf, (IntPtr)size, out got)) {
-            long n = (long)got; LastBytes += n;
-            bool any = false;
-            for (long i = 0; i < n; i++) {
-              if (!FIRST[buf[i]]) continue;
-              for (int k = 0; k < PATS.Count; k++) {
-                byte[] p = PATS[k];
-                int pl = p.Length;
-                if (buf[i] != p[0] || i + pl > n) continue;
-                bool okp = true;
-                for (int j = 1; j < pl; j++) if (buf[i + j] != p[j]) { okp = false; break; }
-                if (!okp) continue;
-                string s = Extract(buf, n, i, 48);
-                if (s != null) { found.Add(s); LastHits++; any = true; }
-                break;      // one anchor per position is enough
-              }
-            }
-            if (any && hot != null) hot.Add(bas);
-          }
-        }
         long next = bas + size;
         if (next <= addr) break;
         addr = next;
       }
+
+      LastRegions = work.Count;
+      long bytes = 0, hits = 0;
+      var gate = new object();
+      int threads = Math.Max(1, Math.Min(4, Environment.ProcessorCount - 1));
+
+      Parallel.For<byte[]>(0, work.Count,
+        new ParallelOptions { MaxDegreeOfParallelism = threads },
+        () => new byte[CHUNK],                       // one buffer per worker
+        (i, state, buf) => {
+          long bas = work[i][0], size = work[i][1], ab = work[i][2];
+          var mine = new List<string>();
+          bool any = false;
+          long read = 0;
+          for (long off = 0; off < size; off += CHUNK - OVERLAP) {
+            long ask = Math.Min((long)CHUNK, size - off);
+            IntPtr got;
+            if (!ReadProcessMemory(h, (IntPtr)(bas + off), buf, (IntPtr)ask, out got)) break;
+            long n = (long)got;
+            if (n <= 0) break;
+            read += n;
+            if (ScanBuffer(buf, n, off + ask >= size, mine)) any = true;
+            if (n < ask) break;          // short read: the rest is not there
+          }
+          lock (gate) {
+            bytes += read;
+            if (mine.Count > 0) { found.AddRange(mine); hits += mine.Count; }
+            // A line is WRITTEN, so it can only be in private memory. An
+            // image's is static - the one thing the anchor matches there
+            // is Panorama's own template,
+            // `<span class="ChatPersona">%s</span>`, and making its 29 MB
+            // resource region hot would have every poll read a quarter of
+            // a gigabyte of module for nothing.
+            if (any && hot != null && work[i][3] == 1) hot.Add(ab);
+          }
+          return buf;
+        },
+        buf => { });
+
+      LastBytes = bytes; LastHits = (int)hits;
     } finally { CloseHandle(h); }
 
     sw.Stop(); LastMs = sw.ElapsedMilliseconds;

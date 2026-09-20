@@ -123,14 +123,54 @@ no calibration. It removes every blocker found today.
   length caps, with a channel tag it knows; the tracker dedups by content
   so the same line in three buffers is one message.
 
+## IT HAS TRANSLATED A REAL GAME (2026-09-20 evening)
+
+A live bot match, Russian typed into chat, `npm run watch`:
+
+```
+[17:26:52] [team] unc status: let's do roshan
+                              давай рошан
+[17:27:08] [all]  unc status: я иду топ, помогите
+```
+
+Team and all chat both read, both channels right, the backlog primed
+away. The second line went up untranslated because the model took longer
+than 12s - one call in two on the first live sample, which is why a call
+that never ARRIVED is now made once more (an answered one, refusal
+included, is not).
+
+**What the live game taught that the stand-in could not:**
+
+- **A NEW LINE DOES NOT LAND IN THE REGION THE LAST ONE DID.** Over 95
+  polls of the hot REGIONS, not one new line ever appeared in them; both
+  times chat turned up, it was a full sweep that found it. Region-level
+  hot tracking is worthless for this.
+- **It does land in the same ALLOCATION.** Hot is allocation bases now,
+  and polls then caught new lines within a second or two - measured, twice
+  over.
+- **Two fifths of the process was never being looked at.** Regions bigger
+  than the 64 MB buffer were skipped whole: 20 of them, 2,972 MB, biggest
+  320 MB. Read in overlapping chunks now, and a full sweep went from
+  4,499 MB to 7,463 MB.
+- **The markup form is richer than the earlier dump showed**, and carries
+  the hero portrait before the channel tag:
+  `...hero_juggernaut.png" /><span class="ChatTarget">[Allies] <span
+  class="ChatPersona">...`. The 48-byte look-back still reaches the tag.
+- The only thing the markup anchor matches in IMAGE memory is Panorama's
+  own template, `<span class="ChatPersona">%s</span>`. An image is static,
+  so nothing there is ever a line - only PRIVATE memory becomes hot, or
+  every poll would read a quarter of a gigabyte of module for nothing.
+- **Reading is memory bandwidth as much as processor.** On three threads
+  a full sweep is 3.8s (12.6s on one) and a poll of 710 MB is ~470ms.
+- Costs, measured: full sweep **3.8s / 7,463 MB / 7,213 regions**; poll
+  **410-780ms / ~710 MB / ~255 regions**. Defaults moved to a 2s poll and
+  a 2-minute sweep on those numbers.
+
 **Not yet done:**
 
-- **The whole chain has never run against a real game.** Every
-  measurement above is from the stand-in or from another process. What it
-  cannot answer: whether a new chat line ever lands OUTSIDE the regions
-  the sweep found (if it does, it waits for the next full sweep -
-  `fullRescanMs`, 60s), and what a real poll costs over Dota's hot
-  regions rather than a 7 MB toy.
+- The OVERLAY over the real game - the run above was `npm run watch`.
+- A whole match, and two matches in one process launch: whether the hot
+  allocations stay the right ones.
 - Replacing the text in place. See the decision above; the overlay is
   first and is built.
 - Everything downstream is already built and source-agnostic.

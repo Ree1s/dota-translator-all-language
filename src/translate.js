@@ -103,12 +103,32 @@ export async function askGemini({ apiKey, model = MODEL, request, fetchImpl = gl
   return replyTextFrom(data);
 }
 
+// A call that never arrived is worth making once more; a call that was
+// ANSWERED is not. MEASURED on the first live game this ever read: of two
+// lines, one came back in about a second and the other timed out at 12s
+// and went up untranslated - so a transport failure is not the rare case
+// it would be comfortable to treat it as. Only the two failures that mean
+// "nothing happened" are retried, and only once: a refusal, a bad key or
+// a quota answer is the model's word and repeating it just spends
+// another one.
+const WORTH_RETRYING = ['the model took too long', 'could not reach the model'];
+
+export async function askGeminiTwice(opts) {
+  try {
+    return await askGemini(opts);
+  } catch (err) {
+    const why = String((err && err.message) || err);
+    if (!WORTH_RETRYING.includes(why)) throw err;
+    return askGemini(opts);
+  }
+}
+
 // The whole round trip. Answers one entry per input line, falling back to
 // the original text for anything the model did not return, so a line is
 // never silently lost.
 export async function translateBatch(items, opts = {}) {
   const numbered = items.map((it, n) => ({ ...it, i: n }));
-  const text = await askGemini({ ...opts, request: buildRequest(numbered, opts) });
+  const text = await askGeminiTwice({ ...opts, request: buildRequest(numbered, opts) });
   const map = translationsFrom(text);
   return numbered.map(({ i, ...it }) => ({
     // Everything the caller handed in is carried through - the channel

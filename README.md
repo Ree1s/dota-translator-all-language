@@ -122,8 +122,8 @@ the memory reading runs through PowerShell, which Windows already has.
 | `geminiApiKey` | your key. `GEMINI_API_KEY` in the environment wins over it |
 | `model` | `gemini-3.5-flash-lite` by default |
 | `source` | `memory` reads the game. `log` is the old console.log reader, which cannot see chat |
-| `scanIntervalMs` | how often to re-read the chat (1000) |
-| `fullRescanMs` | how often to sweep the whole process again (60000) |
+| `scanIntervalMs` | how often to re-read the chat (2000) |
+| `fullRescanMs` | how often to sweep the whole process again (120000) |
 | `scripts` | which writing systems to translate. `["cyrillic"]` by default; `greek`, `han`, `hangul`, `arabic`, `thai` are also known |
 | `batchMs` | how long to gather lines before one call (400) |
 | `holdSeconds` | how long a line stays on screen (14) |
@@ -153,11 +153,16 @@ colour. The markup is what this anchors on, because **all-chat has no
 channel tag**: team chat reads `[Allies] name: text` while all-chat is just
 `name: text`, which is far too common a shape to search 4 GB for.
 
-A full sweep of the process costs about 1.5 seconds per gigabyte, and Dota
-is four to five of them - too slow to poll. So the first sweep learns
-*which regions* hold chat, and after that only those are read, which is
-tens of milliseconds over a handful of regions. The whole process is swept
-again every `fullRescanMs`, because the game keeps allocating.
+A full sweep reads every committed page Dota has - 7.5 GB in a real match
+- which takes about 3.8 seconds across three threads. Far too slow to
+poll, so the first sweep learns which **allocations** hold chat and after
+that only those are read: ~710 MB in under half a second.
+
+Allocations, not regions, and that distinction is the whole trick. A new
+chat line does *not* land in the same region the last one did - measured
+over 95 polls of the hot regions, not one new line ever appeared in them -
+but it does land in the same heap reservation, which is a twentieth of the
+process rather than a two-hundredth.
 
 While there is no chat to be found at all - the menu, the loading screen,
 a match where nobody has spoken - the sweeps back off to one every ten
