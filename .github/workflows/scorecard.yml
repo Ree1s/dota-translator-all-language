@@ -1,0 +1,35 @@
+# OpenSSF Scorecard: an outside check of how the PROJECT is run - are the
+# build's actions pinned, are dependencies watched, is there a security
+# policy, can a release be tampered with. Results go to the Security tab
+# and to scorecard.dev. The badge is NOT on the site or the README yet: a
+# days-old, one-person repo scores low on things like code review and
+# branch protection, and a low number beside a download button says the
+# wrong thing. Look at the score first.
+name: scorecard
+
+on:
+  push:
+    branches: [master]
+  schedule:
+    - cron: '41 5 * * 1'
+
+permissions: read-all
+
+jobs:
+  analysis:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: ossf/scorecard-action@62b2cac7ed8198b15735ed49ab1e5cf35480ba46 # v2.4.0
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+      - uses: github/codeql-action/upload-sarif@3ea06614dafe36dec890db3446326e0d40ce53d4 # v3
+        with:
+          sarif_file: results.sarif

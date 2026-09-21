@@ -1,0 +1,30 @@
+# GitHub's own code scanner reads the app's JavaScript for known kinds of
+# security mistake, on every push and once a week (new rules find old
+# code). The results are under the repository's Security tab. It is here
+# because strangers are asked to run an unsigned exe: one more pair of
+# eyes that is not the author's.
+name: codeql
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  schedule:
+    - cron: '17 5 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: github/codeql-action/init@3ea06614dafe36dec890db3446326e0d40ce53d4 # v3
+        with:
+          languages: javascript-typescript
+      - uses: github/codeql-action/analyze@3ea06614dafe36dec890db3446326e0d40ce53d4 # v3

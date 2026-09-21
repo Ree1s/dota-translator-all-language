@@ -1,0 +1,16 @@
+# A poisoned or vulnerable dependency is the realistic way an honest
+# project ships something bad. GitHub watches both kinds here and opens a
+# pull request when one needs updating: the npm packages the app is built
+# from, and the actions the build itself runs (which are pinned to exact
+# commits, so they only ever change through one of these).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

@@ -1192,6 +1192,48 @@ on download.html, CodeQL + an OpenSSF Scorecard badge, winget. Signing is
 the only thing that touches the SmartScreen warning, and unsigned, every
 release is a new unknown file with no reputation.
 
+**BUILT the same day (the user: "add the things we can do now ... I will
+think about certificate"):**
+- `docs/download.html` has "Is it safe to run?" (`#safe`) before the steps:
+  built in public, no administrator rights, the three places it talks to,
+  reads and never writes, scanning is on - and THIS release's SHA-256, read
+  live from the release notes. A VirusTotal line is in the page but HIDDEN
+  until the notes of the latest release carry a report for that same hash;
+  the link is built from the hash, never taken from the notes. The landing
+  page's FAQ has "Is the download safe?" pointing at it. `npm test` holds
+  the page to those words and to never saying "virus-free" / "100% safe".
+- `release.yml` uploads the installer to VirusTotal **only if a repo secret
+  `VT_API_KEY` exists** (the user has to make a free account and add it:
+  repo Settings > Secrets and variables > Actions). Big files go to an
+  upload address VirusTotal hands out. It can never fail a release. NOT
+  RUN: there is no key yet, so not one line of that step has executed.
+  Expect one to three false alarms from small engines on an unsigned
+  Electron installer; report them to those vendors.
+- `codeql.yml` (GitHub's scanner, JavaScript, push + weekly),
+  `scorecard.yml` (OpenSSF), `.github/dependabot.yml` (npm + actions,
+  weekly PRs - they will arrive by email), `SECURITY.md`. Every action in
+  every workflow is pinned to a commit SHA (looked up with `git ls-remote`
+  on 2026-09-21); Dependabot moves the pins.
+- **The Scorecard badge is deliberately NOT shown anywhere.** A days-old,
+  one-person repo scores low on code review and branch protection, and a
+  low number beside a download button says the wrong thing. Look at the
+  score (Security tab, or scorecard.dev) before adding it.
+- For the USER to do, because they are account settings: turn on two-factor
+  authentication on GitHub if it is not on (a stolen account is how this
+  project would ship malware), and enable "Private vulnerability
+  reporting" (repo Settings > Code security) - SECURITY.md links to it and
+  the link is dead until then.
+- **The trap, a SEVENTH time, and a new test for it:** a word-boundary
+  escape in a regex on download.html, written through a quoted heredoc
+  into a template literal, landed as a BACKSPACE character (twice), and the
+  other regex lost its escapes and became a `//` comment. `npm test` now
+  fails on any control character in `docs/` or `src/`. That test at once
+  found an OLD one: `src/chatmem.js` had literal NUL/control bytes inside
+  `UNPRINTABLE` and two literal NULs in `keyOf` (why grep called it
+  binary). Rewritten as escapes and CHECKED over all 65,536 code units:
+  the old and new expression agree on every one (the first rewrite missed
+  DEL, 0x7f - the check caught it).
+
 **SignPath Foundation's free signing: checked (signpath.org/terms), and a
 licence change alone would NOT get this project in.** Three things stand
 in the way, not one:

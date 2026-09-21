@@ -29,9 +29,12 @@ jobs:
     runs-on: windows-latest
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Optional. With it, every installer is sent to VirusTotal and the release
+      # notes link to the report; without it, nothing is sent and nothing breaks.
+      VT_API_KEY: ${{ secrets.VT_API_KEY }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
@@ -45,7 +48,7 @@ jobs:
       - run: npm run dist
       # GitHub signs a statement that THIS workflow built THIS file from THIS
       # commit; anybody can check it with `gh attestation verify`.
-      - uses: actions/attest-build-provenance@v2
+      - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
           subject-path: dist/*.exe
       - name: One release, made once
@@ -58,11 +61,24 @@ jobs:
           # The installer's fingerprint, in the release notes, for anybody who
           # wants to compare it with the file they were given.
           sum=$(sha256sum dist/*.exe | cut -d" " -f1)
+          # The same file, looked at by ~70 antivirus engines, for anybody who
+          # would rather not take one stranger's word. A file this size goes to
+          # an upload address VirusTotal hands out. NEVER fails the release.
+          vt=""
+          if [ -n "$VT_API_KEY" ]; then
+            url=$(curl -fsS -m 60 -H "x-apikey: $VT_API_KEY" https://www.virustotal.com/api/v3/files/upload_url | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).data" || true)
+            if [ -n "$url" ] && curl -fsS -m 900 -H "x-apikey: $VT_API_KEY" -F "file=@$(ls dist/*.exe | head -1)" "$url" >/dev/null; then
+              vt="https://www.virustotal.com/gui/file/$sum"
+            else
+              echo "::warning::VirusTotal upload did not go through; the release goes out without the link"
+            fi
+          fi
           {
             echo "SHA-256 of Dota-Translator-Setup.exe:"
             echo
             echo "    $sum"
             echo
+            if [ -n "$vt" ]; then echo "Antivirus report for exactly this file (VirusTotal): $vt"; echo; fi
             echo "Built by GitHub Actions from this tag, not on anybody's PC. To check the file you downloaded:"
             echo
             echo "    gh attestation verify Dota-Translator-Setup.exe --repo sc0rebreaker/dota-translator"

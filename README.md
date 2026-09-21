@@ -51,6 +51,9 @@ read the game's memory, and this does.
 
 **Use it at your own risk, and not on an account you would mind losing.**
 
+What the program does on your PC, how to check the download against the
+source, and how to report a problem: [SECURITY.md](SECURITY.md).
+
 ## Why memory, and not something gentler
 
 Every other route was tried first, and measured:

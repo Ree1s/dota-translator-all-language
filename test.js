@@ -1146,6 +1146,26 @@ ok('the landing page keeps the promises the project made about how it talks', ()
   assert.match(text, /not on an account you would mind losing/i);
   assert.match(text, /unsanctioned third-party tool/);
   assert.match(text, /source-available rather than open source/);
+  // A control character in a page or a script is an escape that was eaten on
+  // its way into the file. It happened: a word-boundary escape in a regular
+  // expression on the download page arrived as a BACKSPACE, twice, and the
+  // other expression on the same page lost its escapes and became a comment.
+  // It renders, it parses, and it does the wrong thing.
+  for (const dir of ['docs', 'src']) {
+    for (const f of fs.readdirSync(dir)) {
+      if (!/[.](html|js|cjs|mjs|css|json)$/.test(f)) continue;
+      const bytes = fs.readFileSync(path.join(dir, f));
+      const bad = bytes.findIndex((b) => b < 9 || (b > 13 && b < 32) || b === 11 || b === 12);
+      assert.equal(bad, -1, dir + '/' + f + ' has a control character at byte ' + bad);
+    }
+  }
+  // The download page is where a stranger decides whether to run an exe.
+  const dl = fs.readFileSync(path.join('docs', 'download.html'), 'utf8');
+  assert.match(dl, /Is it safe to run/);
+  assert.match(dl, /No administrator rights/);
+  assert.match(dl, /never writes to it/);
+  assert.doesNotMatch(dl, /virus[- ]free|100% safe|guaranteed/i);
+  assert.ok(fs.existsSync('SECURITY.md'));
   // Answering presses keys in the player's game. The page that offers it
   // says so in the catch, not only in the README.
   assert.match(text, /it presses keys for you/);
