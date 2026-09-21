@@ -158,6 +158,26 @@ when the dev copy started with a key saved (seen in the log, 22:35).
   width there), a HUD-scale setting, a game rendering below the desktop's
   resolution, a dragged window (the helper reports the move; untried).
 
+- **SEEN OVER THE GAME (bot match, 2026-09-22 00:06, 5120x1440, dev copy):**
+  the feed-free layout arrived as scale 1.333, rows 34 - what the memory
+  reader used to be told - and our row sat directly above the game's chat,
+  `[Allies]` at the SAME left edge as the game's own line, 224px above it
+  (221 expected). Alt-tabbed, nothing of ours was over the browser. In an
+  earlier run the same evening NO row of ours was on screen in two frames
+  though the log had sent it (lines answered from the cache, English equal
+  to the Russian): NOT explained, not seen again after a restart.
+- **A FAULT FOUND IN IT, fixed:** Russian pasted and sent with Ctrl+Enter
+  goes out unchanged, and `know(out, typed)` then taught the reader that
+  Russian means Russian - "it also doesnt translate" (the user). A line
+  that went out exactly as typed teaches nothing now. SEEN after: "Алло,
+  Спирит? Я перезвоню" -> "Hello, Spirit? I will call back". (Ctrl still
+  held from Ctrl+V when Enter is pressed IS Ctrl+Enter - likely how a plain
+  paste-and-send ends up on the say key.)
+- STILL WRONG in that bot lobby, as already known: the row said "Blue" with
+  no portrait where the game says the player's name in pink with a portrait
+  (player_id 0 vs the real seat). The ROW GRAB did not name the hero here
+  either - why is NOT looked at.
+
 ### THE GSI READER: BUILT the same evening, OPT-IN (`"source": "gsi"`)
 
 **NOT TO BE RELEASED YET (the user, 2026-09-21 22:45): "we dont need to

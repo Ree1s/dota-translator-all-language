@@ -308,7 +308,10 @@ async function sayKey() {
       keys, clipboard, into, explain: explainModelError,
       // The line comes back out of the chat within a moment: it means what was typed.
       learned: (out, typed) => {
-        if (watcher && watcher.know) watcher.know(out, typed);
+        // SEEN 2026-09-22: Russian pasted and sent with this key goes out
+        // unchanged, and "it means what was typed" then told the reader that
+        // Russian means Russian - the player's own line was never translated.
+        if (watcher && watcher.know && out.trim() !== typed.trim()) watcher.know(out, typed);
         sentForMe.add(out);
         if (sentForMe.size > 50) sentForMe.delete(sentForMe.values().next().value);
       },
