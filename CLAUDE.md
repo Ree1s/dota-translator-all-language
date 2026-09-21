@@ -76,6 +76,16 @@ section of the payload, Cyrillic intact:
 
 ### THE GSI READER: BUILT the same evening, OPT-IN (`"source": "gsi"`)
 
+**NOT TO BE RELEASED YET (the user, 2026-09-21 22:45): "we dont need to
+relese it before we get it fully working the same way as memory reader."**
+So: no tag, no push of a version that offers it, nothing on the site or
+README about it, until GSI mode matches the memory reader - names,
+portraits and colours for other players, and the text above the game's
+chat rather than in the box - all WITHOUT reading memory. Commits to master
+stay local until then (master = released; pushing would not ship it, since
+a release is a tag, but `offsets.json` is fetched from master - harmless -
+and the site is built from `docs/`, untouched). The gaps are listed below.
+
 The user: "ok do it, keep the original one while we don't [know] if this
 still works". So the memory reader is STILL THE DEFAULT and nothing about
 it changed; a test holds `DEFAULTS.source` to `'memory'`.
