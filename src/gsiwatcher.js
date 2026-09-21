@@ -8,8 +8,9 @@ import path from 'node:path';
 import { startWatchingMemory } from './memwatcher.js';
 import { startGsiSource, GSI_PORT } from './gsisource.js';
 import { ensureGsiConfig } from './gsiconfig.js';
+import { startFocusWatch } from './focuswatch.js';
 
-export function startWatchingGsi(cfg, handlers = {}, { ensure = ensureGsiConfig, startSource = startGsiSource } = {}) {
+export function startWatchingGsi(cfg, handlers = {}, { ensure = ensureGsiConfig, startSource = startGsiSource, watchFocus = startFocusWatch } = {}) {
   const port = Number.isInteger(cfg.gsiPort) && cfg.gsiPort > 1023 && cfg.gsiPort < 65536 ? cfg.gsiPort : GSI_PORT;
   const onStatus = handlers.onStatus || (() => {});
   const made = ensure({ port });
@@ -24,5 +25,8 @@ export function startWatchingGsi(cfg, handlers = {}, { ensure = ensureGsiConfig,
   // Where the game's own portraits and font are: the memory helper reports
   // the exe for this, and here the install folder is already known.
   if (made.dotaDir && handlers.onGamePath) handlers.onGamePath(path.join(made.dotaDir, '..', 'bin', 'win64', 'dota2.exe'));
-  return watcher;
+  // Whether the game is in front: the overlay hides on it and the say-back
+  // key exists only then. The feed cannot say; Windows can.
+  const focus = handlers.onFocus ? watchFocus({ onFocus: handlers.onFocus }) : null;
+  return { ...watcher, stop() { if (focus) focus.stop(); watcher.stop(); } };
 }

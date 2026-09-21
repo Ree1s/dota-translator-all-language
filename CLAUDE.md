@@ -121,6 +121,25 @@ it changed; a test holds `DEFAULTS.source` to `'memory'`.
   for the panel reader; say -> SHOWN was not pinned down (one shot at
   +2.0s had a line still pending). GSI's own delay is the unknown part.
   All five lines reached the probe too (28 payloads each).
+- **THE FOCUS SIGNAL FOR GSI MODE (built 22:25):** `src/focuswatch.ps1` +
+  `focuswatch.js` ask WINDOWS which window is in front and what program
+  owns it (the owner's name looked up only when the owner changes), and
+  print `{"t":"focus","on":0|1}` per change; `gsiwatcher` feeds it to the
+  same `onFocus` the memory helper fed, so the overlay hides on alt-tab and
+  the Ctrl+Enter key is registered in gsi mode too. It never opens the
+  game (a test holds that). SEEN: run by hand it said 0, then 1 when the
+  user went back to the game. NOT seen: the overlay hiding on it, nor
+  Ctrl+Enter in gsi mode.
+- **The redditor's advice on the cfg (he built this once): "it sends
+  events way too frequently ... only need events 1 in data".** MEASURED on
+  the probe's cfg (EVERY section, throttle and buffer 0.1): 462 payloads in
+  462 seconds - exactly ONE a second, 26.7 KB each. So Dota did not send
+  faster than 1/s here whatever the throttle said, which also bounds chat
+  latency at about a second before the model. The app's cfg asks for five
+  sections, not fifteen; `events` ALONE would lose the matchid (map) and
+  the player's own name, slot and hero (player, hero). NOT tried: whether
+  an events-only cfg is sent SOONER after a line (it might be - then a
+  second, events-only cfg beside the first is the trick).
 - **A TEAMMATE'S LINES, SEEN 22:05 (a second human in the user's lobby,
   match 9010203548, the user radiant slot 2, the tester slot 1):** allies
   chat from ANOTHER player arrives, `channel_type` 12, Cyrillic intact
@@ -1964,7 +1983,7 @@ npm start        # the overlay (Electron)
 npm run watch    # the same chain in a terminal - use this first
 npm run demo     # drives the chain from a fake source, no Dota needed
 npm run doctor   # no-key diagnostic
-npm test         # 125 tests, plain node assert, no runner
+npm test         # 126 tests, plain node assert, no runner
 ```
 
 Keep `npm test` green. It needs no game running and no API key.

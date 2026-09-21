@@ -1677,4 +1677,40 @@ ok('keys are sent from ONE place, only with the game in front, and nothing anywh
   });
 }
 
+{
+  const { startFocusWatch } = await import('./src/focuswatch.js');
+  const { startWatchingGsi } = await import('./src/gsiwatcher.js');
+  const { EventEmitter } = await import('node:events');
+
+  ok('gsi: whether the game is in front comes from Windows, a line per change, and stops with the watcher', () => {
+    const heard = [];
+    let killed = 0, args = null;
+    const child = new EventEmitter();
+    child.stdout = new EventEmitter(); child.stdout.setEncoding = () => {};
+    child.kill = () => { killed++; };
+    const w = startFocusWatch({ onFocus: (on) => heard.push(on), parentPid: 42, spawnImpl: (exe, a) => { args = a; return child; } });
+    child.stdout.emit('data', '{"t":"focus","on":1}\n{"t":"fo');
+    child.stdout.emit('data', 'cus","on":0}\nrubbish\n');
+    assert.deepEqual(heard, [true, false]);
+    assert.equal(args[args.indexOf('-ParentPid') + 1], '42');
+    w.stop();
+    assert.equal(killed, 1);
+
+    let stopped = 0, given = null;
+    const g = startWatchingGsi({ ...DEFAULTS, geminiApiKey: 'x' }, { onFocus: (on) => heard.push(on) }, {
+      ensure: () => ({ state: 'present', dotaDir: null }),
+      startSource: () => ({ stop() {} }),
+      watchFocus: (o) => { given = o.onFocus; return { stop() { stopped++; } }; },
+    });
+    given(true);
+    assert.equal(heard[2], true);
+    assert.equal(typeof g.know, 'function');
+    g.stop();
+    assert.equal(stopped, 1);
+    // It asks Windows about windows, and never opens the game.
+    const helper = fs.readFileSync(path.join('src', 'focuswatch.ps1'), 'latin1');
+    assert.doesNotMatch(helper, /OpenProcess|ReadProcessMemory|keybd_event|SendInput/);
+  });
+}
+
 console.log('\n' + passed + ' passed');
