@@ -38,6 +38,23 @@ section of the payload, Cyrillic intact:
   came ~1/s with the probe's cfg; throttle/buffer can go lower); whether
   the overlay's position can still come from anywhere without memory (it
   cannot - `above`/`cover` need HudChat's layout; the `box` look does not).
+- **A bot's "I'm retreating" (seen in the game's chat by the user, ~21:14)
+  did NOT arrive**: no `chat_message` with a player_id other than 0 in 262
+  payloads, though bots' purchases, kills and rune pickups did (as
+  `generic_event` CHAT_MESSAGE_ITEM_PURCHASE / HERO_KILL / FIRSTBLOOD and
+  `bounty_rune_pickup`, player ids 3-8). That line is a canned, localised
+  bot phrase, not typed text, so this does NOT settle whether another
+  HUMAN's typed line arrives. It needs a second human in a lobby.
+- **OTHER PLAYERS' TYPED LINES DO ARRIVE. SEEN ~21:20 in a real match
+  (matchid 9010147157; the user left the bot game and queued):** all chat
+  from player_id 5 ("hello", "whats up guya", "guys", "no hellos?"), 4
+  ("hi2u2") and 8, all `channel_type` 11, same shape as the user's own.
+  Player 8's was an emoticon/smiley and arrived as `"message": ""` - an
+  empty message is an emoticon, not a fault. NOT SEEN: an ALLY's team-chat
+  line (12 from someone other than player 0), and a Cyrillic line from
+  another player (no reason to doubt it; the user's own came intact).
+- An event stays ~27-28 payloads (~30s at ~1/s). Dota's JSON is sometimes
+  MALFORMED there: two events merged into one object with duplicate keys.
 - The probe cfg is still in the game's folder and `gsiprobe.mjs` was left
   running: the test is not over until another player's line is seen.
 
