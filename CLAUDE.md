@@ -74,6 +74,21 @@ section of the payload, Cyrillic intact:
 - The probe cfg is still in the game's folder and `gsiprobe.mjs` was left
   running: the test is not over until another player's line is seen.
 
+**WHERE THE EVENING ENDED (2026-09-21, 23:40).** Everything stopped, no
+strays (checked): probe listener, dev copy, grab rig. Left as they are: the
+repo's `config.json` on `"source": "gsi"`; BOTH cfgs in the game's
+`cfg/gamestate_integration` folder (the app's, and the probe's - harmless
+with no listener, and it saves a Dota restart next time the log is wanted;
+delete `gamestate_integration_dtprobe.cfg` when the probing is over);
+`gsiprobe.log` (~210 MB, gitignored) and `grabs/`, `grabs-match1/`. All
+commits LOCAL, nothing pushed, v0.3.7 still what players get. The user
+posted a Reddit EDIT saying the translator is being rebuilt on GSI.
+NEXT: build the chat-row grab into gsi mode (portrait + colour per speaker,
+the top bar as the fallback), say in the README that it captures small
+regions of the screen, place the text above the game's chat from the
+window's size alone, and find out why the SETUP WINDOW opened by itself
+when the dev copy started with a key saved (seen in the log, 22:35).
+
 ### THE GSI READER: BUILT the same evening, OPT-IN (`"source": "gsi"`)
 
 **NOT TO BE RELEASED YET (the user, 2026-09-21 22:45): "we dont need to
