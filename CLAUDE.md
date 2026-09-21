@@ -1182,6 +1182,39 @@ tech user may not find it", and the SmartScreen warning "might be scary".
   drawing of the tray with the ^ flyout. Linked from the landing page's
   steps. SEEN at phone width in the browser pane only.
 
+## Trust in the exe: what was looked at (2026-09-21)
+
+The user: strangers "cant trust me very much and .exe file might seem
+suspicous". Already in place: built on GitHub, attested, SHA-256 in the
+release notes. Offered and NOT yet built: a VirusTotal report per release
+(needs the user's free API key as a repo secret), an "is this safe?" block
+on download.html, CodeQL + an OpenSSF Scorecard badge, winget. Signing is
+the only thing that touches the SmartScreen warning, and unsigned, every
+release is a new unknown file with no reputation.
+
+**SignPath Foundation's free signing: checked (signpath.org/terms), and a
+licence change alone would NOT get this project in.** Three things stand
+in the way, not one:
+1. Licence: "an OSI-approved Open Source license without commercial
+   dual-licensing for all components". PolyForm Noncommercial is not one.
+   Going open source means giving up "a paid product may not bundle it" -
+   a decision the user made on purpose. GPL-3.0 is the OSI licence nearest
+   that intent (a product that bundles it must publish its own source).
+2. Reputation: they verify it, and projects with no established user base
+   are declined and told to reapply later - another new project was, in so
+   many words. This one is days old.
+3. What the software does: "must not include features designed to ...
+   circumvent security measures". A tool that reads another program's
+   memory and sends keys into a game is what a reviewer may read that
+   against. Not tested; it is their call.
+Also: the certificate is issued to SignPath Foundation - THEIR name is the
+publisher Windows shows, not the user's - and they require MFA, named
+roles, a "Code signing policy" section on the site, and a privacy policy.
+So: do not relicense FOR this. Revisit when there are real users. Until
+then the realistic route for an individual in the EU is a paid certificate
+in their own name (Certum's open-source developer one was the cheap one
+named; terms NOT checked).
+
 ## Donations (2026-09-20)
 
 Ko-fi, paid out through PayPal: `https://ko-fi.com/sc0rebreaker`. Stripe
