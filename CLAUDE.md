@@ -1404,11 +1404,11 @@ players do not have.
   translation..."), in the site's FAQ and in the README; `FEEDBACK_URL` in
   `main.js`. Responses arrive in the form's Responses tab in the user's
   Google account; whether they turned on e-mail notifications is NOT known.
-  NOT done: e-mail VALIDATION on the optional field - Forms' validation
-  dropdown would not take a choice from automation, and the half-made rule
-  ("Number, greater than", which would have refused every address) was
-  REMOVED rather than left. Ten seconds by hand if wanted: the question's
-  three dots > Response validation > Text > Email.
+  E-mail VALIDATION on the optional field (Text > Email, with a friendly
+  error) was added at the second attempt and CHECKED on the live form. How
+  Forms' dropdowns are driven, since it cost a dozen tries: open the list,
+  WAIT a second for its animation, click the option (it only highlights),
+  then press Enter. The user wanted NO e-mail notifications for responses.
 - (Earlier the same day, before the form existed:) **NOT built, and the user's to make: a route that needs NO account** - a
   Google Form, or a Discord server (where Dota players already are). Either
   is a link; when there is one, put it in `FEEDBACK_URL` in `main.js`, the
