@@ -15,6 +15,17 @@ import { translateBatch } from './translate.js';
 import { DATA_DIR } from './config.js';
 import { offsetsArg } from './offsets.js';
 
+// Why a line came up untranslated, for the player. Google's own wording is
+// kept for anything not recognised here: a bad key and a spent quota
+// already say what to do.
+export function explainModelError(message) {
+  const m = String(message == null ? '' : message);
+  if (/took too long|never answered|could not reach|high demand|overloaded|unavailable|http 5\d\d/i.test(m)) {
+    return 'Google\'s translator is not answering right now (busy or down). Lines are shown as they were said until it is back - nothing to do.';
+  }
+  return m;
+}
+
 export function startWatchingMemory(cfg, { onResult, onPending = () => {}, onStatus = () => {}, onLayout = () => {}, onSeen = () => {}, onFocus = () => {}, onGamePath = () => {}, translate, startSource = startMemorySource } = {}) {
   // hedge: whether a slow call may be raced by a second one. The pipeline
   // says no once the minute's calls are half spent.
@@ -34,13 +45,24 @@ export function startWatchingMemory(cfg, { onResult, onPending = () => {}, onSta
     if (cache.size > 500) cache.delete(cache.keys().next().value);
   };
   let nextId = 1;
+  let lastModelError = { text: '', at: 0 };
 
   const pipe = createPipeline({
     translate: doTranslate,
     batchMs: cfg.batchMs,
     callsPerMinute: cfg.callsPerMinute,
     onResult: (row) => { remember(row); onResult(row); },
-    onError: (err) => onStatus({ kind: 'error', text: String((err && err.message) || err) }),
+    // Said in words, and at most once a minute: when Google is down EVERY
+    // line fails, and a line of error under each of them is a second wall
+    // of text over the game. SEEN 2026-09-21: an hour of "high demand" and
+    // hung calls on every Flash model, the key and the app both fine.
+    onError: (err) => {
+      const text = explainModelError(String((err && err.message) || err));
+      const now = Date.now();
+      if (text === lastModelError.text && now - lastModelError.at < 60000) return;
+      lastModelError = { text, at: now };
+      onStatus({ kind: 'error', text });
+    },
   });
 
   const learnPath = path.join(DATA_DIR, 'learn.log');

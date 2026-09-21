@@ -1252,6 +1252,51 @@ to allow one; do NOT put the link or the name in a public comment for them).
   said 0.3.2 for half a minute - a cache), the notes have the VirusTotal
   link.
 
+## When Google is slow or down (2026-09-21, v0.3.4)
+
+The user, testing the dev copy: "did you change colors again? our
+translated section seems darker", then "the faded messages look weird".
+Nothing had changed: **Google's free tier was failing for an hour.**
+MEASURED on the user's key, that evening: `gemini-3.5-flash-lite` 6 of 8
+answered, two of those in 7-9s, two never (normal is 0.6-1.0s);
+3.1-flash-lite 503 / 3.8s / 503; flash-lite-latest none / 1.0s / 1.0s;
+3.6-flash three 503s; 3.8-flash 7.8s / 503 / none. "503 UNAVAILABLE ...
+currently experiencing high demand", and hung calls. The key was fine
+(listing models: 200 in 0.1s); 2.5-flash and 2.5-flash-lite answer "no
+longer available to new users".
+- So every line sat in the WAITING look (75% brightness, italic) for
+  seconds instead of a blink, and then in the NOT-TRANSLATED look (dimmed)
+  for good. FIXED: a waiting line is full brightness and only italic; a
+  line that could not be translated is full brightness (it is what was
+  said, and all the player will get); and the player is told ONCE a minute,
+  in words, that Google's translator is not answering and there is nothing
+  to do (`explainModelError` in `memwatcher.js`) - it was the raw error
+  under every failed line. The user, of the new look: "the colors look
+  better". The page's FAQ says it too.
+- **A fallback to another model was considered and NOT built**: that
+  evening every Flash model the key could reach was failing together.
+- **A different free key would not help** (capacity, not quota - quota says
+  "quota exceeded", as it did on 2026-09-20). **A paid key probably would**
+  (paying traffic is normally served first; NOT verified - no paid key
+  here) and would cost cents: ~300 tokens in and ~30 out a line at $0.30 /
+  $2.50 per million is ~$0.00017 a line, ~2-3 cents for a loud game. The
+  trap: a prepaid project with no credit FAILS rather than falling back to
+  free.
+- **An idea the user floated and half dismissed, NOT decided: one paid key
+  of theirs behind a small subscription, instead of every player getting
+  their own.** What was said about it: the money works (a typical player is
+  well under a dollar a month of model cost); the key can never ship in the
+  app, so it needs a small server that holds it, builds the prompt ITSELF
+  (or it is a free chatbot for strangers), knows who has paid, and rate
+  limits; players' chat would then pass through the user's server (a
+  privacy policy, GDPR); Stripe has already refused the user, so a merchant
+  of record (Lemon Squeezy, Paddle) or Ko-fi memberships; and taking money
+  for a tool that reads Valve's game is a bigger step than giving it away.
+  It would REVISE "no hosted shared API key" under Decisions - theirs to
+  revise. The measurement that should decide it is already being taken:
+  the site counts `download_click` and `aistudio_click`; if most people who
+  download never get a key, the key step is what is losing them.
+
 ## Trust in the exe: what was looked at (2026-09-21)
 
 The user: strangers "cant trust me very much and .exe file might seem
@@ -1600,7 +1645,7 @@ npm start        # the overlay (Electron)
 npm run watch    # the same chain in a terminal - use this first
 npm run demo     # drives the chain from a fake source, no Dota needed
 npm run doctor   # no-key diagnostic
-npm test         # 114 tests, plain node assert, no runner
+npm test         # 115 tests, plain node assert, no runner
 ```
 
 Keep `npm test` green. It needs no game running and no API key.

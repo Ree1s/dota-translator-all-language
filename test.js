@@ -836,6 +836,31 @@ await okAsync('a line is shown at once and its English fills the same row', asyn
   assert.equal(calls, 1, 'the repeat cost a call');
 });
 
+await okAsync('with Google down every line still goes up as said, and the player is told why ONCE', async () => {
+  // SEEN: an hour of "high demand" and hung calls. Every line failed, the
+  // lines looked dimmed and wrong to the user, and nothing said why.
+  const { startWatchingMemory, explainModelError } = await import('./src/memwatcher.js');
+  let say = null;
+  const told = [], rows = [];
+  const w = startWatchingMemory({ ...mergeConfig({}), batchMs: 1 }, {
+    startSource: (opts) => { say = opts.onMessage; return { stop() {} }; },
+    translate: async () => { throw new Error('the model took too long'); },
+    onStatus: (s) => { if (s.kind === 'error') told.push(s.text); },
+    onResult: (row) => rows.push([row.text, row.translated]),
+  });
+  for (const text of ['раз', 'два', 'три']) { say({ name: 'A', text, channel: 'team', slot: 1 }); await tick(15); }
+  w.stop();
+  assert.deepEqual(rows, [['раз', false], ['два', false], ['три', false]]);
+  assert.equal(told.length, 1);
+  assert.match(told[0], /Google's translator is not answering/);
+  assert.match(told[0], /nothing to do/);
+  // What Google says about a key or a quota already says what to do: left alone.
+  assert.equal(explainModelError('API key not valid'), 'API key not valid');
+  assert.match(explainModelError('This model is currently experiencing high demand.'), /not answering/);
+  // And an untranslated line is not dimmed: it is all the player will get.
+  assert.match(fs.readFileSync(path.join('src', 'overlay.html'), 'utf8'), /[.]plain [.]say [{] color: inherit; [}]/);
+});
+
 await okAsync('a reply whose body never arrives is timed out like one that never came', async () => {
   // Headers, then silence. The clock used to stop at the headers.
   const stalls = async (url, init) => ({

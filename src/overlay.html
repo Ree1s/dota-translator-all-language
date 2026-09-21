@@ -50,7 +50,12 @@
   .team .tag { color: var(--allies); }
   .name { font-weight: 600; margin-right: 5px; }
   .pending .say { color: var(--dim); font-style: italic; }
-  .plain .say { color: var(--dim); }
+  /* A line that could NOT be translated is still what was said, and it is
+     all the player is going to get: full brightness. It used to be dimmed
+     like a line still waiting, and with Google down for an hour every line
+     on the screen was - the user: "did you change colors again? our
+     translated section seems darker". */
+  .plain .say { color: inherit; }
   .orig { color: var(--dim); font-size: 0.86em; }
   /* COVER mode: a strip over each translated line of the game's own
      chat, in that line's exact slot. Dark and nearly opaque, because
@@ -96,11 +101,14 @@
   /* MEASURED: the game draws the same picture 4% darker than a browser does. */
   body.bare .face img { box-sizing: border-box; border: 1px solid #000; border-radius: 0; filter: brightness(0.96); }
   body.bare .orig { font-weight: 400; color: rgba(250, 234, 201, 0.8); }
-  body.bare .pending .say { color: rgba(250, 234, 201, 0.75); }
+  /* Waiting for its English: ITALIC, and nothing else. It was also faded to
+     75%, which is a blink when the model answers in a second and looked
+     broken when it took five (the user: "the faded messages look weird"). */
+  body.bare .pending .say { color: inherit; }
   .status { color: var(--warn); font-size: 13px; padding: 1px 0; transition: opacity 500ms linear; }
   .status.out { opacity: 0; }
   .note .say { color: var(--dim); font-style: italic; }
-  body.bare .note .say { color: rgba(250, 234, 201, 0.75); }
+  body.bare .note .say { color: inherit; }
 </style>
 </head>
 <body>
