@@ -1662,8 +1662,52 @@ you the first two are open questions, and they are not.
 
 ## Decisions already made - do not re-litigate
 
+- **WHAT VALVE HAS ACTUALLY SAID - CORRECTED 2026-09-21. The notes, the
+  README and the live site were WRONG for a day and a half.** They said
+  "Valve has never said whether that is allowed" and "no documented ban for
+  read-only access". The user asked for the first to be confirmed, and it
+  could not be:
+  - **February 2023, Valve's own post ("Cheaters Will Never Be Welcome in
+    Dota", dota2.com/newsentry/3677788723152833273; wording checked against
+    two news reports that quote it, the post itself would not load for the
+    fetch tool):** over 40,000 accounts permanently banned for third-party
+    software that read data from the client that is not visible in normal
+    play. Caught by a HONEYPOT: a patch added "a section of data inside the
+    game client that would never be read during normal gameplay", and every
+    banned account had read it. And the sentence that matters here: running
+    ANY application that reads data from the Dota client while you play can
+    get the account permanently banned. No exception for what is read.
+  - So: Valve HAS spoken, and there IS a documented mass ban for reading
+    memory. What is true is narrower: those were cheats reading HIDDEN
+    information; no ban is known for a tool that reads only chat.
+  - The GitHub issue (ValveSoftware/Dota2-Gameplay#15007) is real and was
+    CHECKED through the API: opened 2024-01-17, "Is reading game memory data
+    that the client can see allowed?", a Valve developer @-mentioned, NO
+    reply from Valve, closed 2025-08-21 by github-actions as stale ("not
+    planned"). "Closed without an answer" was right; "in 2024" was not.
+  - The page's catch, its FAQ and the README now say all of this, and
+    `npm test` fails if either says "Valve has never said", says no ban is
+    documented, or leaves out February 2023 / "permanently banned" / "makes
+    no exception". NOTES-2026-09-20-memory.md's VAC section still has the
+    old claim: it is a dated note, left as written, and THIS supersedes it.
+  - **The user accepted the ban risk BEFORE this was known.** They were told
+    on 2026-09-21, the moment it was found. Do not treat the earlier
+    acceptance as covering it until they have said so again.
+  - **A TECHNICAL WORRY THIS RAISES, NOT INVESTIGATED:** how the honeypot
+    noticed a read is not public. One known way to notice an OUTSIDE
+    process reading is a page that the game itself never touches: read it
+    with ReadProcessMemory and it becomes resident, which the game can see.
+    The panel READER touches only the chat panel's few KB and would not
+    trip that. But the panel FIND sweeps all private memory twice per match
+    (13 GB), and the scanner fallback sweeps the whole process - either
+    WOULD read such a page, whatever is in it. If that is how the trap
+    works, this app walks into it while looking for chat. UNVERIFIED in
+    both directions. What would shrink the exposure: find the panel without
+    a sweep (a static root was looked for on 2026-09-20 and not found; walk
+    from a module's data instead), and never run the scanner fallback.
 - **Ban risk is accepted by the user, explicitly.** Ship at their own
-  risk with a clear notice. Word it as *undocumented*, never *safe*.
+  risk with a clear notice. Never word it as *safe* - and no longer as
+  *undocumented* either: see the correction above, Valve has documented it.
   Describe it as an *unsanctioned third-party tool*, and NOT as one of the
   overlays Valve permits, which do not read memory. **NAME NO OTHER
   PRODUCT, anywhere public - the page, the README, the notes, this file**

@@ -13,8 +13,9 @@ Gemini key - no account, no server, nothing to sign up for.
 
 ## Read this before you install it
 
-**This reads Dota's memory, and Valve has never said whether that is
-allowed.** Be honest with yourself about that before running it.
+**This reads Dota's memory, and Valve has said that applications which
+read the Dota client can get an account permanently banned.** Be honest
+with yourself about that before running it.
 
 What it actually does: opens the Dota process with `PROCESS_VM_READ |
 PROCESS_QUERY_INFORMATION` - permission to read and to ask questions - and
@@ -30,14 +31,24 @@ as a macro key would. That is input, not memory - it is also one file,
 [`src/sendchat.ps1`](src/sendchat.ps1) - and Valve has not said anything
 about that either. `"sayHotkey": ""` turns it off.
 
-What nobody can tell you:
+What Valve has said, and what nobody can tell you:
 
-- **There is no documented case of a VAC ban for reading Dota's memory
-  read-only.** That is not the same as it being safe. It means nobody has
-  reported one, which is a weaker claim.
-- **Valve has never answered the question.** It was
-  [asked directly](https://github.com/ValveSoftware/Dota2-Gameplay/issues/15007)
-  in January 2024 and closed without a reply.
+- **In February 2023 Valve [banned over 40,000 accounts](https://www.dota2.com/newsentry/3677788723152833273)**
+  for cheat software that read hidden data out of the Dota client, caught
+  by a trap: a piece of memory that normal play never reads. In the same
+  post it wrote that running any application that reads data from the
+  client while you play can get your account "permanently banned". Those
+  tools read what players are not meant to see. This one reads the chat
+  that is already on your screen and gives no advantage - **but Valve's
+  sentence makes no exception for that**, and a tool that reads memory
+  cannot promise it never touches a trap.
+- **No ban is known for a tool like this one.** That is not the same as it
+  being safe. It means nobody has reported one, which is a weaker claim.
+- **The direct question got no answer.** Whether reading what the client
+  already shows you is allowed was
+  [asked](https://github.com/ValveSoftware/Dota2-Gameplay/issues/15007)
+  in January 2024. Nobody from Valve replied; a bot closed it as stale in
+  August 2025.
 - The claim that read-only access is undetectable comes from the
   reverse-engineering community, not from Valve, and those same sources say
   it is not a guarantee.

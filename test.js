@@ -1146,6 +1146,18 @@ ok('the landing page keeps the promises the project made about how it talks', ()
   assert.match(text, /not on an account you would mind losing/i);
   assert.match(text, /unsanctioned third-party tool/);
   assert.match(text, /source-available rather than open source/);
+  // What Valve HAS said. For a day the page and the README said "Valve has
+  // never said whether that is allowed" - and in February 2023 Valve banned
+  // 40,000 accounts for software that read the client, and wrote that any
+  // application reading the client can get an account permanently banned.
+  // The user asked for the claim to be confirmed; it could not be.
+  for (const [name, body] of [['the landing page', text], ['the README', fs.readFileSync('README.md', 'utf8')]]) {
+    assert.doesNotMatch(body, /Valve has never (said|answered)/i, name + ' says Valve has never said');
+    assert.doesNotMatch(body, /no documented (ban|case)/i, name + ' says no ban is documented');
+    assert.match(body, /February 2023/, name + ' does not mention the 2023 bans');
+    assert.match(body, /permanently banned/, name + ' does not say what Valve wrote');
+    assert.match(body, /makes no exception/, name + ' lets the reader think chat is exempt');
+  }
   // A control character in a page or a script is an escape that was eaten on
   // its way into the file. It happened: a word-boundary escape in a regular
   // expression on the download page arrived as a BACKSPACE, twice, and the
