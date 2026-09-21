@@ -13,84 +13,94 @@ Gemini key - no account, no server, nothing to sign up for.
 
 ## Read this before you install it
 
-**This reads Dota's memory, and Valve has said that applications which
-read the Dota client can get an account permanently banned.** Be honest
-with yourself about that before running it.
+**It does not read the game's memory.** Chat comes from Dota's own Game
+State Integration feed - the interface Valve built into the game for
+overlays and stream tools, where the GAME sends data to a program on your
+PC that asked for it. The app never opens the Dota process, never injects
+anything and never changes a file of the game's. `npm test` fails if any of
+that stops being true.
 
-What it actually does: opens the Dota process with `PROCESS_VM_READ |
-PROCESS_QUERY_INFORMATION` - permission to read and to ask questions - and
-copies out the chat lines. It **never** calls `WriteProcessMemory`. Nothing
-is injected, nothing in the game is changed, and no file of Dota's is
-touched. You can check all of that yourself: it is one file,
-[`src/memscan.ps1`](src/memscan.ps1), and it is plain text.
+What it does do, all of it:
 
-One more thing, and only if you use it: when you press `Ctrl+Enter` in the
-game's chat to [send a line translated](#saying-something-back), the app
-presses a few keys for you (select, copy, paste, Enter), through Windows,
-as a macro key would. That is input, not memory - it is also one file,
-[`src/sendchat.ps1`](src/sendchat.ps1) - and Valve has not said anything
-about that either. `"sayHotkey": ""` turns it off.
+- **Writes one small file into Dota's folder**:
+  `game/dota/cfg/gamestate_integration/gamestate_integration_dotatranslator.cfg`.
+  That is how anybody asks Dota for its feed. It tells the game to send
+  chat events to `127.0.0.1` - your own PC, nowhere else. Delete the file
+  and the feed stops. Dota reads it only when it starts, so the first time
+  you are asked to restart Dota once.
+- **Looks at two small spots of the game's picture.** The feed says which
+  SEAT spoke, not which hero. So when somebody new speaks, the app captures
+  the portrait beside the newest chat line (about 56 x 40 pixels at 1080p)
+  and, if that is not clear, that player's tile in the top bar, compares it
+  with the hero portraits in your own Dota install, and throws it away.
+  Only while Dota is the window in front; nothing is saved or sent
+  anywhere. It is one file, [`src/rowgrab.ps1`](src/rowgrab.ps1).
+  `"gsiRowGrab": false` turns it off: no capture at all, and other players
+  are then shown by their colour only.
+- **Asks Windows which window is in front**, and where the game's window
+  is, so the text sits above the game's chat and hides when you alt-tab
+  ([`src/focuswatch.ps1`](src/focuswatch.ps1)).
+- **Presses keys for you - only if you use it.** When you press
+  `Ctrl+Enter` in the game's chat to [send a line translated](#saying-something-back),
+  the app presses select, copy, paste and Enter through Windows, as a macro
+  key would ([`src/sendchat.ps1`](src/sendchat.ps1)). `"sayHotkey": ""`
+  turns it off.
+- **Sends the chat lines that need translating to Google's Gemini**, on your
+  own key. Lines already in English are never sent.
 
-What Valve has said, and what nobody can tell you:
+What nobody can promise you: Valve has not reviewed or approved this app,
+and the Steam Subscriber Agreement does not bless third-party tools in
+general. The feed is Valve's own interface and nothing here gives an
+advantage in the game - but a tool that captures bits of the screen and can
+press keys is still yours to judge. **Use it at your own risk**, as with
+any third-party program.
 
-- **In February 2023 Valve [banned over 40,000 accounts](https://www.dota2.com/newsentry/3677788723152833273)**
-  for cheat software that read hidden data out of the Dota client, caught
-  by a trap: a piece of memory that normal play never reads. In the same
-  post it wrote that running any application that reads data from the
-  client while you play can get your account "permanently banned". Those
-  tools read what players are not meant to see. This one reads the chat
-  that is already on your screen and gives no advantage - **but Valve's
-  sentence makes no exception for that**, and a tool that reads memory
-  cannot promise it never touches a trap.
-- **No ban is known for a tool like this one.** That is not the same as it
-  being safe. It means nobody has reported one, which is a weaker claim.
-- **The direct question got no answer.** Whether reading what the client
-  already shows you is allowed was
-  [asked](https://github.com/ValveSoftware/Dota2-Gameplay/issues/15007)
-  in January 2024. Nobody from Valve replied; a bot closed it as stale in
-  August 2025.
-- The claim that read-only access is undetectable comes from the
-  reverse-engineering community, not from Valve, and those same sources say
-  it is not a guarantee.
-- The Steam Subscriber Agreement makes any third-party tool a violation
-  whatever technique it uses.
+### It used to read memory. It does not any more.
 
-The honest way to think of it: an **unsanctioned third-party tool**, the
-kind that works, that plenty of people use, and whose users carry the risk
-themselves. It is *not* one of the overlays Valve permits - those do not
-read the game's memory, and this does.
+Versions up to 0.3.7 read the chat out of the running game's memory,
+because every gentler route then known had failed (below). That was always
+the uncomfortable part: in February 2023 Valve
+[banned over 40,000 accounts](https://www.dota2.com/newsentry/3677788723152833273)
+for cheat software that read hidden data from the client, and wrote that
+running any application that reads data from the client can get an account
+"permanently banned" - with no exception for a tool that only reads chat.
+No ban was ever reported for this app, but the honest answer to "is reading
+memory allowed?" was no.
 
-**Use it at your own risk, and not on an account you would mind losing.**
+Then somebody on Reddit pointed out that the feed carries chat after all.
+It was tested the same evening, it does, and the app was rebuilt on it. The
+memory reader is not started by the app and is not in the installer.
 
 What the program does on your PC, how to check the download against the
 source, and how to report a problem: [SECURITY.md](SECURITY.md).
 
-## Why memory, and not something gentler
-
-Every other route was tried first, and measured:
+## What was tried, and measured
 
 - **`console.log` does not contain chat.** Dota draws chat with Panorama and
   never sends it to the engine console. Tested with `-condebug` on, in a
   match: the log grew 2 KB while a typed test message appeared nowhere in it.
-- **The `DOTA_CHAT` log channel cannot be switched on.** It exists, with the
-  right tags and no console-only flag, but `log_level DOTA_CHAT default`
-  answers **"Log verbosity levels are locked"** - in a match and in the main
-  menu alike.
-- **Game State Integration carries no chat.** It sends map, hero, items,
-  abilities, buildings, draft and wearables. No messages of any kind.
-- **Reading the screen works, but not for free.** A vision model transcribes
-  Cyrillic off the chat box perfectly; it also costs roughly 1,200 API calls
-  a game, which exhausts the free tier in a single match. Plain Tesseract
-  misreads the text over Dota's bright terrain.
+- **The `DOTA_CHAT` log channel cannot be switched on.**
+  `log_level DOTA_CHAT default` answers **"Log verbosity levels are
+  locked"** - in a match and in the main menu alike.
+- **Game State Integration DOES carry chat** - in its `events` section, as
+  `chat_message` with the text, the channel and the speaker's seat. For two
+  days this README said it did not; that had been read somewhere, not seen.
+  Seen since: own and others' lines, team and all chat, Cyrillic intact,
+  live games and replays. What it does not carry is who the seat IS - no
+  name, no hero - which is what the two screen spots are for.
+- **Reading the whole screen with a vision model works, but not for free**:
+  roughly 1,200 API calls a game.
+- **Reading memory worked** - 0.2 seconds from said to shown - and is gone,
+  for the reason above.
 
 [NOTES.md](NOTES.md) and
-[NOTES-2026-09-20-memory.md](NOTES-2026-09-20-memory.md) hold the full
+[NOTES-2026-09-20-memory.md](NOTES-2026-09-20-memory.md) hold the older
 measurements.
 
 ## Setup
 
-You need Windows and Dota 2. There is no installer and nothing compiled -
-the memory reading runs through PowerShell, which Windows already has.
+You need Windows and Dota 2. The app's small helpers run through PowerShell,
+which Windows already has.
 
 1. **Run Dota borderless windowed.** Settings, Video, Display Mode. An
    exclusive fullscreen game owns the screen and no overlay can sit on it.
@@ -112,6 +122,9 @@ the memory reading runs through PowerShell, which Windows already has.
    is not code-signed, so Windows SmartScreen asks first: *More info*, then
    *Run anyway*.
 
+   The first time, the overlay asks you to **restart Dota once**: the game
+   reads its feed settings only when it starts.
+
    From source instead: `npm install`, then `npm start`. `npm run dist`
    builds the installer into `dist/`.
 
@@ -132,9 +145,6 @@ the memory reading runs through PowerShell, which Windows already has.
 ## Ways to run it
 
 - `npm start` - the overlay.
-- `npm run watch` - the same chain printed to a terminal, no Electron. Use
-  this first: it proves the game is being read and the key works, without a
-  window in the way.
 - `npm run demo` - drives the whole chain from a fake source, with no Dota
   running at all.
 
@@ -143,30 +153,19 @@ the memory reading runs through PowerShell, which Windows already has.
 By default the translated lines appear just above Dota's chat, in the same
 type and lined up with it, as `name: english (what was said)` - each one
 the moment it is said, in Russian, turning into English about a second
-later. Nothing is drawn over the game's own lines. The overlay hides
+later. Other players are shown with their hero portrait and called by their
+colour (`Pink`, `Teal`) - the feed has no names for them; your own lines carry
+your name. Nothing is drawn over the game's own lines. The overlay hides
 itself whenever Dota is not the window in front.
 
-`"display": "cover"` is the other way: the English goes where the line already is: over each line of
-Dota's own chat, as `name: english (what was said)`, with the hero portrait
-left showing. Lines that were English already are left alone. Nothing in the
-game is changed to do this - it is still a window drawn over the game; it
-reads where Dota has put its chat and lays each strip on its line. Dota
-fades a chat line after about five seconds; the English stays for
-`holdSeconds`. Measured on one screen (5120x1440). If the strips sit
-slightly off on yours, set `"display": "box"` and say so in an issue.
+`"display": "box"` is the other look: a dark panel instead of bare text.
 
-## The chat box
+## How quick it is
 
-A second chat box, drawn over the game right above Dota's own: the same
-lines, in English, with the channel and the player's colour. A line appears
-in it the moment it is said - as written, dimmed - and turns into English
-where it stands about a second later, with the original kept small beneath
-it. Measured over two bot matches, 24 lines: on screen in about 0.2
-seconds, in English in about 1.1, never more than 1.4. A line somebody has
-said before comes out of memory at once and costs no call.
-
-While nothing is being said the box is not drawn at all, the window costs
-no processor time, and reading the chat costs about 0.3% of one core.
+Dota sends its feed about once a second, so a line reaches the app up to a
+second after it is said; the translation takes about another second.
+Measured over a whole matchmade game: every line in English 0.7-0.9 seconds
+after the app heard it. A line somebody has said before costs no call.
 
 ## Keys
 
@@ -185,17 +184,16 @@ Plain `Enter` still sends exactly what you typed.
   `Ctrl+A`, `Ctrl+C` to take what you typed; then, with the translation,
   `Ctrl+A`, `Ctrl+V`, `Enter`. They go through Windows, as a keyboard's or
   a macro key's do. It happens once, when you press the key, and never
-  unless Dota is the window in front. How Valve regards that is
-  undocumented, like the rest of this: at your own risk.
+  unless Dota is the window in front. Valve has said
+  nothing about it either way: at your own risk.
   `"sayHotkey": ""` turns it off, and then the app sends no keys at all.
-- **Nothing is written to the game's memory, for this or for anything.**
-  The app opens the game to read it and for nothing else, and `npm test`
+- **Nothing is written to the game's memory, or read from it, for this or
+  for anything.** The app never opens the game's process, and `npm test`
   fails if that ever changes.
 - **It goes the other way too.** In the settings window, "Your own messages"
   can be set to *Russian -> English*: type Russian and your teammates read
   English. Same key; the choice is saved as you click it.
-- The language is whatever the others were last seen typing in - the app
-  reads their chat, so it knows - and Russian until anybody has typed.
+- The language is whatever the others were last seen typing in - and Russian until anybody has typed.
   `replyLanguage` in `config.json` fixes it (`"Ukrainian"`).
 - If the translation fails, NOTHING is sent: your line is still in the
   chat, and the overlay says why. Your clipboard is put back afterwards.
@@ -217,15 +215,8 @@ Plain `Enter` still sends exactly what you typed.
 |---|---|
 | `geminiApiKey` | your key. `GEMINI_API_KEY` in the environment wins over it |
 | `model` | `gemini-3.5-flash-lite` by default |
-| `source` | `memory` reads the game. `log` is the old console.log reader, which cannot see chat |
-| `offsetsUrl` | where the app fetches `offsets.json` from when it starts - the few numbers that say where Dota keeps its chat, which a Dota patch can move. Fetching them means a patch is fixed for everybody by one change to that file, with nothing to reinstall. `""` never fetches and uses the copy that came with the app |
-| `chatPanel` | read the game's own chat list - a few KB, four times a second - instead of searching its memory for chat. The searching below only happens until the list is found, or if it cannot be (true) |
-| `panelIntervalMs` | how often to read the chat list (250) |
-| `scanIntervalMs` | how often to re-read the chat when searching (1000) |
-| `fullRescanMs` | how often to sweep the whole process again (120000) |
-| `scanWindowMb` | most re-reads only look this many MB either side of where chat was last seen; 0 reads everything every time (4) |
-| `scanWideCapMb` | the biggest memory region the look-everywhere re-read will open, in MB; 0 opens them all, 64 is lighter on the PC and can miss an all-chat line for a long time (0) |
-| `scanWideEvery` | every Nth re-read looks everywhere chat has ever been, to catch a line written somewhere new (5) |
+| `gsiPort` | the port on your own PC that Dota sends its feed to (47854) |
+| `gsiRowGrab` | name a speaker's hero from a small capture of the game's chat row and top bar. `false` captures nothing; other players are then shown by colour only (true) |
 | `scripts` | which writing systems to translate. `["cyrillic", "han"]` by default - Russian, which is what this is built for, and Chinese, because so many pasted voice lines are. `greek`, `hangul`, `arabic` and `thai` are also known |
 | `callsPerMinute` | how many calls a minute your key allows. The free tier is 15. The busier the chat, the more lines share one call, so a loud game stays inside it (15) |
 | `batchMs` | how long to gather lines before one call (80) |
@@ -234,12 +225,11 @@ Plain `Enter` still sends exactly what you typed.
 | `maxLines` | how many lines the overlay holds (6) |
 | `showHeroes` | the speaker's hero portrait before their name, as Dota's chat has it. The pictures are the game's own, read from your Dota install on disk; only if one cannot be read there is it fetched from Valve's public image server instead. `false` shows and fetches none (true) |
 | `showOriginal` | show what was actually said, in brackets after the English: `go mid (иди мид)`. Nothing is added when the line was English already (true) |
-| `display` | `above` (the default): the translated lines as plain outlined text, like the game's own, directly above Dota's chat - placed from where the game says its chat is, so there is nothing to position. `box`: a dark panel in a corner (see `position`). `cover` lays the English over each line of Dota's own chat, exactly where the line is: `go mid (иди мид)`. It reads where the chat is from the game, so there is nothing to position. `box` draws a separate chat box instead (see `position`). `replace` - the English written into Dota's own chat line - is planned and not built; it falls back to the box |
+| `display` | `above` (the default): the translated lines as plain outlined text, like the game's own, directly above Dota's chat - placed from where the game's window is, so there is nothing to position. `box`: a dark panel (see `position`) |
 | `position` | where the chat box goes. `chat` (the default) is directly above Dota's own chat, growing upwards; or a corner: `top-left`, `top-right`, `bottom-left`, `bottom-right` |
 | `boxX`, `boxY` | put the box anywhere instead: fractions of the screen from its top-left, e.g. `0.02` and `0.5`. `-1` (the default) leaves it to `position` |
 | `boxWidth` | how wide the box is, in pixels (520) |
 | `clickThrough` | clicks pass through to the game (true) |
-| `learn` | write unrecognised lines to `learn.log` - see below |
 
 ## What it costs
 
@@ -248,87 +238,40 @@ together go in one call, so Dota's own chat wheel ("Pushing mid", already in
 your language) never costs anything at all. A normal game is a handful of
 calls carrying a few dozen short lines - well inside the free tier.
 
-Reading the screen instead would have cost roughly 1,200 calls a game.
-Reading memory is the reason this is free.
 
-## How it finds the chat
+## How it works
 
 Worth knowing if you are reviewing the code:
 
-Dota keeps each chat line complete and already formatted, as one UTF-8
-string. It also keeps Panorama's markup copy, which carries the player's
-colour. The markup is what this anchors on, because **all-chat has no
-channel tag**: team chat reads `[Allies] name: text` while all-chat is just
-`name: text`, which is far too common a shape to search 4 GB for.
-
-**It reads the chat list itself where it can.** Dota's HUD keeps its chat
-as a list of lines (a UI panel called `ChatLinesPanel`). Once that list is
-found - one search of the game's memory, about ten seconds, at low
-priority - reading chat is a few kilobytes four times a second, and a line
-is on its way to the translator a fraction of a second after it is said.
-Measured in a bot match: 12 lines of 12, team and all chat, 0.06 to 0.29
-seconds each. Where the list sits inside the game is not documented and
-can move in any patch, so everything read is checked, and if the check
-fails the app goes back to the slower method below on its own.
-
-**The slower method: searching for the chat.** A full sweep reads every
-committed page Dota has - 7.5 GB in a real match
-- which takes about 3.8 seconds across three threads. Far too slow to
-poll, so the first sweep learns which **allocations** hold chat and after
-that only those are read: ~710 MB in under half a second.
-
-Allocations, not regions, and that distinction is the whole trick. A new
-chat line does *not* land in the same region the last one did - measured
-over 95 polls of the hot regions, not one new line ever appeared in them -
-but it does land in the same heap reservation, which is a twentieth of the
-process rather than a two-hundredth.
-
-While there is no chat to be found at all - the menu, the loading screen,
-a match where nobody has spoken - the sweeps back off to one every ten
-seconds rather than running back to back.
-
-The first sweep of a match only **primes**: it remembers what has already
-been said without showing it, so starting the app mid-game does not dump the
-whole match onto your screen at once.
-
-## When a Dota update breaks it
-
-It has not happened yet, so this is the plan rather than a record.
-
-The quick way of reading chat depends on a handful of numbers that say where
-Dota keeps its chat in memory. They belong to Dota's interface engine, not to
-gameplay, so an ordinary balance patch should leave them alone; a bigger engine
-update might move them. How often that will be, nobody knows yet.
-
-If it happens, the app does not stop. It falls back to a slower way of finding
-chat that needs none of those numbers: translations arrive a few seconds late
-instead of at once, it uses noticeably more processor, and they appear in a
-dark box in the corner rather than above Dota's chat, without hero portraits.
-
-The fix is usually one small file, [`offsets.json`](offsets.json), which the
-app downloads from this repository every time it starts. Once it is corrected
-here, everybody has the fix the next time they open the app, with nothing to
-reinstall. If a Dota update changes more than the numbers, the fix is a new
-version instead, and an installed copy updates itself.
-
-If you see the dark box and the delay after a Dota update,
-[open an issue](https://github.com/sc0rebreaker/dota-translator/issues) - that
-is currently the only way anybody finds out.
+- [`src/gsiconfig.js`](src/gsiconfig.js) finds Dota through Steam's
+  registry key and writes the feed's config file.
+  [`src/gsisource.js`](src/gsisource.js) listens on `127.0.0.1:47854` and
+  turns each payload's `chat_message` events into lines. An event stays in
+  the feed for about half a minute, so each is said once; the first payload
+  only **primes**, so starting the app mid-game does not dump the match so
+  far onto your screen.
+- Only lines in the languages you ticked go to the model, several to a
+  call when the chat is busy, inside the free tier's 15 calls a minute.
+- The text is placed from the game window's position and size alone
+  ([`src/gsilayout.js`](src/gsilayout.js)): Dota lays its chat out at a
+  fixed place in 1080-high units. Seen on 5120x1440; if it sits wrong on
+  your screen, set `"display": "box"` and send a screenshot.
+- In a lobby with bots Dota numbers chat by join order, not by seat, so the
+  first line there can carry the wrong colour; the chat-row capture
+  corrects it from the second. Real games number by seat.
 
 ## If chat is not picked up
 
-**If the overlay says Dota is running as administrator:** Windows does not
-let a normal program read an elevated one. It almost always means Steam was
-started with "Run as administrator". Close Steam and start it normally - or,
-if you need Steam elevated, start Dota Translator as administrator too.
-
-Set `"learn": true` in `config.json` and play a game. An unrecognised chat
-channel is written to `learn.log`, and that file is the answer to what
-changed.
-
-Only `[Allies]` and untagged all-chat are confirmed against a real game.
-Spectator and coach chat are guesses; if one of them is wrong it will show
-up in that log rather than failing silently.
+- **Restart Dota once** after the app's first start. The game reads the
+  feed's config only at launch.
+- If the overlay says it could not find Dota, the config file was not
+  written: [open an issue](https://github.com/sc0rebreaker/dota-translator/issues)
+  with where your Steam library is.
+- **Steam running as administrator** stops the `Ctrl+Enter` key (Windows
+  does not deliver a normal program's keys to an elevated one). Start Steam
+  normally.
+- An emoticon on its own arrives as an empty message and is not shown. A
+  bot's canned phrases were seen NOT to arrive in the feed at all.
 
 ## Testing
 
@@ -336,9 +279,8 @@ up in that log rather than failing silently.
 npm test
 ```
 
-Plain Node assert, no runner. 62 tests, none of which need Dota running: the
-parsers are fed strings taken verbatim out of the game's memory, and the
-whole reading chain runs against a stand-in for the scanner.
+Plain Node assert, no runner, and none of it needs Dota running: the feed
+reader is fed payloads recorded from real games.
 
 ## Feedback
 

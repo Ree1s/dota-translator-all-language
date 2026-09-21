@@ -9,6 +9,45 @@ use English. That is the whole point of it.
 
 ---
 
+## >>> MEMORY READING IS GONE (the user, 2026-09-22: "memory reading will not stay") <<<
+
+READ THIS FIRST; much of what is below it describes the memory reader and is
+HISTORY now. Decided and done, all LOCAL (nothing pushed, no tag; players
+still get v0.3.7, which reads memory, until the next release):
+
+- `DEFAULTS.source` is `'gsi'`; `main.js` starts the feed reader for anything
+  but `'log'` and does not import the memory watcher; `src/memscan.ps1` is
+  excluded from the installer (`build.files`). A test holds all three, and
+  another that no file gsi mode uses can open or read a process. SEEN at run
+  time: the app spawned `rowgrab.ps1` and `focuswatch.ps1`, no `memscan.ps1`.
+  The memory reader's CODE (memscan.ps1, memsource's spawn, offsets, the
+  scanner's tests and tools) is still in the repo: removing it is a separate
+  clean-up, NOT done. `memwatcher.js` stays: it is the chain behind any source.
+  `npm run watch` still drives the memory reader from source: NOT looked at.
+- README, SECURITY.md, docs/index.html and docs/download.html are rewritten
+  for a no-memory app: what it does INSTEAD (one cfg file in Dota's folder,
+  two small screen captures, Windows asked for the front window, keys on
+  Ctrl+Enter), that versions up to 0.3.7 read memory and why that ended
+  (February 2023 kept, as history), "Valve has not approved it", "at your
+  own risk". The page's numbers are the FEED's: once a second, translation
+  0.7-0.9s, about two seconds said -> English. The old 0.2s / 0.3% of a core
+  are gone; CPU cost of gsi mode is NOT measured. `npm test` holds the new
+  wording and still forbids "safe". **The live site is unchanged until
+  master is pushed, which is right: it must not describe a download that
+  does not exist yet.** Decisions that fell with this: "not on an account
+  you would mind losing" and "unsanctioned third-party tool" are no longer
+  required wording. NAME NO OTHER PRODUCT still stands.
+- A setup-window checkbox for choosing the reader was built and removed
+  within the hour: there is nothing left to choose.
+- An installer of this state is in `dist/` for the user's friend, who plays
+  a lot and will test it (REBUILD before handing it over if anything changed
+  since; it says 0.3.7 like the public one but is newer). The user does not
+  want to play more test games unless something is seen not working.
+- BEFORE THE RELEASE: bump the version (0.4.0), the Electron 33 -> 44 PR
+  tried in a match, delete the probe cfg from Dota's folder, names for
+  strangers decided (the recommendation given: portrait + colour is enough),
+  then tag and push.
+
 ## >>> GSI CARRIES CHAT. SEEN 2026-09-21 21:10, bot match, GSI version 48 <<<
 
 The redditor was right and the old note ("GSI carries no chat") is DEAD.

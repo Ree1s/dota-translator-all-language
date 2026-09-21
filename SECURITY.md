@@ -9,9 +9,21 @@ tell me if something is wrong.
 - **Installs for your Windows user only.** No administrator rights, no
   service, no driver, nothing that starts with Windows. It uninstalls from
   Windows Settings like anything else.
-- **Reads Dota 2's memory, read-only**, to get the chat. It opens the game
-  with permission to read and to ask, and no more; it never writes to the
-  game and injects nothing. One plain-text file: [`src/memscan.ps1`](src/memscan.ps1).
+- **Does not read or write Dota 2's memory**, and never opens the game's
+  process. Chat comes from the game's own Game State Integration feed, sent
+  by Dota to `127.0.0.1` ([`src/gsisource.js`](src/gsisource.js)). To switch
+  the feed on, the app writes one file into Dota's folder:
+  `game/dota/cfg/gamestate_integration/gamestate_integration_dotatranslator.cfg`.
+  (Versions up to 0.3.7 read the chat from memory; that reader is not in
+  the installer any more.)
+- **Captures two small spots of the game's picture** - the portrait beside
+  the newest chat line and one tile of the top bar - to tell which hero
+  spoke, only while Dota is the window in front. Compared with the
+  portraits in your own Dota install and thrown away: nothing is saved or
+  sent. One plain-text file: [`src/rowgrab.ps1`](src/rowgrab.ps1).
+  `"gsiRowGrab": false` turns it off.
+- **Asks Windows which window is in front and where it is**
+  ([`src/focuswatch.ps1`](src/focuswatch.ps1)).
 - **Presses keys in Dota only when you press Ctrl+Enter** in the game's chat
   (select, copy, paste, Enter), and only while Dota is the window in front.
   One file: [`src/sendchat.ps1`](src/sendchat.ps1). `"sayHotkey": ""` turns
@@ -24,7 +36,7 @@ tell me if something is wrong.
 - **Your Gemini key** is stored on your PC, encrypted by Windows for your
   user (DPAPI). It is sent to Google and to nobody else.
 
-`npm test` fails if the app ever gains a way to write to the game, a second
+`npm test` fails if the app ever gains a way to read or write the game, a second
 place that sends keys, or anything that looks like analytics.
 
 ## How to check the download

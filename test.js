@@ -1215,8 +1215,13 @@ ok('the landing page keeps the promises the project made about how it talks', ()
   const html = fs.readFileSync(path.join('docs', 'index.html'), 'utf8');
   const text = html.replace(/<style[\s\S]*?<\/style>|<script[\s\S]*?<\/script>|<[^>]+>/g, ' ').replace(/\s+/g, ' ');
   assert.match(text, /at your own risk/i);
-  assert.match(text, /not on an account you would mind losing/i);
-  assert.match(text, /unsanctioned third-party tool/);
+  // 2026-09-22: the app stopped reading memory (chat comes from the game's
+  // own feed). What the pages must say now is what it does INSTEAD - and
+  // still never that it is safe or approved.
+  assert.match(text, /does not read Dota's memory/);
+  assert.match(text, /two small spots of your screen/);
+  assert.match(text, /Valve has not approved it/);
+  assert.doesNotMatch(text, /Valve (approved|allows|permits) (it|this)/i);
   assert.match(text, /source-available rather than open source/);
   // What Valve HAS said. For a day the page and the README said "Valve has
   // never said whether that is allowed" - and in February 2023 Valve banned
@@ -1228,7 +1233,8 @@ ok('the landing page keeps the promises the project made about how it talks', ()
     assert.doesNotMatch(body, /no documented (ban|case)/i, name + ' says no ban is documented');
     assert.match(body, /February 2023/, name + ' does not mention the 2023 bans');
     assert.match(body, /permanently banned/, name + ' does not say what Valve wrote');
-    assert.match(body, /makes no exception/, name + ' lets the reader think chat is exempt');
+    assert.match(body, /does not read (the game's|Dota's) memory/, name + ' does not say the app reads no memory');
+    assert.match(body, /0\.3\.7/, name + ' does not say which versions DID read memory');
   }
   // A control character in a page or a script is an escape that was eaten on
   // its way into the file. It happened: a word-boundary escape in a regular
