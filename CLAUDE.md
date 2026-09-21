@@ -283,6 +283,19 @@ it changed; a test holds `DEFAULTS.source` to `'memory'`.
         over a few grabs has all nine, and the feed's hero list gives the
         tenth (PA's cosmetic portrait never matched: 0.56 every time).
         After the match ended: 0 of 10, nothing above 0.43 - rightly unsure.
+      - **A REPLAY, SCORED AGAINST THE FEED'S OWN ROSTER (9009673223, 23:12;
+        a spectator's payload names every seat's hero, so this is truth, not
+        eyeballing):** six in-game top grabs = 60 tiles: **60 of 60 best
+        guesses RIGHT, 57 above the 0.8 line**, the three below it (0.58,
+        0.76, 0.78) still the right hero; the ten grabs outside the game
+        (loading, menus, the desktop) had NOTHING above 0.73 - no false
+        "sure" anywhere. The one chat line (player 8, all chat): shredder
+        0.90/0.91 = seat 8, and the feed says seat 8 IS shredder. The
+        spectator HUD's top bar and chat row are where the player's are
+        (bars under the portraits do not reach the top 60%). Replays seem
+        to carry ALL chat only - one line is no proof. A LIVE spectated
+        game hung on a black screen (Valve's coordinator timing out, in
+        Dota's own log) and sent only empty heartbeats: not our doing.
       - So the design that follows: the CHAT-ROW grab is the strong signal
         (it names the speaker directly and was never wrong); the top bar is
         the fallback and the seat -> colour check. NOT built into the app.

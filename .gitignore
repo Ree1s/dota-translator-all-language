@@ -10,3 +10,4 @@ dist/
 said.json
 gsiprobe.log
 grabs/
+grabs-*/
