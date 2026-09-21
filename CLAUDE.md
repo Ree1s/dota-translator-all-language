@@ -53,6 +53,13 @@ section of the payload, Cyrillic intact:
   empty message is an emoticon, not a fault. NOT SEEN: an ALLY's team-chat
   line (12 from someone other than player 0), and a Cyrillic line from
   another player (no reason to doubt it; the user's own came intact).
+- **The redditor confirmed the same limit (told to the user, 21:27):** works
+  in live games, replays are the easiest to test with, and there is no way
+  they found to tell WHO player "8" is. LOOKED in our payloads: `player`
+  is the local player only (name, steamid); `minimap` lists heroes by
+  `unitname` and `team` with NO player id; kill events give player ids
+  with no hero. So GSI alone gives: slot number -> the slot's COLOUR
+  (fixed per slot in Dota) and team (0-4 / 5-9), not name or hero.
 - An event stays ~27-28 payloads (~30s at ~1/s). Dota's JSON is sometimes
   MALFORMED there: two events merged into one object with duplicate keys.
 - The probe cfg is still in the game's folder and `gsiprobe.mjs` was left
