@@ -207,6 +207,13 @@ when the dev copy started with a key saved (seen in the log, 22:35).
     typed" is what the row means) - reads strangely in a box of English.
   - Everything stopped after, no strays (checked).
 
+- **After that game (built, NOT seen):** with `DT_DEBUG` every answer of the
+  row-grab helper is printed as it came (`grab {...}`: hero, score, second
+  best, or why not), so the next game says which lines were looked at. And
+  in gsi mode the dark `box` look is placed in the game's WINDOW (the same
+  window event, through `place()`), not on the primary screen. The memory
+  reader's box is still placed against the screen.
+
 ### THE GSI READER: BUILT the same evening, OPT-IN (`"source": "gsi"`)
 
 **NOT TO BE RELEASED YET (the user, 2026-09-21 22:45): "we dont need to

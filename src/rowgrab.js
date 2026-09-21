@@ -45,6 +45,8 @@ export function writeRefs(dotaDir, dir = path.join(os.tmpdir(), 'dota-translator
  * identify never rejects and never takes longer than `timeoutMs`: a line is
  * waiting on it.
  */
+const DEBUG = Boolean(process.env.DT_DEBUG);
+
 export function startRowGrab({ dotaDir, refs, spawnImpl = spawn, parentPid = process.pid, timeoutMs = 700, restartMs = 5000, sure = SURE } = {}) {
   const folder = refs || (dotaDir ? writeRefs(dotaDir) : null);
   if (!folder) return { identify: async () => null, stop() {} };
@@ -71,6 +73,9 @@ export function startRowGrab({ dotaDir, refs, spawnImpl = spawn, parentPid = pro
         try { o = JSON.parse(p); } catch { continue; }
         if (o && o.t === 'ready') ready = o.refs > 0;
         else if (o && o.t === 'row') {
+          // DT_DEBUG: every answer as the helper gave it - a whole game went
+          // by (2026-09-22) with no way to tell which lines had been looked at.
+          if (DEBUG) console.log(new Date().toISOString().slice(11, 23), 'grab', p);
           const good = o.ok === 1 && typeof o.hero === 'string' && /^[a-z_]+$/.test(o.hero) && o.score >= sure;
           settle(o.id, good ? { hero: o.hero, score: o.score } : null);
         }

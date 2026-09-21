@@ -220,6 +220,15 @@ async function start() {
     },
     onPending: (row) => { spoken.saw(row.text); itsMe(row); send('pending', withFace(row)); },
     onLayout,
+    // GSI mode only: where the game's window is. The dark box is then placed
+    // in IT, not on the screen (a windowed game had the box on the desktop).
+    onWindow: (w) => {
+      if (cfg.display === 'above' || cfg.display === 'cover' || !win || win.isDestroyed()) return;
+      const px = { x: w.x, y: w.y, width: w.w, height: w.h };
+      const b = place(screen.screenToDipRect ? screen.screenToDipRect(null, px) : px);
+      const key = [b.x, b.y, b.width, b.height].join();
+      if (key !== coverAt) { coverAt = key; win.setBounds(b); }
+    },
     onSeen: (s) => { if (cfg.display === 'cover') send('seen', s); },
     // The game's chat is set in Valve's Radiance, which is not on anybody's
     // machine except inside the game. It is loaded from THERE - the

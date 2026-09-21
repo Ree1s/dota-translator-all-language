@@ -39,6 +39,9 @@ export function startWatchingGsi(cfg, handlers = {}, { ensure = ensureGsiConfig,
   // it (src/gsilayout.js). Only the 'above' look: 'cover' needs the game's
   // real rows, which nothing here can know.
   const onWindow = (w) => {
+    // The dark box has no layout from the game, but it can at least sit in
+    // the game's WINDOW rather than on the screen.
+    if (handlers.onWindow) handlers.onWindow(w);
     const l = cfg.display === 'above' && handlers.onLayout ? layoutFromWindow(w) : null;
     if (l) handlers.onLayout(l);
   };

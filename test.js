@@ -1885,7 +1885,8 @@ ok('keys are sent from ONE place, only with the game in front, and nothing anywh
     const layouts = [];
     let give = null;
     const cfg = { ...DEFAULTS, geminiApiKey: 'x', display: 'above' };
-    const g = startWatchingGsi(cfg, { onLayout: (l) => layouts.push(l) }, {
+    const windows = [];
+    const g = startWatchingGsi(cfg, { onLayout: (l) => layouts.push(l), onWindow: (w) => windows.push(w) }, {
       ensure: () => ({ state: 'present', dotaDir: null }),
       startSource: () => ({ stop() {} }),
       watchFocus: (o) => { give = o.onWindow; return { stop() {} }; },
@@ -1898,6 +1899,7 @@ ok('keys are sent from ONE place, only with the game in front, and nothing anywh
     cfg.display = 'cover';                                   // needs the game's real rows
     give({ x: 0, y: 0, w: 1920, h: 1080 });
     assert.equal(layouts.length, 1);
+    assert.equal(windows.length, 3);                         // every look hears where the game's window is: the box sits in it
     g.stop();
     const helper = fs.readFileSync(path.join('src', 'focuswatch.ps1'), 'latin1');
     assert.match(helper, /GetClientRect/);
