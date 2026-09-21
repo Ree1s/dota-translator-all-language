@@ -295,11 +295,11 @@ async function sayKey() {
     const into = targetLanguage(cfg.replyLanguage, spoken);
     const r = await sayTranslated({
       keys, clipboard, into, explain: explainModelError,
+      // The line comes back out of the chat within a moment: it means what was typed.
+      learned: (out, typed) => { if (watcher && watcher.know) watcher.know(out, typed); },
       translate: (typed) => sayIt(typed, into),
       note: (s) => send('status', s),
     });
-    // The line will come back out of the chat in a moment: it means what was typed.
-    if (r.said && watcher && watcher.know) watcher.know(r.out, r.typed);
     if (DEBUG) console.log('say', JSON.stringify(r));
   } finally { saying = false; }
 }

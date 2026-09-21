@@ -69,7 +69,7 @@ export function createKeySender({ spawnImpl = spawn, script = SEND_SCRIPT, timeo
  * copy what is in the chat field -> translate -> put it back and send.
  * The player's clipboard is theirs and is put back whatever happens.
  */
-export async function sayTranslated({ keys, clipboard, translate, into = '', explain = (m) => m, note = () => {}, wait = (ms) => new Promise((r) => setTimeout(r, ms)) }) {
+export async function sayTranslated({ keys, clipboard, translate, into = '', explain = (m) => m, learned = () => {}, note = () => {}, wait = (ms) => new Promise((r) => setTimeout(r, ms)) }) {
   const before = clipboard.readText();
   const restore = () => clipboard.writeText(before);
   // Emptied first: an empty clipboard afterwards means nothing was copied -
@@ -92,6 +92,12 @@ export async function sayTranslated({ keys, clipboard, translate, into = '', exp
     note({ kind: 'error', text: (said === why ? 'Not translated (' + why + ').' : said.split(' Lines are shown')[0] + ' Not translated.') + ' Your line is still in the chat - Enter sends it as it is.' });
     return { said: false, why };
   }
+  // BEFORE the keys, not after: the reader finds a new line in ~0.2s, and
+  // this function is still waiting for the paste to settle when it does.
+  // SEEN: the line was read at .483 and its meaning handed over after
+  // that, so the model was asked anyway ("how often do u shower" came
+  // back as "how often do you wash yourself").
+  try { learned(out, typed); } catch { /* the line is still said */ }
   clipboard.writeText(out);
   const sent = await keys.send();
   if (!sent.ok) {

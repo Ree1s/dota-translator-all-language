@@ -1299,6 +1299,15 @@ longer available to new users".
   broke `translate.js`; `node --check` caught it). Look at the debug log's
   `say` and `line` rows FIRST when a translation looks wrong: they show
   both directions.
+  **v0.3.5's fix (1) DID NOT WORK, and the user found it within the hour**
+  ("how often do u shower" -> at the top, "how often do you wash
+  yourself"). The meaning was handed to the watcher AFTER `sayTranslated`
+  returned, which is after the paste has settled - and the reader had
+  already found the line: `pending` at 16:12:48.483, `say` logged after it.
+  A reader that is quick is a reader that wins races. FIXED in v0.3.6:
+  `sayTranslated` calls `learned(out, typed)` BEFORE `keys.send()`, and a
+  test holds the ORDER. Tested with fakes only; NOT yet seen in the game.
+  (The Russian itself was fine: "как часто ты моешься" is how it is asked.)
 - Also in v0.3.5: a failed OUTGOING line says "Google's translator is not
   answering right now ... Your line is still in the chat" instead of the
   raw "the model took too long".
@@ -1691,7 +1700,7 @@ npm start        # the overlay (Electron)
 npm run watch    # the same chain in a terminal - use this first
 npm run demo     # drives the chain from a fake source, no Dota needed
 npm run doctor   # no-key diagnostic
-npm test         # 116 tests, plain node assert, no runner
+npm test         # 117 tests, plain node assert, no runner
 ```
 
 Keep `npm test` green. It needs no game running and no API key.

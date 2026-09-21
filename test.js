@@ -1458,6 +1458,25 @@ await okAsync('what is typed in the chat is taken, translated, said - and the cl
   assert.deepEqual(notes.at(-1), { kind: 'note', text: '' });
 });
 
+await okAsync('what the line MEANS is handed over BEFORE the keys that say it', async () => {
+  // The reader finds a new line in ~0.2s. Handing the meaning over after
+  // the send lost the race on the user's first try of it: the model was
+  // asked what their own line meant, and answered "wash yourself".
+  const board = fakeBoard('mine');
+  const order = [];
+  const keys = fakeKeys(board, 'how often do u shower');
+  const send = keys.send;
+  keys.send = async () => { order.push('keys'); return send(); };
+  await sayTranslated({ keys, clipboard: board, translate: async () => ({ out: 'RU' }), learned: (out, typed) => order.push('learned ' + out + ' = ' + typed), wait: noWait });
+  assert.deepEqual(order, ['learned RU = how often do u shower', 'keys']);
+  // And a listener that throws does not stop the line being said.
+  const b2 = fakeBoard('mine');
+  const k2 = fakeKeys(b2, 'gg');
+  const r = await sayTranslated({ keys: k2, clipboard: b2, translate: async () => ({ out: 'RU' }), learned: () => { throw new Error('x'); }, wait: noWait });
+  assert.deepEqual(k2.log, ['copy', 'send']);
+  assert.equal(typeof r.said, 'boolean');
+});
+
 await okAsync('nothing in the chat, or the game not in front: no call, no keys, clipboard as it was', async () => {
   for (const [field, opts] of [['', {}], ['go rosh', { copyOk: false }]]) {
     const board = fakeBoard('mine');
