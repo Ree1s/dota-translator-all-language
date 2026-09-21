@@ -1773,6 +1773,30 @@ ok('keys are sent from ONE place, only with the game in front, and nothing anywh
     assert.deepEqual(heroes, ['meepo', undefined, undefined, undefined]);
   });
 
+  await okAsync('gsi row grab: a bot lobby numbers chat by join order - the player\'s own hero beside the row, twice, puts the line in their real seat', async () => {
+    const said = [];
+    let answer = { hero: 'marci', score: 0.9 };
+    const chat = createGsiChat({ onMessage: (m) => said.push(m), identify: async () => answer });
+    chat.payload(body([]));
+    chat.payload(body([ev(1, 0, RU + '1')]));                // the player (seat 2, marci) arrives as player 0
+    await chat.idle();                                       // lines are seconds apart: a grab each
+    chat.payload(body([ev(2, 0, RU + '2'), ev(1, 0, RU + '1')]));
+    await chat.idle();
+    chat.payload(body([ev(3, 0, RU + '3'), ev(2, 0, RU + '2')]));
+    await chat.idle();
+    assert.deepEqual(said.map((m) => m.slot), [0, 2, 2]);    // once is not believed, twice is
+    assert.deepEqual(said.map((m) => m.name), ['Blue', 'me', 'me']);
+    assert.equal(said[2].hero, 'marci');
+    // The top bar looks at the seat the NUMBER names: it cannot say this.
+    const top = [];
+    answer = { hero: 'marci', score: 0.9, from: 'top' };
+    const c2 = createGsiChat({ onMessage: (m) => top.push(m.slot), identify: async () => answer });
+    c2.payload(body([]));
+    for (let i = 1; i < 4; i++) c2.payload(body([ev(i, 0, RU + i)]));
+    await c2.idle();
+    assert.deepEqual(top, [0, 0, 0]);
+  });
+
   await okAsync('gsi row grab: the helper is asked a line at a time, only a sure answer counts, it never opens the game nor presses a key', async () => {
     const child = new EventEmitter();
     const wrote = [];

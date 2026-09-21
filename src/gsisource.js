@@ -129,6 +129,8 @@ export function createGsiChat({ scripts = ['cyrillic'], onMessage = () => {}, on
   // match. Only when this payload brought exactly ONE new line - with two,
   // the newest row is the second one's - and an emoticon is a row too.
   const learning = new Map();     // seat -> the grab under way for it
+  const hinted = new Map();       // ... as one grab has said so far
+  const seatOf = new Map();       // the feed's number -> the seat it really is, where they differ
   const learn = (slot, forMatch) => {
     if (!learning.has(slot)) learning.set(slot, look(slot, forMatch).finally(() => learning.delete(slot)));
     return learning.get(slot);
@@ -137,9 +139,22 @@ export function createGsiChat({ scripts = ['cyrillic'], onMessage = () => {}, on
     let found = null;
     try { found = await identify(slot); } catch { /* unnamed, as before */ }
     if (!found || forMatch !== matchid) return;
-    // One hero, one seat: a hero already known in another seat means this
-    // row was somebody else's.
-    for (const [other, who] of roster) if (other !== slot && who.hero === found.hero) return;
+    // One hero, one seat. A hero already known in ANOTHER seat, seen in the
+    // speaker's own chat row, says the feed's number is not their seat: in a
+    // lobby with bots chat ids follow join order (SEEN 2026-09-22: the user,
+    // purple in seat 2, arrived as player 0 and was called Blue). The line is
+    // that seat's - name, hero and colour. The top bar looks at the seat the
+    // NUMBER names, so it cannot say this and is not believed here.
+    for (const [other, who] of roster) {
+      if (other === slot || who.hero !== found.hero) continue;
+      // Once could be the race the rule was made for (the newest row being
+      // somebody else's): believed when a second grab says the same.
+      if (found.from !== 'top') {
+        if (hinted.get(slot) === other) seatOf.set(slot, other);
+        else hinted.set(slot, other);
+      }
+      return;
+    }
     roster.set(slot, { ...roster.get(slot), hero: found.hero });
   };
 
@@ -151,7 +166,7 @@ export function createGsiChat({ scripts = ['cyrillic'], onMessage = () => {}, on
       if (!p) return false;
       if (p.matchid !== matchid) {
         // Another match: other people in the slots, and its chat is all new.
-        if (matchid !== null) { seen = new Set(); roster.clear(); }
+        if (matchid !== null) { seen = new Set(); roster.clear(); seatOf.clear(); hinted.clear(); }
         matchid = p.matchid;
       }
       for (const [slot, who] of p.roster) roster.set(slot, { ...roster.get(slot), ...who, hero: who.hero || (roster.get(slot) || {}).hero || null });
@@ -165,7 +180,7 @@ export function createGsiChat({ scripts = ['cyrillic'], onMessage = () => {}, on
         // U+E0B8 as a whole message); a line of nothing else is not a line.
         const text = c.text.replace(EMOTICONS, '').trim();
         // Any line is a chance to learn its speaker's hero, English too.
-        const grab = identify && (fresh === 1 || learning.has(c.slot)) && !(roster.get(c.slot) || {}).hero ? learn(c.slot, matchid) : null;
+        const grab = identify && (fresh === 1 || learning.has(c.slot)) && !(roster.get(c.slot) || {}).hero && !seatOf.has(c.slot) ? learn(c.slot, matchid) : null;
         if (!text) continue;
         let channel = CHANNEL_TYPES[c.channelType];
         if (!channel) {
@@ -175,8 +190,9 @@ export function createGsiChat({ scripts = ['cyrillic'], onMessage = () => {}, on
         }
         if (!needsTranslation(text, scripts)) continue;
         const say = () => {
-          const who = roster.get(c.slot) || {};
-          onMessage({ name: who.name || SLOT_NAMES[c.slot] || 'Player ' + c.slot, text, channel, slot: c.slot, ...(who.hero ? { hero: who.hero } : {}) });
+          const seat = seatOf.has(c.slot) ? seatOf.get(c.slot) : c.slot;
+          const who = roster.get(seat) || {};
+          onMessage({ name: who.name || SLOT_NAMES[seat] || 'Player ' + seat, text, channel, slot: seat, ...(who.hero ? { hero: who.hero } : {}) });
         };
         if (!identify) say();
         else queue = queue.then(() => grab).then(say, say);
