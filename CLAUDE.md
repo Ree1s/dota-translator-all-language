@@ -74,7 +74,45 @@ section of the payload, Cyrillic intact:
 - The probe cfg is still in the game's folder and `gsiprobe.mjs` was left
   running: the test is not over until another player's line is seen.
 
-What follows is the setup, as written before the result:
+### THE GSI READER: BUILT the same evening, OPT-IN (`"source": "gsi"`)
+
+The user: "ok do it, keep the original one while we don't [know] if this
+still works". So the memory reader is STILL THE DEFAULT and nothing about
+it changed; a test holds `DEFAULTS.source` to `'memory'`.
+
+- `src/gsisource.js` listens on `127.0.0.1:47854` (`gsiPort`) and turns
+  payloads into the same `onMessage({name, text, channel, slot, hero})` as
+  `memsource.js`; `src/gsiwatcher.js` puts memwatcher's chain behind it;
+  `src/gsiconfig.js` finds Dota (Steam's registry key, then
+  `libraryfolders.vdf`) and writes
+  `cfg/gamestate_integration/gamestate_integration_dotatranslator.cfg`
+  (provider map player hero events; throttle and buffer 0.1s). A NEWLY
+  written cfg puts "Restart Dota once" on the overlay - Dota reads these
+  files only at launch.
+- Each event is said once (key: game_time|slot|channel_type|message; an
+  identical line twice in ONE second would be one); the first payload only
+  primes; a new matchid forgets the old one's people and chat; an emoticon
+  (a private-use character, SEEN U+E0B8) is stripped and a line of nothing
+  else dropped; an unknown `channel_type` is SHOWN as all chat and reported
+  once; a body that will not parse still gives up its chat by regex.
+- **Names:** the player's own slot is `player.player_slot` (SEEN equal to
+  the chat's `player_id`: 4, in the live match) so their own lines carry
+  name and hero; a spectator's payload names everybody; anybody else is
+  called by their slot's colour (`Pink`, `Green`...), painted in it.
+- **What this mode does NOT have:** the chat's position (so `above` and
+  `cover` get no layout and the lines go in the box), the focus signal (the
+  overlay stays up when alt-tabbed, and the Ctrl+Enter key - registered on
+  focus - is NEVER registered: saying something back does not work in gsi
+  mode yet), and other players' names and portraits.
+- PROVEN: `node tools/gsireplay.mjs [--all]` plays `gsiprobe.log` through
+  the reader - tonight's 1,300 payloads gave exactly the 13 worded lines
+  said, right names in the replay, the emoticon dropped. And END TO END
+  with the real model (`watch`, source gsi, recorded payloads POSTed at
+  it): "проверка zebra" -> "zebra check" in 2s, and the cfg landed in the
+  game's folder. NOT SEEN: Dota itself talking to the app's own port (it
+  needs the restart), the overlay in this mode, a whole game.
+
+What follows is the probe's setup, as written before the result:
 
 **A redditor told the user they could read chat from GSI.** The notes
 (NOTES-2026-09-20-memory.md, "GSI does NOT carry chat - confirmed") say no -
@@ -1885,7 +1923,7 @@ npm start        # the overlay (Electron)
 npm run watch    # the same chain in a terminal - use this first
 npm run demo     # drives the chain from a fake source, no Dota needed
 npm run doctor   # no-key diagnostic
-npm test         # 118 tests, plain node assert, no runner
+npm test         # 125 tests, plain node assert, no runner
 ```
 
 Keep `npm test` green. It needs no game running and no API key.

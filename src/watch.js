@@ -6,6 +6,7 @@
 import { loadConfig } from './config.js';
 import { startWatching } from './watcher.js';
 import { startWatchingMemory } from './memwatcher.js';
+import { startWatchingGsi } from './gsiwatcher.js';
 import { loadOffsets } from './offsets.js';
 
 const cfg = loadConfig();
@@ -25,7 +26,7 @@ const time = () => new Date().toTimeString().slice(0, 8);
 
 // 'memory' reads the running game, which is the only place chat actually
 // is; 'log' is the old console.log reader, kept as a fallback.
-const start = cfg.source === 'log' ? startWatching : startWatchingMemory;
+const start = cfg.source === 'log' ? startWatching : cfg.source === 'gsi' ? startWatchingGsi : startWatchingMemory;
 
 start(cfg, {
   onStatus: (s) => {

@@ -1577,4 +1577,104 @@ ok('keys are sent from ONE place, only with the game in front, and nothing anywh
   assert.equal(DEFAULTS.replyLanguage, 'auto');
 });
 
+// ---- THE GSI SOURCE ----------------------------------------------------
+{
+  const { createGsiChat, readGsiPayload, readRoster, startGsiSource, SLOT_NAMES } = await import('./src/gsisource.js');
+  const { gsiConfigText, libraryPaths, findDotaDir, ensureGsiConfig, CFG_NAME } = await import('./src/gsiconfig.js');
+  const { startWatchingGsi } = await import('./src/gsiwatcher.js');
+  const RU = String.fromCharCode(0x433, 0x43e, 0x20, 0x440, 0x43e, 0x448);     // Cyrillic, by code point
+  const ev = (t, slot, type, message) => ({ game_time: t, event_type: 'chat_message', player_id: slot, channel_type: type, message });
+  const live = (events, matchid = '1') => JSON.stringify({
+    provider: { name: 'Dota 2' }, map: { matchid },
+    player: { name: 'me', player_slot: 4, team_name: 'dire' }, hero: { name: 'npc_dota_hero_lina' }, events,
+  });
+
+  ok('gsi: a line is said once though it rides along in thirty payloads, and the first payload only primes', () => {
+    const said = [];
+    const chat = createGsiChat({ scripts: ['cyrillic'], onMessage: (m) => said.push(m) });
+    chat.payload(live([ev(10, 5, 11, RU + ' old')]));
+    assert.equal(said.length, 0);
+    for (let i = 0; i < 30; i++) chat.payload(live([ev(20, 5, 12, RU), ev(10, 5, 11, RU + ' old')]));
+    assert.deepEqual(said, [{ name: 'Pink', text: RU, channel: 'team', slot: 5 }]);
+    assert.equal(SLOT_NAMES.length, 10);
+  });
+
+  ok('gsi: the player\'s own line carries their name and hero; English and emoticons are left alone', () => {
+    const said = [];
+    const chat = createGsiChat({ scripts: ['cyrillic'], onMessage: (m) => said.push(m) });
+    chat.payload(live([]));
+    chat.payload(live([ev(3, 4, 11, RU), ev(2, 8, 11, String.fromCharCode(0xE0B8)), ev(1, 5, 11, 'hello')]));
+    assert.deepEqual(said, [{ name: 'me', text: RU, channel: 'all', slot: 4, hero: 'lina' }]);
+  });
+
+  ok('gsi: a spectator\'s payload names everybody; a new match forgets the old one\'s people', () => {
+    const roster = readRoster({
+      player: { team2: { player0: { name: 'a' } }, team3: { player5: { name: 'b' } } },
+      hero: { team2: { player0: { name: 'npc_dota_hero_axe' } }, team3: { player5: { name: '../evil' } } },
+    });
+    assert.deepEqual([...roster], [[0, { name: 'a', hero: 'axe' }], [5, { name: 'b', hero: null }]]);
+    const said = [];
+    const chat = createGsiChat({ scripts: ['cyrillic'], onMessage: (m) => said.push(m.name) });
+    chat.payload(live([], '1'));
+    chat.payload(live([ev(1, 4, 11, RU)], '1'));
+    chat.payload(JSON.stringify({ provider: {}, map: { matchid: '2' }, events: [ev(1, 4, 11, RU)] }));
+    assert.deepEqual(said, ['me', 'Orange']);
+  });
+
+  ok('gsi: an unknown channel is shown and reported once; a body that will not parse still gives up its chat', () => {
+    const said = [], unknown = [];
+    const chat = createGsiChat({ scripts: ['cyrillic'], onMessage: (m) => said.push(m.channel), onUnknownChannel: (n) => unknown.push(n) });
+    chat.payload(live([]));
+    chat.payload(live([ev(1, 1, 13, RU), ev(2, 1, 13, RU)]));
+    assert.deepEqual([said, unknown], [['all', 'all'], [13]]);
+    const broken = '{ "provider": { }, "events": [ { "game_time": 7, "event_type": "chat_message", "player_id": 2, "channel_type": 12, "message": "a \\"b\\"" } , ] ';
+    assert.deepEqual(readGsiPayload(broken).chat, [{ gameTime: 7, slot: 2, channelType: 12, text: 'a "b"' }]);
+    assert.equal(readGsiPayload('not dota'), null);
+  });
+
+  await okAsync('gsi: the listener hears a POST on this machine only and says when the game goes quiet', async () => {
+    const said = [], status = [];
+    const src = startGsiSource({ scripts: ['cyrillic'], port: 47991, quietMs: 50, onMessage: (m) => said.push(m.text), onStatus: (s) => status.push(s.kind) });
+    await new Promise((r) => setTimeout(r, 50));
+    const post = (body) => fetch('http://127.0.0.1:47991/', { method: 'POST', body });
+    await post(live([]));
+    await post(live([ev(1, 5, 11, RU)]));
+    await new Promise((r) => setTimeout(r, 120));
+    src.stop();
+    assert.deepEqual(said, [RU]);
+    assert.deepEqual(status, ['waiting', 'ready', 'waiting']);
+    assert.match(fs.readFileSync('src/gsisource.js', 'utf8'), /server[.]listen[(]port, '127[.]0[.]0[.]1'[)]/);
+  });
+
+  ok('gsi: the cfg asks for chat, on this machine, and is written once into the game\'s own folder', () => {
+    const text = gsiConfigText(47854);
+    assert.match(text, /"uri"\s+"http:[/][/]127[.]0[.]0[.]1:47854[/]"/);
+    assert.match(text, /"events"\s+"1"/);
+    assert.deepEqual(libraryPaths('"0" { "path"  "D:' + '\\\\' + 'Games" }'), ['D:' + '\\' + 'Games']);
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dtgsi-'));
+    fs.mkdirSync(path.join(dir, 'steamapps', 'common', 'dota 2 beta', 'game', 'dota', 'cfg'), { recursive: true });
+    const dotaDir = findDotaDir({ steam: dir });
+    assert.ok(dotaDir);
+    assert.equal(ensureGsiConfig({ port: 47854, dotaDir }).state, 'written');
+    const again = ensureGsiConfig({ port: 47854, dotaDir });
+    assert.equal(again.state, 'present');
+    assert.equal(path.basename(again.file), CFG_NAME);
+    assert.equal(ensureGsiConfig({ port: 1, dotaDir: null }).state, 'notfound');
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  ok('gsi: a newly written cfg tells the player to restart Dota; the memory reader is still the default', () => {
+    const status = [];
+    let port = 0;
+    const w = startWatchingGsi({ ...DEFAULTS, geminiApiKey: 'x' }, { onStatus: (s) => status.push(s.text) }, {
+      ensure: () => ({ state: 'written', dotaDir: null }),
+      startSource: (o) => { port = o.port; return { stop() {} }; },
+    });
+    w.stop();
+    assert.equal(port, 47854);
+    assert.match(status.join('|'), /Restart Dota once/);
+    assert.equal(DEFAULTS.source, 'memory');
+  });
+}
+
 console.log('\n' + passed + ' passed');

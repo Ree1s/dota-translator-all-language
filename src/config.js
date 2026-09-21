@@ -36,7 +36,13 @@ export const DEFAULTS = {
   geminiApiKeyEnc: '',
   model: 'gemini-3.5-flash-lite',
   logPath: '',              // blank = find the Steam install
-  source: 'memory',         // 'memory' reads the game; 'log' reads console.log
+  // 'memory' reads the game; 'gsi' listens to Dota's own Game State
+  // Integration feed instead - no memory is read for chat at all, but it
+  // cannot name other players or say where the game's chat is (so: the
+  // box). NEW 2026-09-21 and not the default until it has been through
+  // whole games. 'log' reads console.log, which carries no chat.
+  source: 'memory',
+  gsiPort: 47854,           // where Dota sends its feed on this PC (source 'gsi')
   // MEASURED on a live match: a poll of the allocations known to hold
   // chat reads ~710 MB in under half a second, and a sweep of the whole
   // 7.5 GB takes 3.8s. At a one-second poll the reader is busy half the
