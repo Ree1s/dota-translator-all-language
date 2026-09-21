@@ -188,6 +188,25 @@ when the dev copy started with a key saved (seen in the log, 22:35).
   NOT caught in a screenshot (the user alt-tabs between lines). A WRONG
   TURN, reverted before commit: colouring by player_slot (2) there.
 
+- **A WHOLE MATCHMADE GAME IN GSI MODE (9010363907, 2026-09-22 00:24-00:40,
+  the user Furion, dire seat 5, dev copy; a recorder shot the chat area at
+  every row):** 7 rows, all translated in 0.7-0.9s. SEEN in a screenshot:
+  our row - the game's own Furion portrait, the name in PINK as the game
+  writes it (seat 5 = chat player_id 5: the numbers agree in a real game,
+  second sample), the game's font - at the SAME left edge as the game's
+  lines and directly above its six-line chat window, all chat with no tag
+  as the game has it. The placement from the window alone held all game.
+  - The one STRANGER's Cyrillic line (seat 4, all chat, an enemy or ally not
+    known) went out as "Orange" with no portrait: the user was ALT-TABBED at
+    that moment (the shot shows the browser), so the grab rightly refused
+    ("the game is not in front"). So a stranger's portrait from the row
+    grab is STILL NOT SEEN live. An English line teaches the hero too, but
+    nothing logs that: add a debug line for grabs before the next game.
+  - ODD, by design: a CHINESE voice line sent with Ctrl+Enter went out in
+    Russian and came back shown as the Chinese that was typed ("what was
+    typed" is what the row means) - reads strangely in a box of English.
+  - Everything stopped after, no strays (checked).
+
 ### THE GSI READER: BUILT the same evening, OPT-IN (`"source": "gsi"`)
 
 **NOT TO BE RELEASED YET (the user, 2026-09-21 22:45): "we dont need to
