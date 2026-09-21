@@ -502,6 +502,20 @@ press Ctrl+Enter.** That is said in the README and in the page's catch.
   game". SEEN: desktop 1280 (a full-page headless Edge render, cropped
   with System.Drawing - `#hash` URLs rendered BLANK in headless Edge, the
   bare URL did not) and 375 wide in the browser pane, no sideways scroll.
+  **Two PICTURES in it, not three cards** (the user: "it would be better
+  with some screenshots like in hero section. The one with eng -> rus and
+  one with rus -> eng"). They are the hero's scene again, smaller
+  (`.shots` / `.shot`): a teammate's line, the game's chat field with what
+  was typed and amber Ctrl + Enter keycaps, and the line as it was then
+  said, highlighted. DRAWN in CSS like the hero - not screenshots of the
+  game - with the portraits linked from Valve's server; the face-loading
+  script now covers every `.face[data-player]` on the page, not only the
+  slider's. The lines in them are real output ("go rosh after this fight"
+  -> "идем рошана после этой драки"; "го рошан после драки" -> "rosh after
+  fight"); the teammate's English line in the second is not a translation.
+  SEEN at 1280 (headless Edge, cropped) with portraits loaded; at 375
+  MEASURED rather than seen: no sideways scroll, rows and the typing bar
+  7-14px inside their frames.
   It is on the BRANCH: the live site is master's `docs/`, so it goes live
   with the merge, not before - which is right, the page must not offer
   what the download does not have.
