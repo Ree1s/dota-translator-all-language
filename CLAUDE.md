@@ -89,6 +89,40 @@ regions of the screen, place the text above the game's chat from the
 window's size alone, and find out why the SETUP WINDOW opened by itself
 when the dev copy started with a key saved (seen in the log, 22:35).
 
+### THE CHAT-ROW GRAB IS IN GSI MODE (built 2026-09-21, late; NOT seen in a game)
+
+- `src/rowgrab.ps1` (kept warm; ready 0.6s after start with 143 portraits
+  loaded) + `src/rowgrab.js`. When the feed brings a line from a seat whose
+  hero is not known, `gsisource` asks it `row <id>`: it asks WINDOWS where
+  the front window is, refuses unless that is Dota ("the game is not in
+  front" - SEEN, with the desktop in front), copies ONE rectangle off the
+  screen (the newest chat row's portrait plus 8px of slack: ~56 x 40 px at
+  1080p), matches it against the game's own portraits and keeps nothing.
+  The tile is placed from the game window's client area (origin + size), so
+  a windowed game should work: NOT seen. Nothing is saved, no process opened,
+  no keys (a test holds all three). `gsiRowGrab: false` never captures.
+- The portraits to compare with are written ONCE from the player's pak01
+  into `%TEMP%/dota-translator-faces` (0.36s) - never into the repo.
+- Rules in `createGsiChat`: only when a payload brought exactly ONE new chat
+  event (an emoticon is a row too; with two, the newest row is the second
+  one's); an ENGLISH line is not shown but still teaches its speaker's hero;
+  a hero already known in another seat is not believed; score under 0.8, no
+  answer in 700ms, or a throw = the line goes out unnamed as before and the
+  next line from that seat tries again; lines keep their order while one
+  waits; a new match forgets. With no `identify` the source is synchronous,
+  exactly as it was.
+- **MEASURED, the app's own matcher on last night's saved grabs
+  (`node tools/rowcheck.mjs [grabs|grabs-match1]`): 18 of 18** - marci
+  0.965-0.969, alchemist 0.895-0.906, meepo 0.942, shredder 0.908-0.917,
+  the next best hero 0.51-0.67; **19-37ms a match**. So a line waits ~30ms
+  for its portrait, not the 700ms cap.
+- The colour still comes from the seat (`player_id` = seat in real games).
+  NOT built: the top-bar fallback, reading the row's COLOUR (the fix for bot
+  lobbies), names. NOT seen: any of it over the live game; a wrapped newest
+  line (the portrait is a row higher: it will score low and stay unnamed); a
+  cosmetic portrait; a flipped HUD. The README does not yet say the app
+  captures the screen - it must, before gsi mode is released.
+
 ### THE GSI READER: BUILT the same evening, OPT-IN (`"source": "gsi"`)
 
 **NOT TO BE RELEASED YET (the user, 2026-09-21 22:45): "we dont need to
@@ -2140,7 +2174,7 @@ npm start        # the overlay (Electron)
 npm run watch    # the same chain in a terminal - use this first
 npm run demo     # drives the chain from a fake source, no Dota needed
 npm run doctor   # no-key diagnostic
-npm test         # 126 tests, plain node assert, no runner
+npm test         # 129 tests, plain node assert, no runner
 ```
 
 Keep `npm test` green. It needs no game running and no API key.

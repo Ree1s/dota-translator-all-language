@@ -9,12 +9,17 @@ import { startWatchingMemory } from './memwatcher.js';
 import { startGsiSource, GSI_PORT } from './gsisource.js';
 import { ensureGsiConfig } from './gsiconfig.js';
 import { startFocusWatch } from './focuswatch.js';
+import { startRowGrab } from './rowgrab.js';
 
-export function startWatchingGsi(cfg, handlers = {}, { ensure = ensureGsiConfig, startSource = startGsiSource, watchFocus = startFocusWatch } = {}) {
+export function startWatchingGsi(cfg, handlers = {}, { ensure = ensureGsiConfig, startSource = startGsiSource, watchFocus = startFocusWatch, grabRows = startRowGrab } = {}) {
   const port = Number.isInteger(cfg.gsiPort) && cfg.gsiPort > 1023 && cfg.gsiPort < 65536 ? cfg.gsiPort : GSI_PORT;
   const onStatus = handlers.onStatus || (() => {});
   const made = ensure({ port });
-  const watcher = startWatchingMemory(cfg, { ...handlers, startSource: (o) => startSource({ ...o, port }) });
+  // Who a speaker is: the feed gives a seat, the game's own chat row shows
+  // the hero. A small screen grab, only with the game in front; gsiRowGrab:
+  // false never captures anything.
+  const rows = cfg.gsiRowGrab !== false && made.dotaDir ? grabRows({ dotaDir: made.dotaDir }) : null;
+  const watcher = startWatchingMemory(cfg, { ...handlers, startSource: (o) => startSource({ ...o, port, identify: rows ? rows.identify : null }) });
   if (made.state === 'written') {
     onStatus({ kind: 'error', text: 'Dota Translator has set up Dota\'s chat feed. Restart Dota once - it only reads that setting when it starts.' });
   } else if (made.state === 'notfound') {
@@ -28,5 +33,5 @@ export function startWatchingGsi(cfg, handlers = {}, { ensure = ensureGsiConfig,
   // Whether the game is in front: the overlay hides on it and the say-back
   // key exists only then. The feed cannot say; Windows can.
   const focus = handlers.onFocus ? watchFocus({ onFocus: handlers.onFocus }) : null;
-  return { ...watcher, stop() { if (focus) focus.stop(); watcher.stop(); } };
+  return { ...watcher, stop() { if (focus) focus.stop(); if (rows) rows.stop(); watcher.stop(); } };
 }

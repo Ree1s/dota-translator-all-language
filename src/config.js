@@ -43,6 +43,7 @@ export const DEFAULTS = {
   // whole games. 'log' reads console.log, which carries no chat.
   source: 'memory',
   gsiPort: 47854,           // where Dota sends its feed on this PC (source 'gsi')
+  gsiRowGrab: true,         // source 'gsi': name a speaker's hero from a small screen grab of the game's chat row
   // MEASURED on a live match: a poll of the allocations known to hold
   // chat reads ~710 MB in under half a second, and a sweep of the whole
   // 7.5 GB takes 3.8s. At a one-second poll the reader is busy half the

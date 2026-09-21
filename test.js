@@ -1713,4 +1713,105 @@ ok('keys are sent from ONE place, only with the game in front, and nothing anywh
   });
 }
 
+{
+  const { createGsiChat } = await import('./src/gsisource.js');
+  const { startRowGrab } = await import('./src/rowgrab.js');
+  const { startWatchingGsi } = await import('./src/gsiwatcher.js');
+  const { EventEmitter } = await import('node:events');
+  const ev = (t, id, msg, ch = 11) => ({ game_time: t, event_type: 'chat_message', player_id: id, channel_type: ch, message: msg });
+  const body = (events, matchid = '1') => JSON.stringify({ provider: {}, map: { matchid }, player: { name: 'me', team_name: 'radiant', team_slot: 2 }, hero: { name: 'npc_dota_hero_marci' }, events });
+  const RU = String.fromCharCode(0x433, 0x433);
+
+  await okAsync('gsi row grab: a stranger gets the hero beside the game\'s newest chat row; own lines and known speakers cost no grab', async () => {
+    const said = [];
+    let grabs = 0, answer = { hero: 'meepo', score: 0.9 };
+    const chat = createGsiChat({ onMessage: (m) => said.push(m), identify: async () => { grabs++; return answer; } });
+    chat.payload(body([]));
+    chat.payload(body([ev(10, 7, RU)]));
+    await chat.idle();
+    assert.equal(grabs, 1);
+    assert.equal(said[0].hero, 'meepo');
+    assert.equal(said[0].name, 'Light Blue');
+    chat.payload(body([ev(12, 7, RU + RU), ev(10, 7, RU)]));
+    chat.payload(body([ev(13, 2, RU), ev(12, 7, RU + RU), ev(10, 7, RU)]));
+    await chat.idle();
+    assert.equal(grabs, 1);                                  // seat 7 is known, seat 2 is the player
+    assert.deepEqual(said.slice(1).map((m) => m.hero), ['meepo', 'marci']);
+    // An ENGLISH line is not shown, and still teaches who its speaker is.
+    answer = { hero: 'luna', score: 0.9 };
+    chat.payload(body([ev(20, 8, 'hello')]));
+    chat.payload(body([ev(21, 8, RU), ev(20, 8, 'hello')]));
+    await chat.idle();
+    assert.equal(grabs, 2);
+    assert.equal(said[3].hero, 'luna');
+  });
+
+  await okAsync('gsi row grab: two new lines in one payload are not grabbed, one hero is never two seats, a failed grab still says the line, in order', async () => {
+    const said = [];
+    let grabs = 0, answer = { hero: 'meepo', score: 0.9 }, release = null;
+    const chat = createGsiChat({ onMessage: (m) => said.push(m.text), identify: () => { grabs++; return new Promise((r) => { release = () => r(answer); }); } });
+    chat.payload(body([]));
+    chat.payload(body([ev(11, 6, RU + '2'), ev(10, 5, RU + '1')]));
+    await chat.idle();
+    assert.equal(grabs, 0);
+    chat.payload(body([ev(12, 5, RU + '3'), ev(11, 6, RU + '2'), ev(10, 5, RU + '1')]));
+    chat.payload(body([ev(13, 2, RU + '4'), ev(12, 5, RU + '3')]));   // the player's own: no grab, but it waits its turn
+    assert.equal(said.length, 2);
+    release();
+    await chat.idle();
+    assert.deepEqual(said, [RU + '1', RU + '2', RU + '3', RU + '4']);
+    const heroes = [];
+    const c2 = createGsiChat({ onMessage: (m) => heroes.push(m.hero), identify: async () => { if (answer === 'throw') throw new Error('x'); return answer; } });
+    c2.payload(body([]));
+    c2.payload(body([ev(1, 5, RU)]));
+    c2.payload(body([ev(2, 6, RU + RU), ev(1, 5, RU)]));           // meepo again, from another seat: not believed
+    answer = null;
+    c2.payload(body([ev(3, 8, RU + '8')]));
+    answer = 'throw';
+    c2.payload(body([ev(4, 9, RU + '9')]));
+    await c2.idle();
+    assert.deepEqual(heroes, ['meepo', undefined, undefined, undefined]);
+  });
+
+  await okAsync('gsi row grab: the helper is asked a line at a time, only a sure answer counts, it never opens the game nor presses a key', async () => {
+    const child = new EventEmitter();
+    const wrote = [];
+    child.stdout = new EventEmitter(); child.stdout.setEncoding = () => {};
+    child.stdin = new EventEmitter(); child.stdin.write = (s) => wrote.push(s);
+    child.kill = () => {};
+    const g = startRowGrab({ refs: 'x', spawnImpl: () => child, timeoutMs: 50 });
+    assert.equal(await g.identify(), null);                  // not ready: nothing asked
+    child.stdout.emit('data', '{"t":"ready","refs":143}\n');
+    let p = g.identify();
+    assert.equal(wrote[0], 'row 1' + String.fromCharCode(10));
+    child.stdout.emit('data', '{"t":"row","id":1,"ok":1,"hero":"marci","score":0.91,"second":"luna","score2":0.5}\n');
+    assert.deepEqual(await p, { hero: 'marci', score: 0.91 });
+    p = g.identify();
+    child.stdout.emit('data', '{"t":"row","id":2,"ok":1,"hero":"marci","score":0.62}\n');
+    assert.equal(await p, null);
+    p = g.identify();
+    child.stdout.emit('data', '{"t":"row","id":3,"ok":0,"why":"the game is not in front"}\n');
+    assert.equal(await p, null);
+    assert.equal(await g.identify(), null);                  // never answered: the line is not held up
+    g.stop();
+    const helper = fs.readFileSync(path.join('src', 'rowgrab.ps1'), 'latin1');
+    assert.doesNotMatch(helper, /OpenProcess|ReadProcessMemory|keybd_event|SendInput|\.Save\(/);
+    assert.match(helper, /not in front/);
+
+    let given = null, stopped = 0, started = 0;
+    const mk = (cfg) => startWatchingGsi({ ...DEFAULTS, geminiApiKey: 'x', ...cfg }, {}, {
+      ensure: () => ({ state: 'present', dotaDir: 'somewhere' }),
+      startSource: (o) => { given = o.identify; return { stop() {} }; },
+      watchFocus: () => ({ stop() {} }),
+      grabRows: () => { started++; return { identify: async () => null, stop() { stopped++; } }; },
+    });
+    mk({}).stop();
+    assert.equal(typeof given, 'function');
+    assert.equal(stopped, 1);
+    mk({ gsiRowGrab: false }).stop();                        // switched off: no helper at all
+    assert.equal(given, null);
+    assert.equal(started, 1);
+  });
+}
+
 console.log('\n' + passed + ' passed');

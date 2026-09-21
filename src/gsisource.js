@@ -114,14 +114,38 @@ export function readGsiPayload(body) {
  * said before the app was looking, and is remembered without being shown -
  * the same priming rule the memory reader follows.
  */
-export function createGsiChat({ scripts = ['cyrillic'], onMessage = () => {}, onUnknownChannel = () => {} } = {}) {
+export function createGsiChat({ scripts = ['cyrillic'], onMessage = () => {}, onUnknownChannel = () => {}, identify = null } = {}) {
   let seen = new Set();
   let matchid = null;
   let primed = false;
   const roster = new Map();
   const unknown = new Set();
+  // Lines are said in the order they came, also when one waits for a grab.
+  let queue = Promise.resolve();
+
+  // The feed gives a speaker's seat, never their hero. The game's own chat
+  // shows it: `identify` (src/rowgrab.js) looks at the portrait beside the
+  // game's NEWEST chat row. MEASURED: 16 of 16 grabs right over a whole
+  // match. Only when this payload brought exactly ONE new line - with two,
+  // the newest row is the second one's - and an emoticon is a row too.
+  const learning = new Map();     // seat -> the grab under way for it
+  const learn = (slot, forMatch) => {
+    if (!learning.has(slot)) learning.set(slot, look(slot, forMatch).finally(() => learning.delete(slot)));
+    return learning.get(slot);
+  };
+  const look = async (slot, forMatch) => {
+    let found = null;
+    try { found = await identify(); } catch { /* unnamed, as before */ }
+    if (!found || forMatch !== matchid) return;
+    // One hero, one seat: a hero already known in another seat means this
+    // row was somebody else's.
+    for (const [other, who] of roster) if (other !== slot && who.hero === found.hero) return;
+    roster.set(slot, { ...roster.get(slot), hero: found.hero });
+  };
 
   return {
+    // Resolves when everything heard so far has been said (for tests).
+    idle: () => queue,
     payload(body) {
       const p = readGsiPayload(body);
       if (!p) return false;
@@ -131,6 +155,7 @@ export function createGsiChat({ scripts = ['cyrillic'], onMessage = () => {}, on
         matchid = p.matchid;
       }
       for (const [slot, who] of p.roster) roster.set(slot, { ...roster.get(slot), ...who, hero: who.hero || (roster.get(slot) || {}).hero || null });
+      const fresh = p.chat.filter((c) => !seen.has(c.gameTime + '|' + c.slot + '|' + c.channelType + '|' + c.text)).length;
       for (const c of p.chat) {
         const key = c.gameTime + '|' + c.slot + '|' + c.channelType + '|' + c.text;
         if (seen.has(key)) continue;
@@ -139,6 +164,8 @@ export function createGsiChat({ scripts = ['cyrillic'], onMessage = () => {}, on
         // An emoticon is a character from Unicode's private use area (SEEN:
         // U+E0B8 as a whole message); a line of nothing else is not a line.
         const text = c.text.replace(EMOTICONS, '').trim();
+        // Any line is a chance to learn its speaker's hero, English too.
+        const grab = identify && (fresh === 1 || learning.has(c.slot)) && !(roster.get(c.slot) || {}).hero ? learn(c.slot, matchid) : null;
         if (!text) continue;
         let channel = CHANNEL_TYPES[c.channelType];
         if (!channel) {
@@ -147,8 +174,12 @@ export function createGsiChat({ scripts = ['cyrillic'], onMessage = () => {}, on
           channel = 'all';
         }
         if (!needsTranslation(text, scripts)) continue;
-        const who = roster.get(c.slot) || {};
-        onMessage({ name: who.name || SLOT_NAMES[c.slot] || 'Player ' + c.slot, text, channel, slot: c.slot, ...(who.hero ? { hero: who.hero } : {}) });
+        const say = () => {
+          const who = roster.get(c.slot) || {};
+          onMessage({ name: who.name || SLOT_NAMES[c.slot] || 'Player ' + c.slot, text, channel, slot: c.slot, ...(who.hero ? { hero: who.hero } : {}) });
+        };
+        if (!identify) say();
+        else queue = queue.then(() => grab).then(say, say);
       }
       primed = true;
       if (seen.size > 5000) seen = new Set([...seen].slice(-1000));
@@ -168,8 +199,9 @@ export function startGsiSource({
   onStatus = () => {},
   onUnknownTag = () => {},
   createServer = http.createServer,
+  identify = null,
 } = {}) {
-  const chat = createGsiChat({ scripts, onMessage, onUnknownChannel: (n) => onUnknownTag('channel_type ' + n) });
+  const chat = createGsiChat({ scripts, onMessage, identify, onUnknownChannel: (n) => onUnknownTag('channel_type ' + n) });
   let hearing = false;
   let quiet = null;
 
