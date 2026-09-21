@@ -180,6 +180,20 @@ it changed; a test holds `DEFAULTS.source` to `'memory'`.
   matchmade game (4/4). So the working theory is "they agree when nobody
   shares the lobby with bots", i.e. in real games - ONE matchmade sample.
   Ctrl+Enter in gsi mode WAS seen working in this run ("hi" -> "привет").
+- **HERO PORTRAITS FOR OTHERS IN GSI MODE - wanted (the user: "we also need
+  to get hero avatars anyway later ... thats fine, if no memory reading").
+  DECIDED: whatever route, it must NOT read memory.** A player's payload
+  ties no hero to a speaker (hero/player: self only; minimap: heroes by
+  name and team, no player id; draft: empty outside CM; kill events: ids,
+  no heroes). Routes: (a) a web API for the live match - CHECKED 22:40:
+  OpenDota's public `/api/live` is the TOP 100 games only (lowest average
+  MMR in the list 6069, 120s delay, the user's match not in it), so it is
+  no use for an ordinary pub; Valve's own GetRealtimeStats needs a Steam
+  Web API key and a `server_steam_id`, which GSI does not give - NOT
+  tried; (b) inferring slot -> hero from kill events against the minimap -
+  slow, guessy, not built. Neither is a quick win. And all of it waits on
+  the numbering question above: a portrait by slot is only as good as the
+  slot.
 - NOT SEEN: a whole game, the ENEMY team's allies chat NOT arriving (it
   must not; nothing suggests it does), the alt-tab behaviour.
 
