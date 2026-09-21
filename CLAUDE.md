@@ -9,7 +9,39 @@ use English. That is the whole point of it.
 
 ---
 
-## >>> IN PROGRESS WHEN THE SESSION WAS CLEARED (2026-09-21, ~21:10): THE GSI TEST <<<
+## >>> GSI CARRIES CHAT. SEEN 2026-09-21 21:10, bot match, GSI version 48 <<<
+
+The redditor was right and the old note ("GSI carries no chat") is DEAD.
+The user typed one line in each channel; both arrived in the `events`
+section of the payload, Cyrillic intact:
+
+```
+"events": [ { "game_time": 79, "event_type": "chat_message", "player_id": 0,
+              "channel_type": 11, "message": "проверка zebra" },
+            { "game_time": 74, "event_type": "chat_message", "player_id": 0,
+              "channel_type": 12, "message": "zebra gsitest" } ]
+```
+
+- `channel_type` 12 = allies, 11 = all (one sample each). Newest first.
+- An event STAYS in the list payload after payload (seen for 15s+), so a
+  reader must dedupe: game_time + player_id + message. How long it stays
+  is NOT measured.
+- There is NO NAME and no hero, only `player_id` (the slot). `player` holds
+  only the local player; `allplayers` did not arrive for a player. Where
+  names/heroes for other slots come from is NOT solved.
+- Sections that really arrived for a PLAYER: provider map player hero
+  abilities items draft wearables buildings league events couriers
+  neutralitems roshan minimap (+ added/previously). `allplayers`, `chat`,
+  `messages`: nothing.
+- NOT SEEN YET: another player's line (a bot's, a teammate's, an enemy's
+  all chat) - only the local player's own; say -> payload latency (payloads
+  came ~1/s with the probe's cfg; throttle/buffer can go lower); whether
+  the overlay's position can still come from anywhere without memory (it
+  cannot - `above`/`cover` need HudChat's layout; the `box` look does not).
+- The probe cfg is still in the game's folder and `gsiprobe.mjs` was left
+  running: the test is not over until another player's line is seen.
+
+What follows is the setup, as written before the result:
 
 **A redditor told the user they could read chat from GSI.** The notes
 (NOTES-2026-09-20-memory.md, "GSI does NOT carry chat - confirmed") say no -
