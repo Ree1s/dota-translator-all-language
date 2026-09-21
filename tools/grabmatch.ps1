@@ -4,13 +4,16 @@
 #   -Refs   a folder of reference portraits, <hero>.png / <hero>.bmp
 #   -Tiles  "name:x:y:w:h;name:x:y:w:h"   in the image's own pixels
 #   -Slack  how far (px) a tile may be off; every 2px offset is tried
+#   -Top    the share of the reference's HEIGHT compared, from its top (the
+#           caller shortens its tiles to match): the game draws icons over
+#           the bottom of a top-bar portrait
 #   -Inset  the share of the REFERENCE cut off each side before comparing
 #
 # Prints one line per tile: name best score second score2 dx dy
 # The measure is zero-mean normalised correlation of 16x9 thumbnails, so a
 # darker or brighter drawing of the same picture still scores high.
 
-param([string]$Image, [string]$Refs, [string]$Tiles, [int]$Slack = 6, [double]$Inset = 0.0)
+param([string]$Image, [string]$Refs, [string]$Tiles, [int]$Slack = 6, [double]$Inset = 0.0, [double]$Top = 1.0)
 
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
@@ -57,7 +60,7 @@ $known = @{}
 foreach ($f in Get-ChildItem -Path $Refs -File) {
   $r = New-Object System.Drawing.Bitmap $f.FullName
   $ix = $r.Width * $Inset; $iy = $r.Height * $Inset
-  $known[$f.BaseName] = [TileMatch]::Thumb($r, $ix, $iy, $r.Width - 2 * $ix, $r.Height - 2 * $iy)
+  $known[$f.BaseName] = [TileMatch]::Thumb($r, $ix, $iy, $r.Width - 2 * $ix, ($r.Height - 2 * $iy) * $Top)
   $r.Dispose()
 }
 

@@ -1586,7 +1586,7 @@ ok('keys are sent from ONE place, only with the game in front, and nothing anywh
   const ev = (t, slot, type, message) => ({ game_time: t, event_type: 'chat_message', player_id: slot, channel_type: type, message });
   const live = (events, matchid = '1') => JSON.stringify({
     provider: { name: 'Dota 2' }, map: { matchid },
-    player: { name: 'me', player_slot: 4, team_name: 'dire' }, hero: { name: 'npc_dota_hero_lina' }, events,
+    player: { name: 'me', player_slot: 5, team_slot: 4, team_name: 'radiant' }, hero: { name: 'npc_dota_hero_lina' }, events,
   });
 
   ok('gsi: a line is said once though it rides along in thirty payloads, and the first payload only primes', () => {

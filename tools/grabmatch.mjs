@@ -33,9 +33,9 @@ if (!fs.existsSync(refs) || fs.readdirSync(refs).length < 100) {
   console.log(n + ' reference portraits written');
 }
 
-function match(image, tiles, slack) {
+function match(image, tiles, slack, top = 1) {
   const out = execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', path.join(HERE, 'grabmatch.ps1'),
-    '-Image', path.resolve(image), '-Refs', path.resolve(refs), '-Tiles', tiles.map((t) => [t.name, t.x, t.y, t.w, t.h].join(':')).join(';'), '-Slack', String(slack)], { encoding: 'utf8' });
+    '-Image', path.resolve(image), '-Refs', path.resolve(refs), '-Tiles', tiles.map((t) => [t.name, t.x, t.y, t.w, t.h].join(':')).join(';'), '-Slack', String(slack), '-Top', String(top)], { encoding: 'utf8' });
   return out.split(/\r?\n/).filter(Boolean).map((l) => {
     const [name, hero, score, second, score2] = l.split(' ');
     return { name, hero, score: Number(score), second, score2: Number(score2) };
@@ -57,10 +57,11 @@ for (const r of rows) {
   if (r.kind === 'top') {
     const tiles = [];
     for (let i = 0; i < 5; i++) {
-      tiles.push({ name: 'seat' + i, x: Math.round(centre + (-416.25 + 62.25 * i) * s), y: Math.round(4.5 * s), w: Math.round(60 * s), h: Math.round(34.5 * s) });
-      tiles.push({ name: 'seat' + (5 + i), x: Math.round(centre + (107.25 + 62.25 * i) * s), y: Math.round(4.5 * s), w: Math.round(60 * s), h: Math.round(34.5 * s) });
+      tiles.push({ name: 'seat' + i, x: Math.round(centre + (-416.25 + 62.25 * i) * s), y: Math.round(4.5 * s), w: Math.round(60 * s), h: Math.round(34.5 * 0.6 * s) });
+      tiles.push({ name: 'seat' + (5 + i), x: Math.round(centre + (107.25 + 62.25 * i) * s), y: Math.round(4.5 * s), w: Math.round(60 * s), h: Math.round(34.5 * 0.6 * s) });
     }
-    const found = match(r.file, tiles, 6).sort((a, b) => Number(a.name.slice(4)) - Number(b.name.slice(4)));
+    // The top 60% only: early in a game icons sit over the bottom of each tile.
+    const found = match(r.file, tiles, 6, 0.6).sort((a, b) => Number(a.name.slice(4)) - Number(b.name.slice(4)));
     const sure = found.filter((f) => f.score >= SURE).length;
     console.log(`\n${r.at.slice(11, 19)} top bar: ${sure}/10 sure`);
     console.log('  ' + found.map((f) => `${f.name.slice(4)}:${f.hero}${f.score >= SURE ? '' : '?(' + f.score.toFixed(2) + ')'}`).join('  '));

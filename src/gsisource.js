@@ -33,6 +33,14 @@ const shortHero = (name) => {
   return m ? m[1] : null;
 };
 
+function ownSeat(player) {
+  if (Number.isInteger(player.team_slot) && player.team_slot >= 0 && player.team_slot < 5) {
+    if (player.team_name === 'radiant') return player.team_slot;
+    if (player.team_name === 'dire') return 5 + player.team_slot;
+  }
+  return Number.isInteger(player.player_slot) ? player.player_slot : null;
+}
+
 /**
  * Who is in which slot, as far as this payload says.
  * A player's payload: `player` and `hero` are their own, flat.
@@ -43,8 +51,13 @@ export function readRoster(data) {
   const roster = new Map();
   const player = data && data.player, hero = data && data.hero;
   if (!player || typeof player !== 'object') return roster;
-  if (Number.isInteger(player.player_slot) && typeof player.name === 'string') {
-    roster.set(player.player_slot, { name: player.name, hero: shortHero(hero && hero.name) });
+  // The player's own SEAT - the number their chat events carry and the game
+  // colours them by - is their team plus team_slot. NOT player_slot: SEEN in
+  // a matchmade game, radiant, team_slot 4, chat player_id 4, orange in the
+  // game - and player_slot 5.
+  const seat = ownSeat(player);
+  if (seat !== null && typeof player.name === 'string') {
+    roster.set(seat, { name: player.name, hero: shortHero(hero && hero.name) });
     return roster;
   }
   for (const team of Object.keys(player)) {

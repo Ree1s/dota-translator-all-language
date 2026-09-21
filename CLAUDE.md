@@ -244,7 +244,31 @@ it changed; a test holds `DEFAULTS.source` to `'memory'`.
     at -362.25, 735.75 down. A real 16:9 screen, a flipped HUD, a HUD-scale
     setting, a wrapped newest line, the pick screen: NOT seen.
   - The PowerShell case trap bit again: `$refs` IS the `$Refs` parameter.
-  - NOT DONE: the test in a real game - that is what it is for.
+  - **IN A REAL MATCHMADE GAME (9010254778, 22:40, the user Marci):**
+    - **THE NUMBERING, SETTLED FOR REAL GAMES: the chat's `player_id` IS
+      the seat.** The user sat in the top bar's seat 4, the game wrote
+      their name in ORANGE (colour 4), and their lines came as `player_id`
+      4. What is WRONG is `player.player_slot`: it said 5. `team_name:
+      radiant, team_slot: 4` was right. `readRoster` now takes the player's
+      own seat as team + team_slot (dire: 5 +), player_slot only as a last
+      resort; before this their own line would have gone unnamed and seat
+      5's speaker been given THEIR name. (Re-read with this, the first
+      matchmade game fits too: dire, team_slot 0 = seat 5, and "hello /
+      whats up guya" from player 5 were the user's; "hi2u2" was somebody
+      else's.) Bot lobbies stay odd (purple with player_id 0) - not the case
+      that matters.
+    - Top bar: at the start of a game ICONS sit over the bottom of every
+      tile (5 of 10 sure); comparing the TOP 60% only gives 9 of 10, scores
+      0.84-0.97. The tenth, seat 7, is Phantom Assassin wearing a cosmetic
+      that changes her PORTRAIT (best guess 0.56-0.58): an arcana/persona
+      portrait is not in `heroface.js`'s set. The app need not care: the
+      feed's `minimap` names the ten heroes, nine match, the tenth is who
+      is left.
+    - The game's chat row in a REAL game has a rank/medal icon BEFORE the
+      portrait; the portrait is still where it was measured.
+    - A fault in the rig: both chat grabs of a line carried the same
+      millisecond stamp, and showed a LATER line than the event that
+      triggered them. Not looked into.
 - **"No better option than a screen grab?" (the user). LOOKED, 22:55:
   `console.log` is NOT one.** It does hold exactly what is wanted -
   `[Server] PR:SetSelectedHero 7:[I:0:0] npc_dota_hero_sniper(35)`, player
