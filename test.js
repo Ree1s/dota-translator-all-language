@@ -1934,4 +1934,50 @@ ok('gsi mode reads no memory: nothing of it opens the game, reads it, or starts 
   assert.deepEqual(others, []);
 });
 
+{
+  const { createHosted, hashId, explainHosted } = await import('./src/hosted.js');
+  const { readGsiPayload, createGsiChat } = await import('./src/gsisource.js');
+  const RU = String.fromCharCode(0x433, 0x433);
+  const ID = hashId('steam', '76561198000000001');
+  const refusal = async (p) => { try { await p; } catch (e) { return e; } return null; };
+
+  await okAsync('hosted: the app sends lines and a hash, keeps every row it was handed, and says a refusal in words', async () => {
+    const sent = [];
+    const reply = { status: 200, body: { lines: [{ en: 'go mid', translated: true }, { en: '', translated: false }] } };
+    const fetchImpl = async (url, o) => { sent.push({ url, body: JSON.parse(o.body) }); return { ok: reply.status === 200, status: reply.status, json: async () => reply.body }; };
+    const h = createHosted({ url: 'https://example.invalid/', id: () => ID, fetchImpl });
+    const rows = await h.translate([{ name: 'Ivan', text: RU, channel: 'team', slot: 3, id: 7 }, { name: 'x', text: RU + RU, channel: 'all', slot: 1, id: 8 }]);
+    assert.equal(sent[0].url, 'https://example.invalid/v1/translate');
+    assert.deepEqual(sent[0].body, { id: ID, lines: [{ name: 'Ivan', text: RU }, { name: 'x', text: RU + RU }] });
+    assert.deepEqual(rows[0], { name: 'Ivan', text: RU, channel: 'team', slot: 3, id: 7, en: 'go mid', translated: true });
+    assert.deepEqual(rows[1], { name: 'x', text: RU + RU, channel: 'all', slot: 1, id: 8, en: RU + RU, translated: false });
+    reply.status = 429; reply.body = { error: 'allowance' };
+    assert.match((await refusal(h.translate([{ text: RU }]))).message, /come back tomorrow/);
+    assert.match(explainHosted('budget'), /own free Gemini key/);
+    // The id is a hash: a Steam id never leaves the PC as itself.
+    assert.match(ID, /^[a-f0-9]{64}$/);
+    assert.ok(!ID.includes('76561198'));
+    assert.notEqual(hashId('steam', '1'), hashId('install', '1'));
+  });
+
+  ok('hosted: the feed says who the local player is, once; a spectator\'s payload names nobody', () => {
+    const body = (steamid) => JSON.stringify({ provider: {}, map: { matchid: '1' }, player: { name: 'me', steamid, team_name: 'radiant', team_slot: 0 }, events: [] });
+    assert.equal(readGsiPayload(body('76561198000000001')).steamid, '76561198000000001');
+    assert.equal(readGsiPayload(body('<script>')).steamid, '');
+    assert.equal(readGsiPayload(JSON.stringify({ provider: {}, player: { team2: { player0: { steamid: '1234567' } } } })).steamid, '');
+    const heard = [];
+    const chat = createGsiChat({ onSteamId: (s) => heard.push(s) });
+    chat.payload(body('76561198000000001'));
+    chat.payload(body('76561198000000001'));
+    assert.deepEqual(heard, ['76561198000000001']);
+  });
+
+  ok('hosted: the app only uses it with no key of the player\'s own, it is off until there is an address, and the server is not in this repository', () => {
+    assert.ok(!fs.existsSync('server'), 'the server is a PRIVATE repository: it must not be in this one');
+    const main = fs.readFileSync(path.join('src', 'main.js'), 'utf8');
+    assert.match(main, /!cfg\.geminiApiKey && hostedOn\(\) \? \{ translate/);
+    assert.equal(DEFAULTS.hostedUrl, '');
+  });
+}
+
 console.log('\n' + passed + ' passed');

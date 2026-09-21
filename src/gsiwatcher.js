@@ -20,7 +20,7 @@ export function startWatchingGsi(cfg, handlers = {}, { ensure = ensureGsiConfig,
   // the hero. A small screen grab, only with the game in front; gsiRowGrab:
   // false never captures anything.
   const rows = cfg.gsiRowGrab !== false && made.dotaDir ? grabRows({ dotaDir: made.dotaDir }) : null;
-  const watcher = startWatchingMemory(cfg, { ...handlers, startSource: (o) => startSource({ ...o, port, identify: rows ? rows.identify : null }) });
+  const watcher = startWatchingMemory(cfg, { ...handlers, startSource: (o) => startSource({ ...o, port, identify: rows ? rows.identify : null, onSteamId: handlers.onSteamId || (() => {}) }) });
   if (made.state === 'written') {
     onStatus({ kind: 'error', text: 'Dota Translator has set up Dota\'s chat feed. Restart Dota once - it only reads that setting when it starts.' });
   } else if (made.state === 'notfound') {

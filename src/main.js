@@ -19,6 +19,8 @@ import { startWatchingGsi } from './gsiwatcher.js';
 import { loadOffsets, bundledOffsets } from './offsets.js';
 import { createOutgoing, createLanguageTracker, targetLanguage } from './outgoing.js';
 import { createKeySender, sayTranslated } from './sendchat.js';
+import { createHosted, hashId } from './hosted.js';
+import crypto from 'node:crypto';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const cfg = loadConfig();
@@ -199,7 +201,7 @@ async function start() {
   send('config', { textLeft: TEXT_LEFT });
   if (DEBUG) console.log('offsets', cfg.offsets.source, 'v' + cfg.offsets.version, cfg.offsets.updated);
   cfg.geminiApiKey = storedKey();
-  if (!cfg.geminiApiKey) {
+  if (!cfg.geminiApiKey && !hostedOn()) {
     // Not an error to be read off an overlay: a window that asks for it.
     openSetup();
     return;
@@ -221,6 +223,9 @@ async function start() {
     },
     onPending: (row) => { spoken.saw(row.text); itsMe(row); send('pending', withFace(row)); },
     onLayout,
+    // No key of the player's own: the hosted translator does the asking.
+    ...(!cfg.geminiApiKey && hostedOn() ? { translate: (batch) => hosted.translate(batch) } : {}),
+    onSteamId: (steamid) => { playerId = hashId('steam', steamid); },
     // GSI mode only: where the game's window is. The dark box is then placed
     // in IT, not on the screen (a windowed game had the box on the desktop).
     onWindow: (w) => {
@@ -273,12 +278,27 @@ async function start() {
 // The key exists ONLY while Dota is the window in front. Ctrl+Enter is
 // "send" in half the programs on a PC, and a global shortcut swallows the
 // key from whatever has the keyboard.
+// ---- THE HOSTED TRANSLATOR (src/hosted.js, server/) --------------------
+// For a player with no key: nothing to sign up for. https only, and a key of
+// the player's own is always used instead.
+const hostedOn = () => /^(https:\/\/[^\s]+|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/\S*)?)$/.test(String(cfg.hostedUrl || ''));
+let playerId = '';
+function installHash() {
+  if (!/^[a-f0-9]{32}$/.test(String(cfg.installId || ''))) {
+    cfg.installId = crypto.randomBytes(16).toString('hex');
+    try { saveConfig({ installId: cfg.installId }); } catch { /* a new one next time */ }
+  }
+  return hashId('install', cfg.installId);
+}
+const hosted = createHosted({ url: () => cfg.hostedUrl, id: () => playerId || installHash(), version: app.getVersion() });
+
 const spoken = createLanguageTracker();
 // What has been said before is said the same way again: said.json, beside
 // the settings, English -> what was sent. The player can read and correct it.
 const SAID_PATH = path.join(DATA_DIR, 'said.json');
 const sayIt = createOutgoing({
   apiKey: () => cfg.geminiApiKey, model: cfg.model,
+  remote: () => (!cfg.geminiApiKey && hostedOn() ? (text, into) => hosted.say(text, into) : null),
   store: { read: () => JSON.parse(fs.readFileSync(SAID_PATH, 'utf8')), write: (all) => fs.writeFileSync(SAID_PATH, JSON.stringify(all, null, 2)) },
 });
 const keys = createKeySender();
@@ -310,7 +330,7 @@ function setSayHotkey(on) {
 // the same problem, typing Russian to English speakers. Read at each press,
 // so changing it in the setup window needs no restart.
 async function sayKey() {
-  if (saying || !cfg.geminiApiKey) return;
+  if (saying || (!cfg.geminiApiKey && !hostedOn())) return;
   saying = true;
   try {
     const into = targetLanguage(cfg.replyLanguage, spoken);

@@ -119,7 +119,10 @@ export function outFrom(replyText) {
  * cannot be made to repeat itself, so the first answer is remembered. It
  * is a plain JSON file the player can read and correct.
  */
-export function createOutgoing({ apiKey, model, ask = askGeminiHedged, cacheSize = 500, store = null } = {}) {
+// What comes back from anywhere is made one chat line before it is pasted.
+const tidyOut = (s) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim().slice(0, 400);
+
+export function createOutgoing({ apiKey, model, ask = askGeminiHedged, cacheSize = 500, store = null, remote = null } = {}) {
   const cache = new Map();
   if (store) {
     try {
@@ -136,8 +139,12 @@ export function createOutgoing({ apiKey, model, ask = askGeminiHedged, cacheSize
     const key = language + '|' + clean.toLowerCase();
     if (cache.has(key)) return { out: cache.get(key), language, cached: true };
     // Two tries, not three: the incoming chat lives on the same 15 calls a minute.
-    const reply = await ask({ apiKey: typeof apiKey === 'function' ? apiKey() : apiKey, model, request: buildOutRequest(clean, language) }, { attempts: 2 });
-    const out = outFrom(reply);
+    // `remote()` answers a function when the hosted translator is in use (no
+    // key of the player's own): it is sent the line, never a prompt.
+    const hosted = remote ? remote() : null;
+    const out = hosted
+      ? tidyOut(await hosted(clean, language))
+      : outFrom(await ask({ apiKey: typeof apiKey === 'function' ? apiKey() : apiKey, model, request: buildOutRequest(clean, language) }, { attempts: 2 }));
     if (!out) throw new Error('the model gave no translation');
     cache.set(key, out);
     if (cache.size > cacheSize) cache.delete(cache.keys().next().value);

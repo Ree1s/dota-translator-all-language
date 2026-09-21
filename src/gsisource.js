@@ -105,7 +105,9 @@ export function readGsiPayload(body) {
   // The list is newest first; say them in the order they were said.
   chat.sort((a, b) => a.gameTime - b.gameTime);
   const matchid = data && data.map && typeof data.map.matchid === 'string' ? data.map.matchid : '';
-  return { matchid, roster: data ? readRoster(data) : new Map(), chat };
+  // The local player's Steam id (a player's payload only; a spectator's has ten).
+  const steamid = data && data.player && typeof data.player.steamid === 'string' && /^\d{5,20}$/.test(data.player.steamid) ? data.player.steamid : '';
+  return { matchid, roster: data ? readRoster(data) : new Map(), chat, steamid };
 }
 
 /**
@@ -114,7 +116,8 @@ export function readGsiPayload(body) {
  * said before the app was looking, and is remembered without being shown -
  * the same priming rule the memory reader follows.
  */
-export function createGsiChat({ scripts = ['cyrillic'], onMessage = () => {}, onUnknownChannel = () => {}, identify = null } = {}) {
+export function createGsiChat({ scripts = ['cyrillic'], onMessage = () => {}, onUnknownChannel = () => {}, identify = null, onSteamId = () => {} } = {}) {
+  let steamid = '';
   let seen = new Set();
   let matchid = null;
   let primed = false;
@@ -164,6 +167,7 @@ export function createGsiChat({ scripts = ['cyrillic'], onMessage = () => {}, on
     payload(body) {
       const p = readGsiPayload(body);
       if (!p) return false;
+      if (p.steamid && p.steamid !== steamid) { steamid = p.steamid; onSteamId(steamid); }
       if (p.matchid !== matchid) {
         // Another match: other people in the slots, and its chat is all new.
         if (matchid !== null) { seen = new Set(); roster.clear(); seatOf.clear(); hinted.clear(); }
@@ -216,8 +220,9 @@ export function startGsiSource({
   onUnknownTag = () => {},
   createServer = http.createServer,
   identify = null,
+  onSteamId = () => {},
 } = {}) {
-  const chat = createGsiChat({ scripts, onMessage, identify, onUnknownChannel: (n) => onUnknownTag('channel_type ' + n) });
+  const chat = createGsiChat({ scripts, onMessage, identify, onSteamId, onUnknownChannel: (n) => onUnknownTag('channel_type ' + n) });
   let hearing = false;
   let quiet = null;
 

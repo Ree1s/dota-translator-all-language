@@ -23,6 +23,7 @@ export function explainModelError(message) {
   if (/took too long|never answered|could not reach|high demand|overloaded|unavailable|http 5\d\d/i.test(m)) {
     return 'Google\'s translator is not answering right now (busy or down). Lines are shown as they were said until it is back - nothing to do.';
   }
+  // The hosted translator's refusals are already in the player's words.
   return m;
 }
 

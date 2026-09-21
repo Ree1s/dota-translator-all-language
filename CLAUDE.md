@@ -59,6 +59,44 @@ NOT done before it: the Electron 33 -> 44 bump. What was decided and done:
   strangers decided (the recommendation given: portrait + colour is enough),
   then tag and push.
 
+## THE HOSTED TRANSLATOR (built 2026-09-22; NOT deployed, NOT switched on)
+
+**DECIDED by the user, reversing "no hosted shared API key":** the Reddit
+post reached 490 upvotes in nine hours, and the key step is what stands
+between "download" and "it works". Their key on a server, everyone uses it;
+if it gets traction and the bill is real, a small subscription later; if
+not, fine. The translator stays free and THE OWN-KEY PATH STAYS: a player's
+key is always used instead of the server.
+
+- **THE SERVER IS A SEPARATE, PRIVATE REPOSITORY:
+  `sc0rebreaker/dota-translator-server`, checked out at
+  `../dota-translator-server`. Its code, prompts, limits and notes are NOT to
+  be copied into this public one** (a test fails if a `server/` folder
+  appears here). The user asked how to protect the project while it is free:
+  the app stays open - that is why strangers trust an unsigned exe beside
+  their Steam account - and the server is where it is protected. Everything
+  about how it works, what was measured and what is not done is in THAT
+  repo's CLAUDE.md. The server commit was taken out of this repo's history
+  before it was ever pushed.
+- This repo has only the CLIENT, `src/hosted.js`: `POST /v1/translate`
+  `{id, lines:[{name,text}]}` and `POST /v1/say` `{id, text, into}`. The
+  `id` is sha256 of the player's Steam id (the feed's `player.steamid`:
+  `onSteamId` through gsisource -> gsiwatcher -> main) or of a random
+  `installId` until the game has said who they are; a Steam id never leaves
+  the PC as itself. Refusals `allowance` and `budget` are said in words that
+  point at the own-key window.
+- The app uses it only when `hostedUrl` is set (https, or http://localhost)
+  AND there is no key: no setup window opens, incoming chat goes through
+  `hosted.translate`, Ctrl+Enter through `hosted.say` (createOutgoing's
+  `remote`); said.json and the local cache work as before. `hostedUrl` is
+  BLANK in the defaults: nothing has changed for anybody yet.
+- NOT done here: the default `hostedUrl` and the release that switches it
+  on; the setup window's first-run wording; the SITE and README, which the
+  user said to LEAVE until the server has been seen working ("hold on with
+  changing readmes") - and whose claims ("no server of ours", the three
+  steps starting with a key) become false the day it is on, with the tests
+  that hold them; a privacy note; the app itself seen running on it.
+
 ## >>> GSI CARRIES CHAT. SEEN 2026-09-21 21:10, bot match, GSI version 48 <<<
 
 The redditor was right and the old note ("GSI carries no chat") is DEAD.
