@@ -1390,7 +1390,26 @@ players do not have.
   the tray item goes (https only). NOT seen: the tray item clicked, nor
   the forms on GitHub (they appear once pushed; GitHub shows a form's
   errors only there).
-- **NOT built, and the user's to make: a route that needs NO account** - a
+- **DONE the same evening: the form.** A Google Form, "Dota Translator
+  feedback", built in the user's own Chrome at their asking and PUBLISHED
+  with their yes: https://forms.gle/4UwGB5drooGT4mUB9 . One required big
+  box ("Your feedback"), one optional short answer ("Your email
+  (optional)" - "Only if you'd like a reply. It's used for nothing else."),
+  a description that points at GitHub issues and pull requests, a thank-you
+  message. Settings: e-mail collection "Do not collect", "Limit to 1
+  response" off - so nobody signs in. CHECKED from outside the browser
+  (curl, as a stranger): 200, the title and both questions are there, no
+  sign-in redirect, and neither the user's name nor an address appears in
+  the page. It is the tray item ("Send feedback, or report a bad
+  translation..."), in the site's FAQ and in the README; `FEEDBACK_URL` in
+  `main.js`. Responses arrive in the form's Responses tab in the user's
+  Google account; whether they turned on e-mail notifications is NOT known.
+  NOT done: e-mail VALIDATION on the optional field - Forms' validation
+  dropdown would not take a choice from automation, and the half-made rule
+  ("Number, greater than", which would have refused every address) was
+  REMOVED rather than left. Ten seconds by hand if wanted: the question's
+  three dots > Response validation > Text > Email.
+- (Earlier the same day, before the form existed:) **NOT built, and the user's to make: a route that needs NO account** - a
   Google Form, or a Discord server (where Dota players already are). Either
   is a link; when there is one, put it in `FEEDBACK_URL` in `main.js`, the
   site's FAQ and the README. Until then expect to hear only from the few

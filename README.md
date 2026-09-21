@@ -340,6 +340,16 @@ Plain Node assert, no runner. 62 tests, none of which need Dota running: the
 parsers are fed strings taken verbatim out of the game's memory, and the
 whole reading chain runs against a stand-in for the scanner.
 
+## Feedback
+
+Tell me what worked and what did not: the [feedback form](https://forms.gle/4UwGB5drooGT4mUB9)
+is one box, needs no account, and is also in the app's tray menu. A wrong
+or odd translation is the most useful thing to report - include the
+original line and what the app showed. If you prefer GitHub,
+[issues](https://github.com/sc0rebreaker/dota-translator/issues/new/choose)
+have forms for a bad translation, a bug and an idea, and pull requests are
+welcome.
+
 ## Supporting it
 
 It is free and stays free. If it helped and you feel like it:

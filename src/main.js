@@ -367,7 +367,9 @@ app.whenReady().then(() => {
 // tray icon after that. The key is TRIED before it is saved - one real
 // translation - so "saved" means "works", and it is stored encrypted by
 // Windows for this user (safeStorage = DPAPI) rather than in plain text.
-const FEEDBACK_URL = 'https://github.com/sc0rebreaker/dota-translator/issues/new/choose';
+// A form anybody can fill in with no account (the user's, made 2026-09-21);
+// it points at GitHub's issues and pull requests for those who prefer them.
+const FEEDBACK_URL = 'https://forms.gle/4UwGB5drooGT4mUB9';
 let setupWin = null;
 let tray = null;
 
@@ -425,10 +427,9 @@ function makeTray() {
     { label: 'Settings and key...', click: openSetup },
     { label: 'Hide or show the translations (Alt+D)', click: toggleHidden },
     ...(cfg.sayHotkey ? [{ label: cfg.sayHotkey.replace('Control', 'Ctrl') + ' in Dota\'s chat sends it translated', enabled: false }] : []),
-    // The only way a player can say anything back. It is GitHub's issue
-    // chooser (a bad translation / a bug / an idea), which needs an account:
-    // cfg.feedbackUrl points it somewhere that does not, once there is one.
-    { label: 'Report a problem or a bad translation...', click: () => shell.openExternal(String(cfg.feedbackUrl || '').startsWith('https://') ? cfg.feedbackUrl : FEEDBACK_URL) },
+    // The way a player says anything back: one big box and an optional
+    // e-mail, no account needed. cfg.feedbackUrl (https only) overrides it.
+    { label: 'Send feedback, or report a bad translation...', click: () => shell.openExternal(String(cfg.feedbackUrl || '').startsWith('https://') ? cfg.feedbackUrl : FEEDBACK_URL) },
     { label: 'Support the developer (Ko-fi)', click: () => shell.openExternal('https://ko-fi.com/sc0rebreaker') },
     { label: 'Version ' + app.getVersion(), enabled: false },
     { type: 'separator' },
