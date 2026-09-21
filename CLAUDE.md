@@ -1205,8 +1205,8 @@ think about certificate"):**
 - `release.yml` uploads the installer to VirusTotal **only if a repo secret
   `VT_API_KEY` exists** (the user has to make a free account and add it:
   repo Settings > Secrets and variables > Actions). Big files go to an
-  upload address VirusTotal hands out. It can never fail a release. NOT
-  RUN: there is no key yet, so not one line of that step has executed.
+  upload address VirusTotal hands out. It can never fail a release. RAN
+  for the first time on v0.3.1 and uploaded; see below.
   Expect one to three false alarms from small engines on an unsigned
   Electron installer; report them to those vendors.
 - `codeql.yml` (GitHub's scanner, JavaScript, push + weekly),
@@ -1244,12 +1244,20 @@ think about certificate"):**
 - For the USER to do, because they are account settings:
   - DONE 2026-09-21: "Private vulnerability reporting" is on (CHECKED: the
     public API answers `"enabled": true`, and SECURITY.md's link opens).
-  - WAITING: the `VT_API_KEY` repo secret. The user has a VirusTotal key
-    and pasted it into the chat; it was NOT used, stored or committed -
-    secrets go in through GitHub's own page, by them (Settings > Secrets
-    and variables > Actions > New repository secret, name `VT_API_KEY`).
-    Whether it is there cannot be seen from outside; the next release's
-    notes will carry a VirusTotal link if it is.
+  - DONE 2026-09-21: the `VT_API_KEY` secret (the user pasted the key into
+    the chat first; it was NOT used, stored or committed - they added it
+    through GitHub's own page). PROVEN by cutting **v0.3.1** for it: one
+    release, three files, the download answers, `latest.yml` says 0.3.1,
+    and the notes carry the VirusTotal link for that exact SHA-256. That
+    was also the first release.yml run since its permissions moved to the
+    job: it passed. **NOT SEEN: a verdict.** Ten minutes after the upload
+    the report still read 0 / 0 - no engine had answered for an 80 MB file
+    - and "No security vendors flagged this file" on a 0 / 0 report means
+    nothing. So the page says the file is SENT there and to judge the
+    report for yourself, not that it "was scanned by 70 engines". Look at
+    the report for the latest release before quoting a number anywhere. (A
+    report page is a web component tree: `get_page_text` returns nothing,
+    walk the shadow roots.)
   - NOT KNOWN: whether two-factor authentication is on for the account (a
     stolen account is how this project would ship malware).
 - **The trap, a SEVENTH time, and a new test for it:** a word-boundary
