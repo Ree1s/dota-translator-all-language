@@ -173,10 +173,20 @@ when the dev copy started with a key saved (seen in the log, 22:35).
   Спирит? Я перезвоню" -> "Hello, Spirit? I will call back". (Ctrl still
   held from Ctrl+V when Enter is pressed IS Ctrl+Enter - likely how a plain
   paste-and-send ends up on the say key.)
-- STILL WRONG in that bot lobby, as already known: the row said "Blue" with
-  no portrait where the game says the player's name in pink with a portrait
-  (player_id 0 vs the real seat). The ROW GRAB did not name the hero here
-  either - why is NOT looked at.
+- **THE BOT-LOBBY SEAT, FIXED FROM THE CHAT ROW (same night):** the row
+  said "Blue" with no portrait where the game wrote the player's name in
+  PINK (seat 5: dire, team_slot 0 - team + team_slot is right in a bot lobby
+  too; the user called it purple, the screenshot says pink) with Pudge. The
+  row grab HAD seen Pudge, and "a hero already known in another seat is not
+  believed" threw it away. Now (`seatOf` in `createGsiChat`): when the ROW
+  grab - never the top bar, which looks at the seat the number names - shows
+  a hero the roster has in another seat, TWICE running for that chat id,
+  lines with that id are said as that seat: name, hero, colour. Once is not
+  believed (the newest row may be somebody else's). SEEN in the log, twice:
+  first line "Blue" slot 0, from the second on "unc status", pudge, slot 5;
+  the user: "it only missed for the first one, the others were correct".
+  NOT caught in a screenshot (the user alt-tabs between lines). A WRONG
+  TURN, reverted before commit: colouring by player_slot (2) there.
 
 ### THE GSI READER: BUILT the same evening, OPT-IN (`"source": "gsi"`)
 
