@@ -1097,6 +1097,12 @@ ok('what the settings window sends back is made safe before it is saved', () => 
   // No language ticked would be an app that translates nothing and does
   // not say why: that one choice is not saved.
   assert.equal('scripts' in settingsPatch({ scripts: [] }), false);
+  // The reader: only ever memory <-> gsi, only when it CHANGES, and 'log' is left alone.
+  assert.equal(settingsPatch({ noMemory: true }, { source: 'memory' }).source, 'gsi');
+  assert.equal(settingsPatch({ noMemory: false }, { source: 'gsi' }).source, 'memory');
+  assert.equal('source' in settingsPatch({ noMemory: false }, { source: 'log' }), false);
+  assert.equal('source' in settingsPatch({ noMemory: true }, { source: 'gsi' }), false);
+  assert.equal(uiSettings({ source: 'gsi' }).noMemory, true);
   assert.equal('scripts' in settingsPatch({ scripts: ['klingon'] }), false);
   assert.equal(settingsPatch({ fontSize: 400 }).fontSize, 28);
   assert.equal(settingsPatch({ fontSize: 1 }).fontSize, 11);
@@ -1107,7 +1113,7 @@ ok('what the settings window sends back is made safe before it is saved', () => 
 
 ok('the window is shown the five settings and never the key', () => {
   const shown = uiSettings({ ...mergeConfig({}), geminiApiKey: 'secret', geminiApiKeyEnc: 'c2VjcmV0' });
-  assert.deepEqual(Object.keys(shown).sort(), ['autoUpdate', 'fontSize', 'sayInto', 'scripts', 'showHeroes', 'showOriginal']);
+  assert.deepEqual(Object.keys(shown).sort(), ['autoUpdate', 'fontSize', 'noMemory', 'sayInto', 'scripts', 'showHeroes', 'showOriginal']);
   assert.ok(!JSON.stringify(shown).includes('secret'));
   // Which way Ctrl+Enter translates: two choices, and a language somebody
   // set by name in config.json is "theirs" and is not flattened by a save.
@@ -1906,5 +1912,15 @@ ok('keys are sent from ONE place, only with the game in front, and nothing anywh
     assert.doesNotMatch(helper, /OpenProcess|ReadProcessMemory|CopyFromScreen/);
   });
 }
+
+ok('gsi mode reads no memory: nothing of it opens the game, reads it, or starts the helper that does', () => {
+  // The memory reader is ONE file, memscan.ps1, started by startMemorySource alone.
+  for (const f of ['gsisource.js', 'gsiwatcher.js', 'gsiconfig.js', 'gsilayout.js', 'focuswatch.js', 'focuswatch.ps1', 'rowgrab.js', 'rowgrab.ps1']) {
+    const src = fs.readFileSync(path.join('src', f), 'latin1');
+    assert.doesNotMatch(src, /OpenProcess|ReadProcessMemory|VirtualQueryEx|SCRIPT.*memsource|import {[^}]*startMemorySource/, f);
+  }
+  const others = fs.readdirSync('src').filter((f) => f !== 'memscan.ps1' && /ReadProcessMemory|VirtualQueryEx/.test(fs.readFileSync(path.join('src', f), 'latin1')));
+  assert.deepEqual(others, []);
+});
 
 console.log('\n' + passed + ' passed');

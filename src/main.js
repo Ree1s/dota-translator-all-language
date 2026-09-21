@@ -478,9 +478,11 @@ ipcMain.handle('setup:folder', () => {
 // where the lines are read.
 function applySettings(patch) {
   const languagesChanged = patch.scripts && JSON.stringify(patch.scripts) !== JSON.stringify(cfg.scripts);
+  // Another reader altogether: the watcher starts again with it.
+  const sourceChanged = Boolean(patch.source) && patch.source !== cfg.source;
   Object.assign(cfg, patch);
   if (win && !win.isDestroyed()) win.reload();
-  return languagesChanged;
+  return languagesChanged || sourceChanged;
 }
 // Which way Ctrl+Enter translates is saved THE MOMENT IT IS CLICKED, not on
 // Save. The user picked "in English", closed the window, and Russian kept
