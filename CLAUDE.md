@@ -9,6 +9,63 @@ use English. That is the whole point of it.
 
 ---
 
+## >>> IN PROGRESS WHEN THE SESSION WAS CLEARED (2026-09-21, ~21:10): THE GSI TEST <<<
+
+**A redditor told the user they could read chat from GSI.** The notes
+(NOTES-2026-09-20-memory.md, "GSI does NOT carry chat - confirmed") say no -
+provider, map, player, hero, abilities, items, buildings, draft, wearables,
+"no chat, no messages, no event log" - but they do NOT say whether that was
+SEEN in a real payload or read somewhere, and the same round of research
+produced the wrong claim about Valve. Newer builds may have an `events`
+section that was not on that list. So it is being TESTED, not repeated. If
+the redditor is right it is the best news the project could get: no memory
+reading, no ban question, no antivirus flag - move the app to GSI at once.
+
+**What is set up, and was CHECKED:**
+- `...\dota 2 beta\game\dota\cfg\gamestate_integration\gamestate_integration_dtprobe.cfg`
+  (the folder did not exist; made it). Labelled "safe to delete". Posts to
+  `http://127.0.0.1:47853/`, asks for every section anybody has named:
+  provider map player hero abilities items draft wearables buildings league
+  events couriers neutralitems roshan minimap, and three hoped-for ones
+  (allplayers chat messages) - Dota ignores names it does not know.
+- `tools/gsiprobe.mjs [needle ...]`: the listener. Writes every payload to
+  `gsiprobe.log` (gitignored), prints each NEW top-level section once, and
+  shouts when a payload contains a needle. CHECKED with a fake POST: it
+  caught "zebra". It was left running in the background of the cleared
+  session with needles `zebra gsitest проверка`; **it has probably died with
+  that session - start it again first:**
+  `node tools/gsiprobe.mjs zebra gsitest проверка`
+- Dota was NOT running when this was written. **Dota reads GSI configs only
+  at LAUNCH**, so it must be started AFTER the cfg existed (it was not yet).
+
+**What the user was asked to do:** start Dota, start a bot match, type
+`zebra gsitest` in allies chat and `проверка zebra` in all chat
+(Shift+Enter), then say so.
+
+**How to read the result:**
+- a `*** FOUND ...` line, or `grep -c zebra gsiprobe.log` > 0: GSI CARRIES
+  CHAT. Note the exact field path from the payload, whether BOTH channels
+  and OTHER players' lines are there (type as the player; have a bot or the
+  rig say something too), and whether it arrives promptly. Then plan the
+  move of the reader to GSI.
+- payloads arrive, sections are listed, no needle: GSI does not carry chat
+  for a PLAYER. Write the list of sections that really arrived into this
+  file, replace the old note's "confirmed" with "SEEN, <date>", ask the
+  redditor which field they meant and whether they were SPECTATING (some
+  GSI data is spectator/caster only), and DELETE the probe cfg.
+- no payloads at all: Dota was started before the cfg existed, or the
+  listener is not running. `curl -X POST -d "{}" http://127.0.0.1:47853/`
+  tests the listener.
+- Whatever the answer: delete `gamestate_integration_dtprobe.cfg` unless
+  the app is going to use GSI.
+
+**Also open at the clear:** a dev copy of the app (`DT_DEBUG=1 npx electron
+.`, log in the old session's scratchpad) may still be running - check
+`tasklist` for electron.exe and stop it before starting another (single
+instance, one key). v0.3.7 is the released version; master = released.
+
+---
+
 # WHERE THIS STANDS (2026-09-20, night)
 
 **It works end to end.** In a live bot match, Russian typed into chat was
