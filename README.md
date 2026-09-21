@@ -23,6 +23,13 @@ is injected, nothing in the game is changed, and no file of Dota's is
 touched. You can check all of that yourself: it is one file,
 [`src/memscan.ps1`](src/memscan.ps1), and it is plain text.
 
+One more thing, and only if you use it: when you press `Ctrl+Enter` in the
+game's chat to [send a line translated](#saying-something-back), the app
+presses a few keys for you (select, copy, paste, Enter), through Windows,
+as a macro key would. That is input, not memory - it is also one file,
+[`src/sendchat.ps1`](src/sendchat.ps1) - and Valve has not said anything
+about that either. `"sayHotkey": ""` turns it off.
+
 What nobody can tell you:
 
 - **There is no documented case of a VAC ban for reading Dota's memory
@@ -151,27 +158,37 @@ no processor time, and reading the chat costs about 0.3% of one core.
 
 - `Alt+D` hides and shows the overlay.
 - `Alt+Shift+D` quits.
-- `Ctrl+Enter`, in Dota, opens a line to say something back (below).
+- `Ctrl+Enter`, in Dota's chat, sends what you typed translated (below).
 
 ## Saying something back
 
-Press `Ctrl+Enter` in Dota, type what you want to say in English, press
-Enter. About a second later the translation is on your clipboard and the
-overlay says so; then, in the game: `Enter` (or `Shift+Enter` for all
-chat), `Ctrl+V`, `Enter`.
+Open the game's chat as you always do (`Enter`, or `Shift+Enter` for all
+chat), type what you want to say in English, and press **`Ctrl+Enter`
+instead of `Enter`**. About a second later it is said, in their language.
+Plain `Enter` still sends exactly what you typed.
 
-- **The app does not type into the game and does not write to it.** It
-  puts text on the clipboard; you paste it. That is deliberate.
+- **How: the app presses keys for you, and you should know that it does.**
+  `Ctrl+A`, `Ctrl+C` to take what you typed; then, with the translation,
+  `Ctrl+A`, `Ctrl+V`, `Enter`. They go through Windows, as a keyboard's or
+  a macro key's do. It happens once, when you press the key, and never
+  unless Dota is the window in front. How Valve regards that is
+  undocumented, like the rest of this: at your own risk.
+  `"sayHotkey": ""` turns it off, and then the app sends no keys at all.
+- **Nothing is written to the game's memory, for this or for anything.**
+  The app opens the game to read it and for nothing else, and `npm test`
+  fails if that ever changes.
 - The language is whatever the others were last seen typing in - the app
   reads their chat, so it knows - and Russian until anybody has typed.
   `replyLanguage` in `config.json` fixes it (`"Ukrainian"`).
-- The key only exists while Dota is the window in front; `sayHotkey`
-  changes it, and `""` turns it off. It is also in the tray menu.
-- It takes the keyboard from the game while it is open, and the model
-  needs most of a second: it is for "buy wards" and "I'm going top", not
-  for a call in the middle of a fight.
+- If the translation fails, NOTHING is sent: your line is still in the
+  chat, and the overlay says why. Your clipboard is put back afterwards.
+- The model needs most of a second: it is for "buy wards" and "I'm going
+  top", not for a call in the middle of a fight.
 - Each new line is one call on the same free 15 a minute as the incoming
   chat. A line you have said before costs nothing.
+- With the chat CLOSED the key finds nothing to copy and says nothing -
+  but the game does see a `Ctrl+A` and a `Ctrl+C`, whatever you have
+  bound to those.
 
 ## Settings (`config.json`)
 

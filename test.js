@@ -1297,14 +1297,107 @@ await okAsync('a repeat costs no call, and a failure is not remembered', async (
   assert.equal(calls, 3);
 });
 
-ok('the say window cannot load anything from anywhere, and nothing types into the game', () => {
-  const html = fs.readFileSync(path.join('src', 'say.html'), 'utf8');
-  assert.match(html, /Content-Security-Policy" content="default-src 'none'/);
-  assert.doesNotMatch(html, /https?:\/\//);
-  // Clipboard only (the user, 2026-09-21). The app sends no keys to anything.
-  for (const f of ['main.js', 'outgoing.js', 'say.js', 'say-preload.cjs']) {
-    assert.doesNotMatch(fs.readFileSync(path.join('src', f), 'utf8'), /SendKeys|sendInputEvent|SendInput|keybd_event/, 'src/' + f + ' types');
+const { sayTranslated, createKeySender } = await import('./src/sendchat.js');
+
+// A clipboard, and keys that "copy" what is in the chat field onto it.
+const fakeBoard = (text) => { const b = { text, readText: () => b.text, writeText: (t) => { b.text = t; } }; return b; };
+const fakeKeys = (board, field, { copyOk = true, sendOk = true } = {}) => {
+  const k = { log: [], said: null };
+  k.copy = async () => { k.log.push('copy'); if (copyOk && field) board.writeText(field); return copyOk ? { ok: true } : { ok: false, why: 'the game is not in front' }; };
+  k.send = async () => { k.log.push('send'); if (sendOk) k.said = board.readText(); return sendOk ? { ok: true } : { ok: false, why: 'the game lost focus' }; };
+  return k;
+};
+const noWait = async () => {};
+
+await okAsync('what is typed in the chat is taken, translated, said - and the clipboard given back', async () => {
+  const board = fakeBoard('something of the player\'s own');
+  const keys = fakeKeys(board, '  go rosh ');
+  const notes = [];
+  const r = await sayTranslated({ keys, clipboard: board, translate: async (t) => ({ out: 'RU:' + t }), note: (n) => notes.push(n), wait: noWait });
+  assert.deepEqual(r, { said: true, typed: 'go rosh', out: 'RU:go rosh' });
+  assert.equal(keys.said, 'RU:go rosh');
+  assert.deepEqual(keys.log, ['copy', 'send']);
+  assert.equal(board.text, 'something of the player\'s own');
+  assert.equal(notes[0].kind, 'note');
+});
+
+await okAsync('nothing in the chat, or the game not in front: no call, no keys, clipboard as it was', async () => {
+  for (const [field, opts] of [['', {}], ['go rosh', { copyOk: false }]]) {
+    const board = fakeBoard('mine');
+    const keys = fakeKeys(board, field, opts);
+    let calls = 0;
+    const r = await sayTranslated({ keys, clipboard: board, translate: async () => { calls++; return { out: 'x' }; }, wait: noWait });
+    assert.equal(r.said, false);
+    assert.equal(calls, 0);
+    assert.deepEqual(keys.log, ['copy']);
+    assert.equal(board.text, 'mine');
   }
+});
+
+await okAsync('a translation that fails sends NOTHING and says so; keys that fail leave it to be pasted', async () => {
+  let board = fakeBoard('mine');
+  let keys = fakeKeys(board, 'go rosh');
+  const notes = [];
+  let r = await sayTranslated({ keys, clipboard: board, translate: async () => { throw new Error('quota exceeded'); }, note: (n) => notes.push(n), wait: noWait });
+  assert.equal(r.said, false);
+  assert.deepEqual(keys.log, ['copy']);              // the English is never sent for them
+  assert.equal(board.text, 'mine');
+  assert.equal(notes.at(-1).kind, 'error');
+  assert.match(notes.at(-1).text, /still in the chat/);
+
+  board = fakeBoard('mine');
+  keys = fakeKeys(board, 'go rosh', { sendOk: false });
+  r = await sayTranslated({ keys, clipboard: board, translate: async () => ({ out: 'RU' }), note: (n) => notes.push(n), wait: noWait });
+  assert.equal(r.said, false);
+  assert.equal(board.text, 'RU');                    // on purpose: Ctrl+V still works
+  assert.match(notes.at(-1).text, /Ctrl\+V/);
+});
+
+await okAsync('the key helper is asked one word at a time and its answers are read by the line', async () => {
+  const wrote = [];
+  const child = new EventEmitter();
+  child.stdout = new EventEmitter();
+  child.stdin = new EventEmitter();
+  child.stdin.write = (s) => { wrote.push(s); };
+  child.stdin.end = () => {};
+  const sender = createKeySender({ spawnImpl: () => child, timeoutMs: 200 });
+  const first = sender.copy();
+  assert.deepEqual(await sender.send(), { ok: false, why: 'busy' });
+  child.stdout.emit('data', 'ready\r\ncop');
+  child.stdout.emit('data', 'ied\r\n');
+  assert.deepEqual(await first, { ok: true });
+  const second = sender.send();
+  child.stdout.emit('data', 'NOT DONE: the game is not in front\r\n');
+  assert.deepEqual(await second, { ok: false, why: 'the game is not in front' });
+  assert.deepEqual(await sender.send(), { ok: false, why: 'the helper took too long' });
+  assert.deepEqual(wrote.map((w) => w.trim()), ['copy', 'send', 'send']);
+  sender.stop();
+});
+
+ok('keys are sent from ONE place, only with the game in front, and nothing anywhere can write to the game', () => {
+  const keysIn = [];
+  for (const f of fs.readdirSync('src')) {
+    if (!/[.](js|cjs|ps1|html)$/.test(f)) continue;
+    const code = fs.readFileSync(path.join('src', f), 'latin1');
+    if (/keybd_event|SendInput|SendKeys|sendInputEvent/.test(code)) keysIn.push(f);
+    // The promise made to the user, 2026-09-21: the app reads the game and
+    // presses keys; it never writes to it.
+    // (Declared or called, that is: a comment may say the word, and does.)
+    assert.doesNotMatch(code, /(WriteProcessMemory|VirtualAllocEx|VirtualProtectEx|CreateRemoteThread|NtWriteVirtualMemory|SetWindowsHookEx)\s*[(]/, 'src/' + f);
+    // Every handle to the game is opened to READ and to ASK, and no more.
+    for (const line of code.split('\n')) {
+      if (/OpenProcess[(]/.test(line) && !/DllImport/.test(line)) assert.match(line, /OpenProcess[(]VM_READ [|] QUERY,/, 'src/' + f + ': ' + line.trim());
+    }
+  }
+  assert.deepEqual(keysIn, ['sendchat.ps1']);
+  assert.match(fs.readFileSync(path.join('src', 'memscan.ps1'), 'latin1'), /const int VM_READ = 0x0010, QUERY = 0x0400,/);
+  const helper = fs.readFileSync(path.join('src', 'sendchat.ps1'), 'latin1');
+  assert.doesNotMatch(helper, /OpenProcess|ReadProcessMemory/);      // it never opens the game at all
+  // The guard comes before the keys, and again before the Enter that sends.
+  const at = (s, from = 0) => { const i = helper.indexOf(s, from); assert.ok(i >= 0, s); return i; };
+  const loop = at('while ($true)');
+  assert.ok(at('InFront($id)', loop) < at('Chord(', loop));
+  assert.ok(at('InFront($id)', at('::V)', loop)) < at('Tap([SayKeys]::ENTER)', loop));
   assert.equal(DEFAULTS.sayHotkey, 'Control+Enter');
   assert.equal(DEFAULTS.replyLanguage, 'auto');
 });

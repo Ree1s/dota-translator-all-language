@@ -340,32 +340,60 @@ of three lines (team, all, team) shows every strip on its row.
 
 Asked for by the first strangers who saw the app (a Reddit thread:
 "no point in receiving messages in English if he says he doesnt
-understand me"). The user: "build it as v0.3 with clipboard only", then
-"hold on before pushing this to production - another branch. I will test
-later". **So: do not merge to master, tag or release it until the user has
-tried it in a game and said so.** master is still v0.2.14.
+understand me"). The user: "hold on before pushing this to production -
+another branch. I will test later". **So: do not merge to master, tag or
+release it until the user has tried it in a game and said so.** master is
+still v0.2.14.
 
-- **What it is:** `Ctrl+Enter` in Dota (`sayHotkey`) opens one line over
-  the game (`src/say.html/js`, `say-preload.cjs`); Enter translates it
-  (`src/outgoing.js`), puts it on the CLIPBOARD, closes the window, and
-  the overlay says `Copied: ... - now Enter, Ctrl+V, Enter` (a `status`
-  of kind `note`, the one non-error the overlay shows). Also in the tray
-  menu. **The app types nothing into the game and writes nothing to it**;
-  `npm test` fails if anything that sends keys turns up in the app.
-  Auto-typing (what `tools/saychat.ps1` does) was offered as a later
-  opt-in and NOT built: automated input into a match is a different kind
-  of risk from reading memory.
+- **What it is:** the player types English into the game's OWN chat field
+  and presses `Ctrl+Enter` (`sayHotkey`) instead of Enter. The app presses
+  `Ctrl+A`, `Ctrl+C` (what was typed is now on the clipboard), translates
+  it (`src/outgoing.js`), and presses `Ctrl+A`, `Ctrl+V`, `Enter`. Team or
+  all chat is whichever the player opened. Plain Enter is untouched.
+  `src/sendchat.ps1` presses the keys; `src/sendchat.js` keeps it running
+  and holds the whole act (`sayTranslated`, tested with fakes). The
+  player's clipboard is put back. The overlay says `Translating: ...`, and
+  on a failed translation NOTHING is sent - the line is still in the chat
+  and the overlay says why.
+- **THREE DESIGNS IN ONE EVENING, and why this one:**
+  1. *A say window + clipboard only* (built, commit 0d5ff49, the window is
+     in that commit if it is ever wanted back). The user: "I don't know if
+     its best ux" - five keypresses and two waits for a line, and it took
+     the keyboard off the game, which was never seen to work.
+  2. *Writing the translation into the chat field in MEMORY* (the user
+     asked). Not built, on purpose: the game sends on Enter and the model
+     needs ~0.7s, so it would not even be quicker without hooking the send;
+     Russian is twice the bytes, and a wrong capacity is a crash; and
+     writing to the game is the one thing this app has never done.
+  3. *Keys* - this. The user asked "and this wouldnt write to the memory
+     then?" - no: keys go through Windows (`keybd_event`), the game's
+     process is not opened for it at all. Then: "ok go, build it that way".
+- **It is still a new kind of thing for the app: it SENDS INPUT to the
+  game.** Once per press of the key, never unless Dota is in front (asked
+  before every group of keys, and again before the Enter that sends -
+  Enter in the wrong window SENDS something to somebody). The README says
+  so up front, in "Read this before you install it". `sayHotkey: ""` is
+  off, and then no keys are ever sent. `npm test` holds the line: keys are
+  sent from `sendchat.ps1` and nowhere else; nothing in `src/` declares or
+  calls WriteProcessMemory / VirtualAllocEx / CreateRemoteThread / a hook;
+  every `OpenProcess` is `VM_READ | QUERY`; the helper opens no process.
+- **No "EN->RU mode" where plain Enter translates** (the user's first
+  idea): Enter also OPENS the chat, the app cannot tell whether the chat
+  is open (looked for on 2026-09-20, not found), and it would swallow
+  every Enter and press keys blind into the game.
+- **The helper is kept WARM**: started when Dota first comes to the front,
+  then blocked on stdin. MEASURED: ready 1.3s after start (the C# compile),
+  then a word is answered in 5-90ms. A cold start on the keypress would
+  have been a second of nothing. It exits when the app's pipe closes.
+  SEEN: with Dota running but NOT in front, `copy` and `send` both
+  answered "the game is not in front" and pressed nothing; no stray after.
+- **The hotkey exists only while Dota is in front** (registered on the
+  helper's `focus` event). Ctrl+Enter is "send" in half the programs on a
+  PC and a global shortcut swallows the key.
 - **Which language** is not a guess: the app reads what the others type,
   so the script most recently seen decides (`createLanguageTracker`, fed
   from every pending and translated row), Russian until anything is seen.
   `replyLanguage` overrides by name; only letters of it reach the prompt.
-- **The hotkey exists only while Dota is in front** (registered on the
-  helper's `focus` event, unregistered when it goes). Ctrl+Enter is "send"
-  in half the programs on a PC and a global shortcut swallows the key.
-  The say window taking focus makes the helper report focus OFF; the
-  overlay stays up for that (`sayOpen()`), and hides 1.5s after the window
-  closes if the game did not get the keyboard back. Blur closes the
-  window; a line already sent is still translated and copied.
 - **REAL OUTPUT** (gemini-3.5-flash-lite, 11 calls, **0.56-0.93s each**):
   "buy wards please" -> "купите варды плз"; "smoke gank mid at 10:30" ->
   "смок в мид на 10:30 давай"; "you are trash, uninstall" -> "ты мусор,
@@ -379,20 +407,25 @@ tried it in a game and said so.** master is still v0.2.14.
   A new line is ONE call, two tries at most, made directly - NOT through
   the pipeline's 15-a-minute governor, which keeps one call back but does
   not know about these. In a loud minute an outgoing line can be the call
-  that gets "quota exceeded". Not seen; if it is, route it through the
-  pipeline's budget.
-- SEEN: the window, by its own snapshot (`DT_SAY=1 DT_SHOT=<file>` opens
-  it at startup and photographs it; DT_SAY also skips the single-instance
-  lock, because the installed copy is usually running and swallows the
-  dev one - it did, once). **NOT seen, any of it, over the game:** that
-  the window can take the keyboard from a borderless Dota; that the game
-  gets it back when the window closes (Windows should hand it to the
-  window that had it; if not, the player clicks the game); that Ctrl+Enter
-  is free in Dota (believed unbound by default, NOT checked); that the
-  hotkey comes and goes with focus; the note on the overlay; pasting with
-  Ctrl+V into Dota's chat field (`saychat.ps1` pastes, so it works).
+  that gets "quota exceeded" (then nothing is sent, and the overlay says
+  so). Not seen; if it is, route it through the pipeline's budget.
+- **NOT SEEN, ANY OF IT, IN THE GAME - the user tests this themselves:**
+  - **that Dota's chat field does Ctrl+A and Ctrl+C at all.** Only PASTE
+    is known to work (`saychat.ps1`). If select-all does not, Ctrl+V
+    appends the Russian to the English; if copy does not, the key does
+    nothing. The 30-second check: type in chat, Ctrl+A, Ctrl+C, paste into
+    Notepad. If it fails, design 1's window is the fallback.
+  - that Ctrl+Enter is free in Dota (believed unbound, NOT checked), and
+    that the hotkey comes and goes with focus;
+  - the timing of the keys (30ms taps, 60-120ms between groups: guesses
+    from `saychat.ps1`, which used 40 and 200-250 and worked);
+  - what Ctrl+A and Ctrl+C do with the chat CLOSED (they reach the game
+    as whatever the player has bound);
+  - the notes on the overlay; the clipboard being put back.
 - NOT done: a setting for it in the setup window; the landing page and
-  key guide do not mention it (they are served from master's `docs/`).
+  key guide do not mention it (they are served from master's `docs/`),
+  and the landing page's "read-only" wording will need the same sentence
+  the README got before this is released.
 
 ## REPLACE IN PLACE: asked for as the DEFAULT, not built, one experiment blocked
 
@@ -1257,7 +1290,7 @@ npm start        # the overlay (Electron)
 npm run watch    # the same chain in a terminal - use this first
 npm run demo     # drives the chain from a fake source, no Dota needed
 npm run doctor   # no-key diagnostic
-npm test         # 108 tests, plain node assert, no runner
+npm test         # 112 tests, plain node assert, no runner
 ```
 
 Keep `npm test` green. It needs no game running and no API key.

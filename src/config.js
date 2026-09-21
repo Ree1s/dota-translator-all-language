@@ -131,10 +131,12 @@ export const DEFAULTS = {
   // checked at startup, installed when the app is next closed. false
   // never checks.
   autoUpdate: true,
-  // Saying something BACK: this key, pressed in Dota, opens one line to
-  // type English into; its translation goes on the clipboard, to be pasted
-  // into the game's chat by the player (src/outgoing.js). The key exists
-  // only while Dota is the window in front. "" turns it off.
+  // Saying something BACK: type English into the game's own chat and press
+  // this instead of Enter. The app presses Ctrl+A, Ctrl+C, translates what
+  // it got, and presses Ctrl+A, Ctrl+V, Enter (src/sendchat.ps1) - keys,
+  // as a keyboard sends them; nothing is written to the game. The key
+  // exists only while Dota is the window in front. "" turns it all off,
+  // and then the app sends the game no keys at all.
   sayHotkey: 'Control+Enter',
   // What to translate it into. "auto" is whatever the others were last
   // seen typing in, Russian until anything has been seen; or a language by
