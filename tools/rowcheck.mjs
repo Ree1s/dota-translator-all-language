@@ -13,7 +13,8 @@ import { POWERSHELL } from '../src/memsource.js';
 const dir = process.argv[2] || 'grabs';
 const refs = writeRefs(findDotaDir());
 if (!refs) { console.log('no reference portraits: Dota not found'); process.exit(1); }
-const rows = fs.readFileSync(path.join(dir, 'index.jsonl'), 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)).map((r) => ({ ...r, file: fs.existsSync(r.file) ? r.file : path.join(dir, path.basename(r.file || '')) })).filter((r) => r.kind === 'chat' && fs.existsSync(r.file));
+const rows = fs.readFileSync(path.join(dir, 'index.jsonl'), 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)).map((r) => ({ ...r, file: fs.existsSync(r.file) ? r.file : path.join(dir, path.basename(r.file || '')) })).filter((r) => fs.existsSync(r.file));
+const every = Number(process.argv[3]) || 8;      // every Nth top grab: there are a hundred a game
 
 const child = spawn(POWERSHELL, ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', ROW_SCRIPT, '-Refs', refs], { stdio: ['pipe', 'pipe', 'inherit'] });
 let buffer = '';
@@ -31,7 +32,7 @@ const next = async () => { while (!answers.length) await new Promise((r) => { wa
 console.log('helper:', JSON.stringify(await next()));
 const votes = new Map();
 let n = 0;
-for (const r of rows) {
+for (const r of rows.filter((x) => x.kind === 'chat')) {
   // A chat grab began 410 units left of the centre line and 590 down.
   const s = r.scale;
   const t = Date.now();
@@ -43,4 +44,22 @@ for (const r of rows) {
 }
 console.log('\nWHO SPOKE:');
 for (const [k, v] of votes) console.log('  ' + k + ': ' + [...v].join(', ') + (v.size > 1 ? '   <-- TWO HEROES FOR ONE SPEAKER' : ''));
+
+// THE FALLBACK: a seat's tile of the top bar, top 60%, as the app asks it.
+// A top grab is cut evenly about the centre line and begins at the top.
+const seats = Array.from({ length: 10 }, () => new Map());
+const tops = rows.filter((x) => x.kind === 'top').filter((_, i) => i % every === 0);
+let sure = 0, asked = 0;
+for (const r of tops) {
+  const sc = r.scale;
+  for (let seat = 0; seat < 10; seat++) {
+    const off = seat < 5 ? -416.25 + 62.25 * seat : 107.25 + 62.25 * (seat - 5);
+    child.stdin.write(['topfile', ++n, (r.w / 2 + off * sc).toFixed(2), (4.5 * sc).toFixed(2), (60 * sc).toFixed(2), (34.5 * 0.6 * sc).toFixed(2), path.resolve(r.file)].join(' ') + String.fromCharCode(10));
+    const a = await next();
+    asked++;
+    if (a.score >= SURE) { sure++; seats[seat].set(a.hero, (seats[seat].get(a.hero) || 0) + 1); }
+  }
+}
+console.log('\nTOP BAR, ' + tops.length + ' grabs: ' + sure + ' of ' + asked + ' tiles sure. Per seat, every SURE answer:');
+seats.forEach((v, seat) => console.log('  seat ' + seat + ': ' + ([...v].map(([h, c]) => h + ' x' + c).join(', ') || '-') + (v.size > 1 ? '   <-- TWO HEROES SURE FOR ONE SEAT' : '')));
 child.stdin.end();

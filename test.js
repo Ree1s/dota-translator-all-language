@@ -1793,6 +1793,18 @@ ok('keys are sent from ONE place, only with the game in front, and nothing anywh
     child.stdout.emit('data', '{"t":"row","id":3,"ok":0,"why":"the game is not in front"}\n');
     assert.equal(await p, null);
     assert.equal(await g.identify(), null);                  // never answered: the line is not held up
+    // The fallback: an unsure row, then that SEAT's tile of the top bar.
+    wrote.length = 0;
+    p = g.identify(7);
+    child.stdout.emit('data', '{"t":"row","id":5,"ok":1,"hero":"luna","score":0.4}\n');
+    await new Promise((r) => setImmediate(r));
+    assert.equal(wrote[1], 'seat 6 7' + String.fromCharCode(10));
+    child.stdout.emit('data', '{"t":"row","id":6,"ok":1,"hero":"meepo","score":0.88}\n');
+    assert.deepEqual(await p, { hero: 'meepo', score: 0.88, from: 'top' });
+    p = g.identify(3);                                       // a sure row never asks the top bar
+    child.stdout.emit('data', '{"t":"row","id":7,"ok":1,"hero":"marci","score":0.95}\n');
+    assert.deepEqual(await p, { hero: 'marci', score: 0.95 });
+    assert.equal(wrote.length, 3);
     g.stop();
     const helper = fs.readFileSync(path.join('src', 'rowgrab.ps1'), 'latin1');
     assert.doesNotMatch(helper, /OpenProcess|ReadProcessMemory|keybd_event|SendInput|\.Save\(/);

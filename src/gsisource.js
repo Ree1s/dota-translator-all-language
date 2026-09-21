@@ -135,7 +135,7 @@ export function createGsiChat({ scripts = ['cyrillic'], onMessage = () => {}, on
   };
   const look = async (slot, forMatch) => {
     let found = null;
-    try { found = await identify(); } catch { /* unnamed, as before */ }
+    try { found = await identify(slot); } catch { /* unnamed, as before */ }
     if (!found || forMatch !== matchid) return;
     // One hero, one seat: a hero already known in another seat means this
     // row was somebody else's.

@@ -116,8 +116,23 @@ when the dev copy started with a key saved (seen in the log, 22:35).
   0.965-0.969, alchemist 0.895-0.906, meepo 0.942, shredder 0.908-0.917,
   the next best hero 0.51-0.67; **19-37ms a match**. So a line waits ~30ms
   for its portrait, not the 700ms cap.
+- **THE TOP-BAR FALLBACK (built the same night; NOT seen in a game):** when
+  the row is not sure, `identify(seat)` asks the helper `seat <id> <0-9>`:
+  ONE tile of the top bar - the speaker's seat, since `player_id` = seat in
+  a real game - top 60% only, against the top 60% of every portrait. A dead
+  hero's grey tile scores low: nobody is named and the next line tries
+  again. Worst case a line waits two timeouts (1.4s); a real answer is
+  ~30ms each. **MEASURED with the app's matcher on the saved top grabs
+  (`rowcheck.mjs`, which now does both): match 1, 14 grabs, 87 of 140 tiles
+  sure; the replay, 64 grabs (most outside the game), 215 of 640 - and
+  NEVER two heroes sure for one seat, every seat that spoke agreeing with
+  its chat row (0 meepo, 3 alchemist, 4 marci, 8 shredder).** Seat 7 of
+  match 1, the cosmetic Phantom Assassin, was never sure: unnamed, not
+  wrong. IN A LOBBY WITH BOTS player_id is NOT the seat, so there the
+  fallback can name the wrong hero (the row grab cannot); only the "one
+  hero, one seat" rule stands in the way. Not the case that matters.
 - The colour still comes from the seat (`player_id` = seat in real games).
-  NOT built: the top-bar fallback, reading the row's COLOUR (the fix for bot
+  NOT built: reading the row's COLOUR (the fix for bot
   lobbies), names. NOT seen: any of it over the live game; a wrapped newest
   line (the portrait is a row higher: it will score low and stay unnamed); a
   cosmetic portrait; a flipped HUD. The README does not yet say the app

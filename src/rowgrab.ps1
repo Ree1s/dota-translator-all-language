@@ -3,7 +3,8 @@
 # For the GSI source, whose feed gives a speaker's seat and not their hero.
 # Kept running; asked on stdin, a line at a time:
 #
-#   row <id>
+#   row <id>          the portrait beside the newest chat row
+#   seat <id> <0-9>   the fallback: that seat's tile of the top bar
 #
 # and answers one JSON line:
 #
@@ -56,6 +57,11 @@ public static class RowGrab {
   const int W = 16, H = 9;
   static readonly List<string> names = new List<string>();
   static readonly List<double[]> known = new List<double[]>();
+  // The TOP 60% of each portrait: the game draws icons, bars and a death
+  // timer over the bottom of a top-bar tile (SEEN: 5 of 10 sure whole, 9 of
+  // 10 by the top alone).
+  const double TOP = 0.6;
+  static readonly List<double[]> knownTop = new List<double[]>();
 
   static double[] Thumb(Bitmap src, double x, double y, double w, double h) {
     using (var t = new Bitmap(W, H)) {
@@ -82,7 +88,7 @@ public static class RowGrab {
   }
 
   public static int AddRef(string name, string file) {
-    using (var r = new Bitmap(file)) { names.Add(name); known.Add(Thumb(r, 0, 0, r.Width, r.Height)); }
+    using (var r = new Bitmap(file)) { names.Add(name); known.Add(Thumb(r, 0, 0, r.Width, r.Height)); knownTop.Add(Thumb(r, 0, 0, r.Width, r.Height * TOP)); }
     return names.Count;
   }
 
@@ -108,17 +114,33 @@ public static class RowGrab {
     int bw = (int)Math.Ceiling(tw) + 2 * slack + 2, bh = (int)Math.Ceiling(th) + 2 * slack + 2;
     using (var bmp = new Bitmap(bw, bh)) {
       using (var g = Graphics.FromImage(bmp)) g.CopyFromScreen(bx, by, 0, 0, bmp.Size);
-      return Best(bmp, tx - bx, ty - by, tw, th, slack);
+      return Best(bmp, tx - bx, ty - by, tw, th, slack, known);
+    }
+  }
+
+  // The fallback: the top bar shows all ten heroes in SEAT order. MEASURED,
+  // same units: a tile is 60 x 34.5, 62.25 apart, radiant's first 416.25
+  // left of centre, dire's first 107.25 right of it, 4.5 down. One tile is
+  // grabbed - the seat asked about - and only its top 60% compared.
+  public static string MatchSeat(int gx, int gy, int gw, int gh, int seat, int slack) {
+    double s = gh / 1080.0;
+    double off = seat < 5 ? -416.25 + 62.25 * seat : 107.25 + 62.25 * (seat - 5);
+    double tx = gx + gw / 2.0 + off * s, ty = gy + 4.5 * s, tw = 60 * s, th = 34.5 * TOP * s;
+    int bx = (int)Math.Floor(tx) - slack, by = Math.Max(gy, (int)Math.Floor(ty) - slack);
+    int bw = (int)Math.Ceiling(tw) + 2 * slack + 2, bh = (int)Math.Ceiling(th) + 2 * slack + 2;
+    using (var bmp = new Bitmap(bw, bh)) {
+      using (var g = Graphics.FromImage(bmp)) g.CopyFromScreen(bx, by, 0, 0, bmp.Size);
+      return Best(bmp, tx - bx, ty - by, tw, th, slack, knownTop);
     }
   }
 
   // The same question of a saved picture (tools/rowcheck.mjs): the tile at
   // ox,oy in the file's own pixels.
-  public static string MatchFile(string file, double ox, double oy, double tw, double th, int slack) {
-    using (var bmp = new Bitmap(file)) return Best(bmp, ox, oy, tw, th, slack);
+  public static string MatchFile(string file, double ox, double oy, double tw, double th, int slack, bool top) {
+    using (var bmp = new Bitmap(file)) return Best(bmp, ox, oy, tw, th, slack, top ? knownTop : known);
   }
 
-  static string Best(Bitmap bmp, double ox, double oy, double tw, double th, int slack) {
+  static string Best(Bitmap bmp, double ox, double oy, double tw, double th, int slack, List<double[]> known) {
     {
       var best = new double[names.Count];
       for (int k = 0; k < best.Length; k++) best[k] = -2;
@@ -165,12 +187,13 @@ while ($true) {
   $p = $line.Trim().Split(' ', 7)
   if ($p.Length -lt 2 -or $p[1] -notmatch '^\d+$') { continue }
   $answer = ''
-  if ($p[0] -eq 'file' -and $p.Length -eq 7) {
-    # file <id> <x> <y> <w> <h> <path>: a saved picture, for the test rig.
+  if (($p[0] -eq 'file' -or $p[0] -eq 'topfile') -and $p.Length -eq 7) {
+    # file|topfile <id> <x> <y> <w> <h> <path>: a saved picture, for the test
+    # rig; topfile compares the top of the portraits, as a top-bar tile is.
     $inv = [System.Globalization.CultureInfo]::InvariantCulture
-    try { $answer = [RowGrab]::MatchFile($p[6], [double]::Parse($p[2], $inv), [double]::Parse($p[3], $inv), [double]::Parse($p[4], $inv), [double]::Parse($p[5], $inv), $Slack) }
+    try { $answer = [RowGrab]::MatchFile($p[6], [double]::Parse($p[2], $inv), [double]::Parse($p[3], $inv), [double]::Parse($p[4], $inv), [double]::Parse($p[5], $inv), $(if ($p[0] -eq 'topfile') { 6 } else { $Slack }), ($p[0] -eq 'topfile')) }
     catch { $answer = '"ok":0,"why":"could not read the picture"' }
-  } elseif ($p[0] -ne 'row') { continue }
+  } elseif ($p[0] -ne 'row' -and -not ($p[0] -eq 'seat' -and $p.Length -eq 3 -and $p[2] -match '^[0-9]$')) { continue }
   else { try {
     $x = 0; $y = 0; $w = 0; $h = 0
     $owner = [RowGrab]::Front([ref]$x, [ref]$y, [ref]$w, [ref]$h)
@@ -183,6 +206,7 @@ while ($true) {
     }
     if (-not $isGame) { $answer = '"ok":0,"why":"the game is not in front"' }
     elseif ($h -lt 400 -or $w -lt 600) { $answer = '"ok":0,"why":"the game window is too small"' }
+    elseif ($p[0] -eq 'seat') { $answer = [RowGrab]::MatchSeat($x, $y, $w, $h, [int]$p[2], 6) }
     else { $answer = [RowGrab]::Match($x, $y, $w, $h, $Slack) }
   } catch {
     $answer = '"ok":0,"why":"grab failed"'

@@ -85,16 +85,30 @@ export function startRowGrab({ dotaDir, refs, spawnImpl = spawn, parentPid = pro
     });
   }
 
+  const ask = (what) => {
+    if (!child || !ready) return Promise.resolve(null);
+    const id = nextId++;
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => settle(id, null), timeoutMs);
+      waiting.set(id, { resolve, timer });
+      try { child.stdin.write(what(id) + '\n'); } catch { settle(id, null); }
+    });
+  };
+
   start();
   return {
-    identify() {
-      if (!child || !ready) return Promise.resolve(null);
-      const id = nextId++;
-      return new Promise((resolve) => {
-        const timer = setTimeout(() => settle(id, null), timeoutMs);
-        waiting.set(id, { resolve, timer });
-        try { child.stdin.write('row ' + id + '\n'); } catch { settle(id, null); }
-      });
+    // The chat row names the speaker whatever the feed's number means, and
+    // was never wrong (34 of 34 grabs). When it is not sure - a wrapped
+    // line, a row already gone, something drawn over it - the top bar's tile
+    // for that SEAT is the fallback: the feed's player_id IS the seat in a
+    // real game (SEEN, matchmade; NOT in a lobby with bots). A dead hero's
+    // tile is grey and scores low: then nobody is named, and the speaker's
+    // next line tries again.
+    async identify(seat) {
+      const row = await ask((id) => 'row ' + id);
+      if (row || !Number.isInteger(seat) || seat < 0 || seat > 9) return row;
+      const top = await ask((id) => 'seat ' + id + ' ' + seat);
+      return top ? { ...top, from: 'top' } : null;
     },
     stop() {
       stopped = true;
