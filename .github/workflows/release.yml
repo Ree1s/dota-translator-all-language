@@ -19,13 +19,15 @@ on:
   push:
     tags: ['v*']
 
-permissions:
-  contents: write
-  id-token: write       # for the attestation
-  attestations: write
+# Nothing by default: the job below is given exactly what it needs.
+permissions: {}
 
 jobs:
   windows:
+    permissions:
+      contents: write
+      id-token: write       # for the attestation
+      attestations: write
     runs-on: windows-latest
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

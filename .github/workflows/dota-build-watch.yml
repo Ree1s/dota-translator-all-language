@@ -17,11 +17,13 @@ on:
     - cron: '17 */6 * * *'
   workflow_dispatch:
 
-permissions:
-  issues: write
+# Nothing by default: the job below is given exactly what it needs.
+permissions: {}
 
 jobs:
   check:
+    permissions:
+      issues: write
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

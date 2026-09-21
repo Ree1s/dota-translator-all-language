@@ -1218,6 +1218,29 @@ think about certificate"):**
   one-person repo scores low on code review and branch protection, and a
   low number beside a download button says the wrong thing. Look at the
   score (Security tab, or scorecard.dev) before adding it.
+- **Scorecard's first score: 4.2 / 10** (2026-09-21) - so the badge stays
+  off. Tens for: no dangerous workflows, no binaries in the repo,
+  Dependabot, SECURITY.md, CodeQL; 7 for pinning. Zeros that are just what
+  a new one-person repo IS: Maintained (under 90 days old), Code-Review,
+  Contributors, Fuzzing, the OpenSSF badge. Zeros worth something:
+  - **Vulnerabilities: 35 known - nearly all of them Electron 33**, which
+    is long out of support. Dependabot opened the bump at once (33 -> 44,
+    PR #3). NOT merged: eleven major versions under a transparent,
+    always-on-top, click-through window over a game is a thing to TRY in a
+    match, not to take on faith. It is the most real safety item on this
+    list - the app ships a browser engine with known holes, even if it
+    only ever loads its own pages and hero portraits.
+  - Token-Permissions: fixed the same day - every workflow now has
+    `permissions: {}` and its one job is given exactly what it needs. The
+    same grants as before, moved; release.yml and pages.yml have NOT run
+    since (they run on a tag and on a docs change).
+  - Signed-Releases: it does not see the attestation (it looks for
+    signature files beside the release). Branch-Protection: off, and with
+    one person pushing to master it would only be in the way.
+  - scorecard-action v2.4.0 FAILED on its first run: it pulls its image
+    from gcr.io, which no longer serves it. v2.4.4 (ghcr.io) works.
+- Dependabot's other first PRs are major bumps of the pinned actions
+  (#2, #4, #5, #6). None merged; none urgent.
 - For the USER to do, because they are account settings: turn on two-factor
   authentication on GitHub if it is not on (a stolen account is how this
   project would ship malware), and enable "Private vulnerability
