@@ -83,10 +83,9 @@ delete `gamestate_integration_dtprobe.cfg` when the probing is over);
 `gsiprobe.log` (~210 MB, gitignored) and `grabs/`, `grabs-match1/`. All
 commits LOCAL, nothing pushed, v0.3.7 still what players get. The user
 posted a Reddit EDIT saying the translator is being rebuilt on GSI.
-NEXT: build the chat-row grab into gsi mode (portrait + colour per speaker,
-the top bar as the fallback), say in the README that it captures small
+NEXT: build the chat-row grab into gsi mode (DONE, below), say in the README that it captures small
 regions of the screen, place the text above the game's chat from the
-window's size alone, and find out why the SETUP WINDOW opened by itself
+window's size alone (DONE, below), and find out why the SETUP WINDOW opened by itself
 when the dev copy started with a key saved (seen in the log, 22:35).
 
 ### THE CHAT-ROW GRAB IS IN GSI MODE (built 2026-09-21, late; NOT seen in a game)
@@ -137,6 +136,27 @@ when the dev copy started with a key saved (seen in the log, 22:35).
   line (the portrait is a row higher: it will score low and stay unnamed); a
   cosmetic portrait; a flipped HUD. The README does not yet say the app
   captures the screen - it must, before gsi mode is released.
+
+### GSI MODE: THE TEXT ABOVE THE GAME'S CHAT, FROM THE WINDOW ALONE (built 2026-09-21, late; NOT seen in a game)
+
+- `focuswatch.ps1` now also prints `{"t":"window","x","y","w","h"}` while
+  the game is in front: the client area of the front window, real pixels
+  (DPI-aware), on a change and every 5s (a reloaded overlay page has
+  forgotten it). Still asks only Windows: no process opened, no capture (a
+  test holds that). `src/gsilayout.js` turns it into the same `layout` the
+  memory helper sent, and `gsiwatcher` hands it to `onLayout` - ONLY for
+  `display: "above"`; `cover` needs the game's real rows and stays the box.
+- The numbers: HudChat is 400.5 units LEFT of the picture's centre line and
+  620.25 down, in 1080-high units, scale = height / 1080, row 25.5 units
+  (floored: 34 at 1440, 25 at 1080 - what the game itself reported). Derived
+  from what the GAME said on 5120x1440 ((2026, 827), scale 1.33); a test
+  holds that the module gives back exactly that. It agrees with the row
+  grab's portrait position found by screenshot.
+- SEEN: the helper run by hand against the browser: a window line at once
+  and again 5s later. NOT seen: any of it over the game (Dota was running;
+  nothing was started against it), 16:10 / 4:3 (the game may scale by
+  width there), a HUD-scale setting, a game rendering below the desktop's
+  resolution, a dragged window (the helper reports the move; untried).
 
 ### THE GSI READER: BUILT the same evening, OPT-IN (`"source": "gsi"`)
 
@@ -2189,7 +2209,7 @@ npm start        # the overlay (Electron)
 npm run watch    # the same chain in a terminal - use this first
 npm run demo     # drives the chain from a fake source, no Dota needed
 npm run doctor   # no-key diagnostic
-npm test         # 129 tests, plain node assert, no runner
+npm test         # 131 tests, plain node assert, no runner
 ```
 
 Keep `npm test` green. It needs no game running and no API key.

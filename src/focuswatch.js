@@ -10,7 +10,7 @@ import { POWERSHELL } from './memsource.js';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const FOCUS_SCRIPT = path.join(HERE, 'focuswatch.ps1').replace('app.asar' + path.sep, 'app.asar.unpacked' + path.sep);
 
-export function startFocusWatch({ onFocus = () => {}, spawnImpl = spawn, parentPid = process.pid, processName, restartMs = 2000 } = {}) {
+export function startFocusWatch({ onFocus = () => {}, onWindow = () => {}, spawnImpl = spawn, parentPid = process.pid, processName, restartMs = 2000 } = {}) {
   let child = null;
   let stopped = false;
   let buffer = '';
@@ -29,6 +29,8 @@ export function startFocusWatch({ onFocus = () => {}, spawnImpl = spawn, parentP
         let o = null;
         try { o = JSON.parse(p); } catch { continue; }
         if (o && o.t === 'focus') onFocus(o.on === 1);
+        // Where the inside of the game's window is on the screen, real pixels.
+        if (o && o.t === 'window' && [o.x, o.y, o.w, o.h].every(Number.isFinite)) onWindow({ x: o.x, y: o.y, w: o.w, h: o.h });
       }
     });
     child.on('error', () => { /* no PowerShell: the overlay simply stays up */ });

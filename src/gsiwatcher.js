@@ -10,6 +10,7 @@ import { startGsiSource, GSI_PORT } from './gsisource.js';
 import { ensureGsiConfig } from './gsiconfig.js';
 import { startFocusWatch } from './focuswatch.js';
 import { startRowGrab } from './rowgrab.js';
+import { layoutFromWindow } from './gsilayout.js';
 
 export function startWatchingGsi(cfg, handlers = {}, { ensure = ensureGsiConfig, startSource = startGsiSource, watchFocus = startFocusWatch, grabRows = startRowGrab } = {}) {
   const port = Number.isInteger(cfg.gsiPort) && cfg.gsiPort > 1023 && cfg.gsiPort < 65536 ? cfg.gsiPort : GSI_PORT;
@@ -32,6 +33,15 @@ export function startWatchingGsi(cfg, handlers = {}, { ensure = ensureGsiConfig,
   if (made.dotaDir && handlers.onGamePath) handlers.onGamePath(path.join(made.dotaDir, '..', 'bin', 'win64', 'dota2.exe'));
   // Whether the game is in front: the overlay hides on it and the say-back
   // key exists only then. The feed cannot say; Windows can.
-  const focus = handlers.onFocus ? watchFocus({ onFocus: handlers.onFocus }) : null;
+  // And where the game's chat is: the feed cannot say that either, and the
+  // memory reader's answer came from the game's memory. The chat sits at a
+  // fixed place in the game's picture, so the window's place and size give
+  // it (src/gsilayout.js). Only the 'above' look: 'cover' needs the game's
+  // real rows, which nothing here can know.
+  const onWindow = (w) => {
+    const l = cfg.display === 'above' && handlers.onLayout ? layoutFromWindow(w) : null;
+    if (l) handlers.onLayout(l);
+  };
+  const focus = handlers.onFocus || handlers.onLayout ? watchFocus({ onFocus: handlers.onFocus || (() => {}), onWindow }) : null;
   return { ...watcher, stop() { if (focus) focus.stop(); if (rows) rows.stop(); watcher.stop(); } };
 }

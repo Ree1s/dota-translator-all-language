@@ -1826,4 +1826,59 @@ ok('keys are sent from ONE place, only with the game in front, and nothing anywh
   });
 }
 
+{
+  const { layoutFromWindow } = await import('./src/gsilayout.js');
+  const { startFocusWatch } = await import('./src/focuswatch.js');
+  const { startWatchingGsi } = await import('./src/gsiwatcher.js');
+  const { EventEmitter } = await import('node:events');
+
+  ok('gsi: the chat is placed from the game window alone, and agrees with what the game itself said', () => {
+    // 5120x1440, full screen: the game reported HudChat at (2026, 827), rows 34.
+    const big = layoutFromWindow({ x: 0, y: 0, w: 5120, h: 1440 });
+    assert.equal(big.x, 2026);
+    assert.equal(big.y, 827);
+    assert.equal(big.rows[0].height, 34);
+    // A 1920x1080 window at (1600,180): scale 1, rows 25, counted from the WINDOW.
+    const win = layoutFromWindow({ x: 1600, y: 180, w: 1920, h: 1080 });
+    assert.equal(win.scale, 1);
+    assert.equal(win.x, 1600 + 960 - 400);                   // -400.5, rounded
+    assert.equal(win.y, 180 + 620);
+    assert.equal(win.rows[0].height, 25);
+    assert.equal(layoutFromWindow({ x: 0, y: 0, w: 0, h: 0 }), null);      // minimised
+    assert.equal(layoutFromWindow({ x: 0, y: 0, w: 1920 }), null);
+  });
+
+  ok('gsi: the window reaches the overlay as a layout in the above look only, and no memory is read for it', () => {
+    const child = new EventEmitter();
+    child.stdout = new EventEmitter(); child.stdout.setEncoding = () => {};
+    child.kill = () => {};
+    const seen = [];
+    const w = startFocusWatch({ onWindow: (o) => seen.push(o), spawnImpl: () => child });
+    child.stdout.emit('data', '{"t":"window","x":1600,"y":180,"w":1920,"h":1080}\n{"t":"window","x":"1"}\n');
+    assert.deepEqual(seen, [{ x: 1600, y: 180, w: 1920, h: 1080 }]);
+    w.stop();
+
+    const layouts = [];
+    let give = null;
+    const cfg = { ...DEFAULTS, geminiApiKey: 'x', display: 'above' };
+    const g = startWatchingGsi(cfg, { onLayout: (l) => layouts.push(l) }, {
+      ensure: () => ({ state: 'present', dotaDir: null }),
+      startSource: () => ({ stop() {} }),
+      watchFocus: (o) => { give = o.onWindow; return { stop() {} }; },
+    });
+    give({ x: 0, y: 0, w: 1920, h: 1080 });
+    assert.equal(layouts.length, 1);
+    assert.equal(layouts[0].x, 560);
+    cfg.display = 'box';                                     // changed in the setup window
+    give({ x: 0, y: 0, w: 1920, h: 1080 });
+    cfg.display = 'cover';                                   // needs the game's real rows
+    give({ x: 0, y: 0, w: 1920, h: 1080 });
+    assert.equal(layouts.length, 1);
+    g.stop();
+    const helper = fs.readFileSync(path.join('src', 'focuswatch.ps1'), 'latin1');
+    assert.match(helper, /GetClientRect/);
+    assert.doesNotMatch(helper, /OpenProcess|ReadProcessMemory|CopyFromScreen/);
+  });
+}
+
 console.log('\n' + passed + ' passed');
