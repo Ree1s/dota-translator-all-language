@@ -1,0 +1,33 @@
+name: A translation was wrong or sounded off
+description: Russian speakers especially - this is how it gets better.
+title: "Translation: "
+labels: ["translation"]
+body:
+  - type: input
+    id: said
+    attributes:
+      label: What was said (the original line)
+      placeholder: "го рошан после драки"
+    validations:
+      required: true
+  - type: input
+    id: shown
+    attributes:
+      label: What the app showed or sent
+      placeholder: "go roshan after the fight"
+    validations:
+      required: true
+  - type: input
+    id: better
+    attributes:
+      label: What it should have been
+      placeholder: "rosh after this fight"
+  - type: dropdown
+    id: direction
+    attributes:
+      label: Which way
+      options:
+        - Their chat, translated for me
+        - My own message, sent with Ctrl+Enter
+    validations:
+      required: true

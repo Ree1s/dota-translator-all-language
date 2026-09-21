@@ -142,6 +142,9 @@ export const DEFAULTS = {
   // seen typing in, Russian until anything has been seen; or a language by
   // name ("Russian", "Ukrainian", "Chinese").
   replyLanguage: 'auto',
+  // Where the tray's "Report a problem..." goes. Blank is the project's
+  // GitHub issue chooser.
+  feedbackUrl: '',
   learn: false,             // log unmatched lines to learn.log
 };
 

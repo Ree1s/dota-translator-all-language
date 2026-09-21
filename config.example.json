@@ -30,6 +30,7 @@
   "boxY": -1,
   "boxWidth": 520,
   "autoUpdate": true,
+  "feedbackUrl": "",
   "sayHotkey": "Control+Enter",
   "replyLanguage": "auto",
   "clickThrough": true,

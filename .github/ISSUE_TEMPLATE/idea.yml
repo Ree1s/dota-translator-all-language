@@ -1,0 +1,11 @@
+name: An idea
+description: A language, a feature, something that would make it nicer to use.
+title: "Idea: "
+labels: ["idea"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like, and when would you use it
+    validations:
+      required: true

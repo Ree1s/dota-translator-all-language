@@ -1,0 +1,31 @@
+name: Something does not work
+description: Nothing shows up, text in the wrong place, an error on the screen.
+title: "Bug: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: In the tray icon's menu, or at the foot of the settings window.
+      placeholder: "0.3.6"
+  - type: input
+    id: screen
+    attributes:
+      label: Screen resolution, and Dota's display mode
+      placeholder: "1920x1080, Borderless Window"
+  - type: input
+    id: antivirus
+    attributes:
+      label: Antivirus, if the app shows nothing at all
+      description: A few antivirus products block the part that reads the chat.
+  - type: textarea
+    id: shot
+    attributes:
+      label: A screenshot, if the problem is how it looks

@@ -1375,6 +1375,27 @@ longer available to new users".
   the site counts `download_click` and `aistudio_click`; if most people who
   download never get a key, the key step is what is losing them.
 
+## Feedback: where a player can say anything back (2026-09-21)
+
+The user: "can someone leave me feedback somewhere after using right now
+or no?" - hardly: the only route was a link to GitHub Issues inside one FAQ
+answer on the site, nothing in the app, and GitHub needs an account most
+players do not have.
+- BUILT: the tray menu has "Report a problem or a bad translation...",
+  which opens GitHub's issue chooser; `.github/ISSUE_TEMPLATE/` has three
+  forms - a bad translation (what was said / what the app showed / what it
+  should have been / which way), a bug (version, screen and display mode,
+  antivirus, a screenshot), an idea - and security problems are pointed at
+  the private advisory form. `feedbackUrl` in config.json overrides where
+  the tray item goes (https only). NOT seen: the tray item clicked, nor
+  the forms on GitHub (they appear once pushed; GitHub shows a form's
+  errors only there).
+- **NOT built, and the user's to make: a route that needs NO account** - a
+  Google Form, or a Discord server (where Dota players already are). Either
+  is a link; when there is one, put it in `FEEDBACK_URL` in `main.js`, the
+  site's FAQ and the README. Until then expect to hear only from the few
+  who have GitHub, plus whatever is said in the Reddit thread.
+
 ## Trust in the exe: what was looked at (2026-09-21)
 
 The user: strangers "cant trust me very much and .exe file might seem
