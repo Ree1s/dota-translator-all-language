@@ -298,6 +298,8 @@ async function sayKey() {
       translate: (typed) => sayIt(typed, into),
       note: (s) => send('status', s),
     });
+    // The line will come back out of the chat in a moment: it means what was typed.
+    if (r.said && watcher && watcher.know) watcher.know(r.out, r.typed);
     if (DEBUG) console.log('say', JSON.stringify(r));
   } finally { saying = false; }
 }

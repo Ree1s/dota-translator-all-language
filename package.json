@@ -1,6 +1,6 @@
 {
   "name": "dota-translator",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "private": true,
   "description": "Russian Dota 2 chat, in English, live, above the game's own chat.",
   "type": "module",

@@ -125,5 +125,17 @@ export function startWatchingMemory(cfg, { onResult, onPending = () => {}, onSta
 
   return {
     stop() { source.stop(); pipe.stop(); },
+    // What a line MEANS, when the app already knows: the player's own line,
+    // sent translated a moment ago, comes back out of the chat like anybody
+    // else's - and its English is what they typed, not what a model thinks
+    // the translation of their translation is. SEEN: "my name is kristjan"
+    // went out as Cyrillic and came back on the overlay as "my name is
+    // christian", one call later. No call, and exact.
+    know(text, en) {
+      const t = String(text || '').trim(), e = String(en || '').trim();
+      if (!t || !e) return;
+      cache.delete(t); cache.set(t, e);
+      if (cache.size > 500) cache.delete(cache.keys().next().value);
+    },
   };
 }

@@ -1282,6 +1282,32 @@ longer available to new users".
   $2.50 per million is ~$0.00017 a line, ~2-3 cents for a loud game. The
   trap: a prepaid project with no credit FAILS rather than falling back to
   free.
+- **"It changed my name at the top to christian" (the user, testing the dev
+  copy).** Nothing had changed their name in the game. The LOG said what
+  happened: "my name is kristjan" went out as "меня зовут кристьян" (fine -
+  a name written as it sounds, in their letters), and then the app read the
+  player's OWN line back out of the chat like anybody's, asked the model
+  what it meant, and showed "my name is christian" above the chat. Two
+  fixes (v0.3.5): (1) after a line is sent translated, `main.js` tells the
+  watcher what it MEANS (`watcher.know(out, typed)`), so the row that comes
+  back shows exactly what was typed, from the cache - no call, no second
+  opinion; (2) the incoming prompt says a name inside the text is written
+  as it sounds and never swapped for an English one. REAL OUTPUT after:
+  "меня зовут кристьян" -> "my name is Kristjan"; "иван, иди мид" -> "Ivan,
+  go mid"; "где саша? он афк" -> "where is Sasha? he is afk". The backslash
+  trap bit an EIGHTH time doing it (an escaped apostrophe through a heredoc
+  broke `translate.js`; `node --check` caught it). Look at the debug log's
+  `say` and `line` rows FIRST when a translation looks wrong: they show
+  both directions.
+- Also in v0.3.5: a failed OUTGOING line says "Google's translator is not
+  answering right now ... Your line is still in the chat" instead of the
+  raw "the model took too long".
+- **"Wouldn't this need some kind of VAC protection?" (the user). NO, and
+  it will not be built**: the only thing that could mean is hiding from
+  the anti-cheat, which is what makes software a cheat whatever it does,
+  and is not something Claude builds. What lowers the risk honestly was
+  said again: a mode that does not read memory at all (screen capture,
+  priced above), reading less, and saying plainly what it does.
 - **"Is the free model made slower on purpose, and do paid users get
   priority?" (the user). Google's docs, read 2026-09-21, do NOT say either.**
   The rate-limits page and the troubleshooting page say nothing about free
@@ -1665,7 +1691,7 @@ npm start        # the overlay (Electron)
 npm run watch    # the same chain in a terminal - use this first
 npm run demo     # drives the chain from a fake source, no Dota needed
 npm run doctor   # no-key diagnostic
-npm test         # 115 tests, plain node assert, no runner
+npm test         # 116 tests, plain node assert, no runner
 ```
 
 Keep `npm test` green. It needs no game running and no API key.

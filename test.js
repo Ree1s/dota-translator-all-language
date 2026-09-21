@@ -836,6 +836,28 @@ await okAsync('a line is shown at once and its English fills the same row', asyn
   assert.equal(calls, 1, 'the repeat cost a call');
 });
 
+await okAsync('the player\'s own translated line means what they TYPED - no call, and no second opinion', async () => {
+  // SEEN: "my name is kristjan" went out in Cyrillic, was read back out of
+  // the chat like anybody's line, and came up as "my name is christian".
+  const { startWatchingMemory } = await import('./src/memwatcher.js');
+  let say = null, calls = 0;
+  const rows = [];
+  const w = startWatchingMemory({ ...mergeConfig({}), batchMs: 1 }, {
+    startSource: (opts) => { say = opts.onMessage; return { stop() {} }; },
+    translate: async (batch) => { calls++; return batch.map((b) => ({ ...b, en: 'my name is christian', translated: true })); },
+    onResult: (row) => rows.push([row.en, Boolean(row.cached)]),
+  });
+  w.know('меня зовут кристьян', 'my name is kristjan');
+  say({ name: 'me', text: 'меня зовут кристьян', channel: 'team', slot: 0 });
+  await tick(20);
+  w.know('', 'x'); w.know('x', '');                       // nothing to know: ignored
+  w.stop();
+  assert.deepEqual(rows, [['my name is kristjan', true]]);
+  assert.equal(calls, 0);
+  // And for everybody else's lines the translator is told to leave names alone.
+  assert.match(buildRequest([{ name: 'a', text: 'x' }]).systemInstruction.parts[0].text, /never swapped for an English name/);
+});
+
 await okAsync('with Google down every line still goes up as said, and the player is told why ONCE', async () => {
   // SEEN: an hour of "high demand" and hung calls. Every line failed, the
   // lines looked dimmed and wrong to the user, and nothing said why.

@@ -16,6 +16,8 @@ export const SYSTEM = [
   'The input is a JSON array of {i, name, text}. Answer with a JSON array of {i, en}, one entry per input, same i values.',
   'Rules:',
   '- Translate only the text. Never translate or change a player name.',
+  // REAL OUTPUT before this rule: "меня зовут кристьян" -> "my name is christian".
+  '- The name of a person inside the text is written in Latin letters as it SOUNDS, never swapped for an English name: Кристьян is Kristjan or Kristyan, not Christian; Иван is Ivan, not John.',
   '- Keep it short and plain, the way the line would be typed in English.',
   '- Dota shorthand stays shorthand: mid, top, bot, gank, ward, roshan, bkb, tp, gg, ff, ss/miss, rune, stack, push, def, rosh, smoke, buyback, courier.',
   '- Translate insults and swearing as they are. Do not soften, censor or explain them.',
