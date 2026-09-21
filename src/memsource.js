@@ -109,6 +109,20 @@ export function parseEvent(raw) {
   return null;
 }
 
+// What the helper could not do, in words a player can act on. Anything it
+// does not recognise is passed through as it came.
+export const ERROR_REPEAT_MS = 60000;
+export function explainReaderError(detail) {
+  const text = String(detail == null ? '' : detail);
+  // Windows error 5, access denied: the game is running as administrator
+  // (usually because STEAM was started that way) and this app is not. A
+  // normal program may not open an elevated one, even to read it.
+  if (/OpenProcess failed: 5(?![0-9])/.test(text)) {
+    return 'Dota is running as administrator, so Windows will not let Dota Translator read its chat. Close Steam and start it normally (not "Run as administrator"), or start Dota Translator as administrator too.';
+  }
+  return text;
+}
+
 /**
  * Start reading chat out of Dota's memory.
  *
@@ -157,6 +171,7 @@ export function startMemorySource({
   // second copy of itself found in the same scan.
   let known = [];
   let pendingAddrs = [];
+  let lastError = { text: '', at: 0 };
   let pendingPlacements = [];
 
   function forgetPlaces() { known = []; pendingAddrs = []; pendingPlacements = []; }
@@ -202,7 +217,18 @@ export function startMemorySource({
     if (ev.kind === 'find') { onFind(ev); return; }
     if (ev.kind === 'layout') { onLayout(ev); return; }
     if (ev.kind === 'focus') { onFocus(ev.on); return; }
-    if (ev.kind === 'error') { onStatus({ kind: 'error', text: ev.detail }); return; }
+    if (ev.kind === 'error') {
+      // The helper tries again every second, and fails the same way every
+      // second. SEEN (2026-09-21, the user's Steam running as administrator):
+      // the same line of .NET on the player's screen once a second, for as
+      // long as the game ran. Said once a minute, in words.
+      const text = explainReaderError(ev.detail);
+      const now = Date.now();
+      if (text === lastError.text && now - lastError.at < ERROR_REPEAT_MS) return;
+      lastError = { text, at: now };
+      onStatus({ kind: 'error', text });
+      return;
+    }
 
     if (ev.kind === 'line') {
       // One scan's findings arrive as separate events, so they are

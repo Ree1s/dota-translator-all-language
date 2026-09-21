@@ -317,6 +317,11 @@ is currently the only way anybody finds out.
 
 ## If chat is not picked up
 
+**If the overlay says Dota is running as administrator:** Windows does not
+let a normal program read an elevated one. It almost always means Steam was
+started with "Run as administrator". Close Steam and start it normally - or,
+if you need Steam elevated, start Dota Translator as administrator too.
+
 Set `"learn": true` in `config.json` and play a game. An unrecognised chat
 channel is written to `learn.log`, and that file is the answer to what
 changed.

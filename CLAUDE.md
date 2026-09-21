@@ -1182,6 +1182,41 @@ tech user may not find it", and the SmartScreen warning "might be scary".
   drawing of the tray with the ^ flyout. Linked from the landing page's
   steps. SEEN at phone width in the browser pane only.
 
+## A game running as administrator cannot be read (found 2026-09-21, v0.3.2)
+
+Found by accident, while trying to check the layout at 1920x1080 for the
+wave of players a Reddit thread was about to send (94 upvotes in 32
+minutes, no link posted yet - the user is waiting for the subreddit's mods
+to allow one; do NOT put the link or the name in a public comment for them).
+
+- **SEEN: `OpenProcess failed: 5` (access denied), once a second, printed
+  on the player's screen for as long as the game ran.** The user's STEAM
+  was running elevated that day, so Dota was too, and a normal program may
+  not open an elevated one even to read it. Told apart from outside
+  without any rights: a non-elevated shell cannot read `Path` or the
+  command line of `steam.exe` / `dota2.exe`, and can of `explorer.exe`.
+  Every earlier session worked, so Steam had been started normally then.
+- FIXED in `src/memsource.js`: `explainReaderError` turns error 5 into what
+  to DO ("Close Steam and start it normally ... or start Dota Translator as
+  administrator too"), and any identical error is said at most once a
+  minute (`ERROR_REPEAT_MS`). The helper still retries every second,
+  quietly. Tested with a fake helper. The README's "If chat is not picked
+  up" says it too. NOT seen on screen since: the user's game was still
+  elevated and nothing could be run against it.
+- **The same wall stops the app's KEYS** (Windows will not deliver input
+  from a normal program to an elevated window), so `Ctrl+Enter` would copy
+  nothing and say nothing there. And it stops `tools/saychat.ps1`.
+- **THE 1080p CHECK ITSELF WAS NOT DONE.** What WAS seen before the wall:
+  the user's Dota in a 1920x1080 window at (1600,180) on the 5120x1440
+  desktop, minimap on the RIGHT (the flipped HUD - also never checked).
+  Two things that setup would have tested and still has not: the layout
+  numbers at 1080p, and whether the overlay follows a game window that is
+  not at the screen's top-left - the game reports its chat position in its
+  OWN pixels, and the overlay is placed in SCREEN pixels, so a windowed
+  game, or a borderless one rendering below the desktop's resolution, may
+  put the English in the wrong place. SUSPECTED from how the position is
+  read; not seen. To do it: Steam started normally, then the same steps.
+
 ## Trust in the exe: what was looked at (2026-09-21)
 
 The user: strangers "cant trust me very much and .exe file might seem
@@ -1530,7 +1565,7 @@ npm start        # the overlay (Electron)
 npm run watch    # the same chain in a terminal - use this first
 npm run demo     # drives the chain from a fake source, no Dota needed
 npm run doctor   # no-key diagnostic
-npm test         # 113 tests, plain node assert, no runner
+npm test         # 114 tests, plain node assert, no runner
 ```
 
 Keep `npm test` green. It needs no game running and no API key.

@@ -9,7 +9,7 @@ import { parseChatLine, chatToTranslate, needsTranslation, libraryPaths, logCand
 import { buildRequest, replyTextFrom, translationsFrom, translateBatch, askGeminiHedged, HEDGE_AFTER_MS, ATTEMPT_MS } from './src/translate.js';
 import { createPipeline } from './src/pipeline.js';
 import { parseMemoryChatLine, parseMarkupChatLine, createLineTracker, readMemoryFindings, unknownChannelTag, PERSONA, MAX_LINE, MAX_NAME } from './src/chatmem.js';
-import { parseEvent, scannerArgs, nearestDistance, POWERSHELL, startMemorySource } from './src/memsource.js';
+import { parseEvent, scannerArgs, nearestDistance, POWERSHELL, startMemorySource, explainReaderError } from './src/memsource.js';
 import { EventEmitter } from 'node:events';
 import { mergeConfig, DEFAULTS } from './src/config.js';
 
@@ -649,6 +649,31 @@ ok('a line the chat list says was just appended is new, whatever its words', () 
   src.stop();
   // said, re-read (dropped), said again (shown)
   assert.equal(said.length, 2);
+});
+
+ok('a game running as administrator is SAID, in words, once - not a line of .NET every second', () => {
+  // SEEN: the user's Steam was running elevated, Dota with it, and the
+  // overlay printed the helper's exception once a second for as long as
+  // the game ran. Found while trying to test something else entirely.
+  const child = new EventEmitter();
+  child.stdout = new EventEmitter(); child.stdout.setEncoding = () => {};
+  child.stderr = new EventEmitter(); child.stderr.setEncoding = () => {};
+  child.kill = () => {};
+  const told = [];
+  const src = startMemorySource({ spawnImpl: () => child, onStatus: (s) => { if (s.kind === 'error') told.push(s.text); } });
+  const denied = JSON.stringify({ t: 'error', detail: 'Exception calling "FindPanels" with "2" argument(s): "OpenProcess failed: 5"' });
+  for (let n = 0; n < 12; n++) child.stdout.emit('data', denied + String.fromCharCode(10));
+  // Something ELSE going wrong is still said, and at once.
+  child.stdout.emit('data', JSON.stringify({ t: 'error', detail: 'OpenProcess failed: 87' }) + String.fromCharCode(10));
+  src.stop();
+  assert.equal(told.length, 2);
+  assert.match(told[0], /running as administrator/);
+  assert.match(told[0], /start it normally/);
+  assert.doesNotMatch(told[0], /Exception|OpenProcess/);
+  assert.equal(told[1], 'OpenProcess failed: 87');
+  // Error 5 only: 50-something is another error, and is passed through.
+  assert.equal(explainReaderError('OpenProcess failed: 50'), 'OpenProcess failed: 50');
+  assert.equal(explainReaderError(null), '');
 });
 
 ok('a line carries its hero when the reader could see one, and only a sane one', () => {
