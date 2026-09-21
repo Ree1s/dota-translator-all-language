@@ -10,4 +10,5 @@ contextBridge.exposeInMainWorld('setup', {
   close: () => ipcRenderer.invoke('setup:close'),
   fit: () => ipcRenderer.invoke('setup:fit'),
   folder: () => ipcRenderer.invoke('setup:folder'),
+  sayInto: (which) => ipcRenderer.invoke('setup:sayInto', which),
 });

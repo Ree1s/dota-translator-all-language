@@ -93,12 +93,12 @@
   </div>
 
   <div class="sayblock">
-    <h3>Talking back: Ctrl+Enter in Dota's chat sends what you typed...</h3>
+    <h3>Your own messages: Ctrl+Enter in Dota's chat translates them</h3>
     <div class="mode say">
-      <label><input type="radio" name="sayInto" value="theirs" checked><span><b>...in their language</b>Whatever your teammates type in - Russian, usually</span></label>
-      <label><input type="radio" name="sayInto" value="english"><span><b>...in English</b>You type Russian (or anything), they read English</span></label>
+      <label><input type="radio" name="sayInto" value="theirs" checked><span><b>English &rarr; Russian</b>You type English, they read Russian</span></label>
+      <label><input type="radio" name="sayInto" value="english"><span><b>Russian &rarr; English</b>You type Russian, they read English</span></label>
     </div>
-    <p class="hint">Type in the game's chat as always, then press Ctrl+Enter instead of Enter. Plain Enter still sends it exactly as you typed it.</p>
+    <p class="hint">Type in the game's chat as always, then press Ctrl+Enter instead of Enter. Plain Enter sends it exactly as you typed it. (If your teammates write Chinese, English goes to Chinese.) <span id="sayNow" style="color: var(--good)"></span></p>
   </div>
 
   <details class="more" id="more">

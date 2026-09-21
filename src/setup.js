@@ -30,6 +30,14 @@ const settingsNow = () => ({
   fontSize: Number($('fontSize').value),
   sayInto: document.querySelector('input[name=sayInto]:checked').value,
 });
+// Applied at once - this one does not wait for Save.
+for (const r of document.querySelectorAll('input[name=sayInto]')) {
+  r.addEventListener('change', async () => {
+    const now = await window.setup.sayInto(r.value);
+    $('sayNow').textContent = now.sayInto === 'english' ? 'Saved: Russian → English.' : 'Saved: English → Russian.';
+    window.setup.fit();
+  });
+}
 $('fontSize').addEventListener('input', () => { $('fontSizeOut').textContent = $('fontSize').value + 'px'; });
 $('more').addEventListener('toggle', () => window.setup.fit());
 $('folder').addEventListener('click', () => window.setup.folder());

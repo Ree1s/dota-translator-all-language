@@ -445,6 +445,15 @@ function applySettings(patch) {
   if (win && !win.isDestroyed()) win.reload();
   return languagesChanged;
 }
+// Which way Ctrl+Enter translates is saved THE MOMENT IT IS CLICKED, not on
+// Save. The user picked "in English", closed the window, and Russian kept
+// coming out as Russian "with both settings": config.json had not been
+// written since the day before. A choice that looks made should be made.
+ipcMain.handle('setup:sayInto', (_e, which) => {
+  const patch = settingsPatch({ sayInto: which }, cfg);
+  if (Object.keys(patch).length) { saveConfig(patch); Object.assign(cfg, patch); }
+  return { sayInto: uiSettings(cfg).sayInto };
+});
 ipcMain.handle('setup:close', () => { if (setupWin && !setupWin.isDestroyed()) setupWin.close(); });
 ipcMain.handle('setup:guide', () => {
   // The live page, not the copy that came with the app: a file:// address

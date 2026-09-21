@@ -421,6 +421,16 @@ still v0.2.14.
   the browser pane, as a static snapshot. NOT seen: the real window, nor
   saving the choice - the user's dev copy was running against Dota, and a
   second copy would have opened their settings window over the game.
+  **TWO FAULTS THE USER FOUND IN IT WITHIN MINUTES, both fixed:** (1)
+  "russian one currently still keeps it russian, with both settings" -
+  the choice had never been SAVED: config.json was last written the day
+  before, and every key in said.json began "Russian|". They had picked the
+  option and closed the window; only Save applied it. It is now saved the
+  moment it is clicked (`setup:sayInto`), and the window says "Saved:
+  Russian -> English". (2) "too difficult to read. It should be English ->
+  Russian or Russian -> English" - the labels are exactly that now, not
+  "...in their language". Look at config.json's mtime and said.json's keys
+  FIRST when the direction seems wrong.
   NOT done for that player: their INCOMING chat is still translated into
   English only; a Russian speaker reading English teammates gets nothing.
 - **"Is it always the same translation?" (the user). It was not, and
