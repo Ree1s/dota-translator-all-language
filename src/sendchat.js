@@ -69,7 +69,7 @@ export function createKeySender({ spawnImpl = spawn, script = SEND_SCRIPT, timeo
  * copy what is in the chat field -> translate -> put it back and send.
  * The player's clipboard is theirs and is put back whatever happens.
  */
-export async function sayTranslated({ keys, clipboard, translate, into = '', note = () => {}, wait = (ms) => new Promise((r) => setTimeout(r, ms)) }) {
+export async function sayTranslated({ keys, clipboard, translate, into = '', explain = (m) => m, note = () => {}, wait = (ms) => new Promise((r) => setTimeout(r, ms)) }) {
   const before = clipboard.readText();
   const restore = () => clipboard.writeText(before);
   // Emptied first: an empty clipboard afterwards means nothing was copied -
@@ -86,7 +86,10 @@ export async function sayTranslated({ keys, clipboard, translate, into = '', not
     restore();
     gone();
     const why = String((err && err.message) || err);
-    note({ kind: 'error', text: 'Not translated (' + why + ') - your line is still in the chat, Enter sends it as it is.' });
+    // In words when it is Google being slow (`explain` knows): the player
+    // needs to hear that it is not them, and that nothing was sent.
+    const said = explain(why);
+    note({ kind: 'error', text: (said === why ? 'Not translated (' + why + ').' : said.split(' Lines are shown')[0] + ' Not translated.') + ' Your line is still in the chat - Enter sends it as it is.' });
     return { said: false, why };
   }
   clipboard.writeText(out);

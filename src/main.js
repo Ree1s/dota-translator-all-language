@@ -14,7 +14,7 @@ import { uiSettings, settingsPatch, LANGUAGES } from './settings.js';
 import { checkKey, tidyKey } from './keycheck.js';
 import updater from 'electron-updater';
 import { startWatching } from './watcher.js';
-import { startWatchingMemory } from './memwatcher.js';
+import { startWatchingMemory, explainModelError } from './memwatcher.js';
 import { loadOffsets, bundledOffsets } from './offsets.js';
 import { createOutgoing, createLanguageTracker, targetLanguage } from './outgoing.js';
 import { createKeySender, sayTranslated } from './sendchat.js';
@@ -294,7 +294,7 @@ async function sayKey() {
   try {
     const into = targetLanguage(cfg.replyLanguage, spoken);
     const r = await sayTranslated({
-      keys, clipboard, into,
+      keys, clipboard, into, explain: explainModelError,
       translate: (typed) => sayIt(typed, into),
       note: (s) => send('status', s),
     });
