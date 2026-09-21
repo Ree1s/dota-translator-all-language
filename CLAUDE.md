@@ -60,6 +60,15 @@ section of the payload, Cyrillic intact:
   `unitname` and `team` with NO player id; kill events give player ids
   with no hero. So GSI alone gives: slot number -> the slot's COLOUR
   (fixed per slot in Dota) and team (0-4 / 5-9), not name or hero.
+- **REPLAYS ARE A TEST BENCH. SEEN 21:45, replay of match 9009919633:**
+  chat arrives there as in a live game (`player_id` 8 "U LUCKY IM LAGGING",
+  `player_id` 0 "gg ez", both `channel_type` 11), and a SPECTATOR's payload
+  names everybody: `player.team2.player0..4` / `team3.player5..9` with
+  `name`, `steamid`, and `hero.teamN.playerN.name` = `npc_dota_hero_*`.
+  So in a replay slot -> name -> hero is all there; for a PLAYER in a live
+  game it is not. A GSI reader can be built and tested against a replay of
+  a game with Russian chat, with nobody playing. NOT seen in a replay:
+  team chat (a replay may only hold all chat - unknown).
 - An event stays ~27-28 payloads (~30s at ~1/s). Dota's JSON is sometimes
   MALFORMED there: two events merged into one object with duplicate keys.
 - The probe cfg is still in the game's folder and `gsiprobe.mjs` was left
