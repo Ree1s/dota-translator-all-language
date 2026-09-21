@@ -43,6 +43,11 @@ NOT done before it: the Electron 33 -> 44 bump. What was decided and done:
   does not exist yet.** Decisions that fell with this: "not on an account
   you would mind losing" and "unsanctioned third-party tool" are no longer
   required wording. NAME NO OTHER PRODUCT still stands.
+- **THE WEBSITE DOES NOT TALK ABOUT MEMORY READING (the user, after v0.4.0:
+  "this is past ... u can only keep the one It does not read Dota's
+  memory").** One sentence, the catch's first item; no February 2023, no
+  0.3.7, no history anywhere in `docs/`. A test counts the word. The README
+  keeps the history - it is where a reviewer looks. Do not put it back.
 - A setup-window checkbox for choosing the reader was built and removed
   within the hour: there is nothing left to choose.
 - An installer of this state is in `dist/` for the user's friend, who plays

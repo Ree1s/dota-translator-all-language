@@ -1218,7 +1218,15 @@ ok('the landing page keeps the promises the project made about how it talks', ()
   // 2026-09-22: the app stopped reading memory (chat comes from the game's
   // own feed). What the pages must say now is what it does INSTEAD - and
   // still never that it is safe or approved.
-  assert.match(text, /does not read Dota's memory/);
+  // The user, 2026-09-22: memory reading is the past and is not on the
+  // website at all - not as history, not as a boast. The README keeps it.
+  assert.match(text, /It does not read Dota's memory./);
+  for (const page of fs.readdirSync('docs').filter((p) => p.endsWith('.html'))) {
+    const words = fs.readFileSync(path.join('docs', page), 'utf8').replace(/<style[\s\S]*?<\/style>|<script[\s\S]*?<\/script>|<[^>]+>/g, ' ');
+    assert.doesNotMatch(words, /February 2023|permanently banned|0[.]3[.]7/i, page + ' tells the old story');
+    // ONE sentence may say it (the user: 'u can only keep the one'): the catch's first item.
+    assert.equal((words.match(/memory/gi) || []).length, page === 'index.html' ? 1 : 0, page + ' talks about memory');
+  }
   assert.match(text, /two small spots of your screen/);
   assert.match(text, /Valve has not approved it/);
   assert.doesNotMatch(text, /Valve (approved|allows|permits) (it|this)/i);
@@ -1228,7 +1236,7 @@ ok('the landing page keeps the promises the project made about how it talks', ()
   // 40,000 accounts for software that read the client, and wrote that any
   // application reading the client can get an account permanently banned.
   // The user asked for the claim to be confirmed; it could not be.
-  for (const [name, body] of [['the landing page', text], ['the README', fs.readFileSync('README.md', 'utf8')]]) {
+  for (const [name, body] of [['the README', fs.readFileSync('README.md', 'utf8')]]) {
     assert.doesNotMatch(body, /Valve has never (said|answered)/i, name + ' says Valve has never said');
     assert.doesNotMatch(body, /no documented (ban|case)/i, name + ' says no ban is documented');
     assert.match(body, /February 2023/, name + ' does not mention the 2023 bans');
