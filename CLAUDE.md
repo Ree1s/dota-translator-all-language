@@ -1241,11 +1241,17 @@ think about certificate"):**
     from gcr.io, which no longer serves it. v2.4.4 (ghcr.io) works.
 - Dependabot's other first PRs are major bumps of the pinned actions
   (#2, #4, #5, #6). None merged; none urgent.
-- For the USER to do, because they are account settings: turn on two-factor
-  authentication on GitHub if it is not on (a stolen account is how this
-  project would ship malware), and enable "Private vulnerability
-  reporting" (repo Settings > Code security) - SECURITY.md links to it and
-  the link is dead until then.
+- For the USER to do, because they are account settings:
+  - DONE 2026-09-21: "Private vulnerability reporting" is on (CHECKED: the
+    public API answers `"enabled": true`, and SECURITY.md's link opens).
+  - WAITING: the `VT_API_KEY` repo secret. The user has a VirusTotal key
+    and pasted it into the chat; it was NOT used, stored or committed -
+    secrets go in through GitHub's own page, by them (Settings > Secrets
+    and variables > Actions > New repository secret, name `VT_API_KEY`).
+    Whether it is there cannot be seen from outside; the next release's
+    notes will carry a VirusTotal link if it is.
+  - NOT KNOWN: whether two-factor authentication is on for the account (a
+    stolen account is how this project would ship malware).
 - **The trap, a SEVENTH time, and a new test for it:** a word-boundary
   escape in a regex on download.html, written through a quoted heredoc
   into a template literal, landed as a BACKSPACE character (twice), and the
