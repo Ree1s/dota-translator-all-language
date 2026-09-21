@@ -1297,6 +1297,24 @@ await okAsync('a repeat costs no call, and a failure is not remembered', async (
   assert.equal(calls, 3);
 });
 
+await okAsync('what was said once is said the same way after a restart, and the file can be corrected by hand', async () => {
+  let disk = null, calls = 0;
+  const store = { read: () => { if (!disk) throw new Error('no file'); return JSON.parse(disk); }, write: (all) => { disk = JSON.stringify(all); } };
+  const answers = ['хорошая игра', 'найс плей'];               // the model, asked twice, says two things
+  const ask = async () => JSON.stringify({ out: answers[calls++] });
+  assert.equal((await createOutgoing({ apiKey: 'k', ask, store })('nice play', 'Russian')).out, 'хорошая игра');
+  // A new translator is a restart: same line, no call.
+  const again = await createOutgoing({ apiKey: 'k', ask, store })('Nice play', 'Russian');
+  assert.deepEqual(again, { out: 'хорошая игра', language: 'Russian', cached: true });
+  assert.equal(calls, 1);
+  // The player's own correction wins, and is still one line.
+  disk = JSON.stringify({ 'Russian|nice play': 'красиво\nсыграл', junk: 5 });
+  assert.equal((await createOutgoing({ apiKey: 'k', ask, store })('nice play', 'Russian')).out, 'красиво сыграл');
+  // A file that is not JSON is not a reason to say nothing.
+  const broken = { read: () => JSON.parse('{nope'), write: () => { throw new Error('read-only'); } };
+  assert.equal((await createOutgoing({ apiKey: 'k', ask, store: broken })('gg', 'Russian')).out, 'найс плей');
+});
+
 const { sayTranslated, createKeySender } = await import('./src/sendchat.js');
 
 // A clipboard, and keys that "copy" what is in the chat field onto it.

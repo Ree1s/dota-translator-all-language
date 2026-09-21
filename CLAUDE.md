@@ -403,7 +403,17 @@ still v0.2.14.
   says top/mid/bot are places; after: "иду топ, помогите". Nobody who
   speaks Russian has read these. "play safe" comes out oddly ("играйте
   сейвовенько").
-- A repeat is answered from a cache (200 lines, per language): no call.
+- **"Is it always the same translation?" (the user). It was not, and
+  temperature cannot make it so.** MEASURED at temperature 0, three fresh
+  calls each: "nice play" -> "хорошая игра" | "хорошо сыграно" | "найс
+  плей"; "dont feed, play safe" three ways; "come help me top" two. All
+  fine Russian, none the same. So the first answer is REMEMBERED ON DISK:
+  `said.json` beside the settings (DATA_DIR; gitignored), 500 lines,
+  `"Russian|nice play": "..."`. The same English is the same line from
+  then on, a repeat costs no call, and the player (or a Russian-speaking
+  friend) can correct a line in the file by hand - it is read at startup
+  and made one line before it is ever pasted. Temperature stays 0 anyway.
+- A repeat is answered from that cache: no call.
   A new line is ONE call, two tries at most, made directly - NOT through
   the pipeline's 15-a-minute governor, which keeps one call back but does
   not know about these. In a loud minute an outgoing line can be the call
@@ -1303,7 +1313,7 @@ npm start        # the overlay (Electron)
 npm run watch    # the same chain in a terminal - use this first
 npm run demo     # drives the chain from a fake source, no Dota needed
 npm run doctor   # no-key diagnostic
-npm test         # 112 tests, plain node assert, no runner
+npm test         # 113 tests, plain node assert, no runner
 ```
 
 Keep `npm test` green. It needs no game running and no API key.

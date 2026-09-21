@@ -186,6 +186,10 @@ Plain `Enter` still sends exactly what you typed.
   top", not for a call in the middle of a fight.
 - Each new line is one call on the same free 15 a minute as the incoming
   chat. A line you have said before costs nothing.
+- **The same English is always the same line.** A model asked twice answers
+  two ways, so the first answer is kept, in `said.json` beside your
+  settings. It is plain text: if somebody who speaks the language tells you
+  a line is off, correct it there.
 - With the chat CLOSED the key finds nothing to copy and says nothing -
   but the game does see a `Ctrl+A` and a `Ctrl+C`, whatever you have
   bound to those.

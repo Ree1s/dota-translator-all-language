@@ -7,7 +7,7 @@ import { app, BrowserWindow, screen, ipcMain, globalShortcut, safeStorage, shell
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { loadConfig, saveConfig, onDisk, CONFIG_PATH } from './config.js';
+import { loadConfig, saveConfig, onDisk, CONFIG_PATH, DATA_DIR } from './config.js';
 import { faces } from './heroface.js';
 import { createPatchWatch, SLOW_TEXT } from './patchwatch.js';
 import { uiSettings, settingsPatch, LANGUAGES } from './settings.js';
@@ -263,7 +263,13 @@ async function start() {
 // "send" in half the programs on a PC, and a global shortcut swallows the
 // key from whatever has the keyboard.
 const spoken = createLanguageTracker();
-const sayIt = createOutgoing({ apiKey: () => cfg.geminiApiKey, model: cfg.model });
+// What has been said before is said the same way again: said.json, beside
+// the settings, English -> what was sent. The player can read and correct it.
+const SAID_PATH = path.join(DATA_DIR, 'said.json');
+const sayIt = createOutgoing({
+  apiKey: () => cfg.geminiApiKey, model: cfg.model,
+  store: { read: () => JSON.parse(fs.readFileSync(SAID_PATH, 'utf8')), write: (all) => fs.writeFileSync(SAID_PATH, JSON.stringify(all, null, 2)) },
+});
 const keys = createKeySender();
 let sayKeyOn = false;
 let saying = false;

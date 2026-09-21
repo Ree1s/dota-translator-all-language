@@ -82,7 +82,11 @@ export function buildOutRequest(text, language) {
     systemInstruction: { parts: [{ text: outSystem(language) }] },
     contents: [{ role: 'user', parts: [{ text: JSON.stringify({ text: tidySay(text) }) }] }],
     generationConfig: {
-      temperature: 0.2,
+      // 0, not the 0.2 the incoming chat uses: the same English should come
+      // out as the same line tomorrow (the user asked). SEEN at 0.2: "play
+      // safe" three different ways in three runs. Not a guarantee - a model
+      // is not a dictionary - but as near to one as it offers.
+      temperature: 0,
       maxOutputTokens: 256,
       responseMimeType: 'application/json',
       responseSchema: { type: 'OBJECT', properties: { out: { type: 'STRING' } }, required: ['out'] },
@@ -103,9 +107,26 @@ export function outFrom(replyText) {
  * One translator for the app's lifetime: it keeps what it has already
  * translated ("go rosh", "buy wards" - a player says the same twenty
  * things), so a repeat costs no call and no second.
+ *
+ * And it keeps them ON DISK (`store`), because that is the only thing that
+ * makes the same English come out as the same line tomorrow (the user
+ * asked whether it always would). MEASURED at temperature 0, three fresh
+ * calls each: "nice play" -> "хорошая игра" | "хорошо сыграно" | "найс
+ * плей"; "play safe" three ways too. All fine, none the same: the model
+ * cannot be made to repeat itself, so the first answer is remembered. It
+ * is a plain JSON file the player can read and correct.
  */
-export function createOutgoing({ apiKey, model, ask = askGeminiHedged, cacheSize = 200 } = {}) {
+export function createOutgoing({ apiKey, model, ask = askGeminiHedged, cacheSize = 500, store = null } = {}) {
   const cache = new Map();
+  if (store) {
+    try {
+      const was = store.read();
+      if (was && typeof was === 'object' && !Array.isArray(was)) {
+        for (const [k, v] of Object.entries(was)) if (typeof v === 'string' && v.trim()) cache.set(k, v.replace(/\s+/g, ' ').trim().slice(0, 400));
+      }
+    } catch { /* no file yet, or not JSON: start afresh */ }
+  }
+  const keep = () => { if (store) { try { store.write(Object.fromEntries(cache)); } catch { /* a read-only disk costs the memory, not the line */ } } };
   return async function say(text, language) {
     const clean = tidySay(text);
     if (!clean) throw new Error('nothing to translate');
@@ -117,6 +138,7 @@ export function createOutgoing({ apiKey, model, ask = askGeminiHedged, cacheSize
     if (!out) throw new Error('the model gave no translation');
     cache.set(key, out);
     if (cache.size > cacheSize) cache.delete(cache.keys().next().value);
+    keep();
     return { out, language, cached: false };
   };
 }
