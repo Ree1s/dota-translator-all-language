@@ -1258,6 +1258,39 @@ think about certificate"):**
     the report for the latest release before quoting a number anywhere. (A
     report page is a web component tree: `get_page_text` returns nothing,
     walk the shadow roots.)
+    **THE VERDICT, read a few hours later (v0.3.1): 6 of 67 flag it - and
+    the six are TWO.** Arcabit, BitDefender, Emsisoft, GData and VIPRE all
+    say `CMD:Heur.BZC.PZQ.Boxter.441.BC0915DB` - they all run BitDefender's
+    engine, so that is ONE detection shown five times - and CTX says
+    `Exe.unknown.boxter`. "Boxter" is BitDefender's HEURISTIC family for
+    PowerShell command lines: a guess from behaviour, not a signature. And
+    the behaviour is real: the app starts `powershell.exe -ExecutionPolicy
+    Bypass -File ...` for scripts that compile C# at run time, P/Invoke
+    `OpenProcess`/`ReadProcessMemory` on another process (`memscan.ps1`) and
+    send keys with `keybd_event` (`sendchat.ps1`). That is what this app IS,
+    and it is also the shape of PowerShell malware. CLEAN: Microsoft,
+    Kaspersky, ESET, Malwarebytes, Sophos, Symantec, CrowdStrike, Google,
+    Avast/AVG, McAfee, TrendMicro and ~50 more; 7 could not process the
+    file or timed out. No earlier release was ever uploaded, so whether
+    `sendchat.ps1` (v0.3.0) made it worse than `memscan.ps1` alone is NOT
+    known.
+    - The page USED to say false alarms come "from small engines; the big
+      names are what to look at". BitDefender is a big name, so that was
+      no longer honest: the page now names who found nothing, names
+      BitDefender's heuristic, says why it fires, and warns that those
+      products may block the app. No number is quoted as a verdict.
+    - **A practical consequence, NOT seen:** a player running BitDefender,
+      GData, Emsisoft or VIPRE may have the installer quarantined, or the
+      helper blocked at run time - and then the app reads no chat and says
+      nothing useful about why.
+    - What would help, NOT done: report the false positive to BitDefender
+      (their form wants the submitter's own details - the user's to send:
+      bitdefender.com/consumer/support/answer/29358). What would remove the
+      trigger rather than argue with it: ship the two helpers as one small
+      compiled .exe instead of PowerShell + `Add-Type`. That trades this
+      heuristic for whatever an unsigned exe that reads another process
+      draws, and it is a real piece of work; a signing certificate would
+      help more with both.
   - NOT KNOWN: whether two-factor authentication is on for the account (a
     stolen account is how this project would ship malware).
 - **The trap, a SEVENTH time, and a new test for it:** a word-boundary
@@ -1701,6 +1734,11 @@ you the first two are open questions, and they are not.
     all (not verifiable from here), and that Valve is fine with them (taking
     card payments shows a lawful business, not Valve's approval). The
     public wording stays as corrected above. Still NAME NO OTHER PRODUCT.
+  - **DECIDED (the user, 2026-09-21): do NOT ask Valve.** "I would rather not
+    poke valve - I might want to build another product around it, but the
+    translator will remain free for everyone who wants to risk." So: no
+    issue on Valve's tracker, no support ticket, and do not suggest it
+    again. The drafts below were never posted.
   - A reviewer on Reddit suggested asking Valve. Drafts were written for
     the user (a new issue on ValveSoftware/Dota2-Gameplay asking for chat
     in GSI, and a Steam Support ticket); nothing was posted by me, and the
