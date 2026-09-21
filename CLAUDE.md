@@ -336,14 +336,17 @@ of three lines (team, all, team) shows every strip on its row.
   seen; the electron window is 1333x453 over the middle of the game and
   click-through, which has not been played with.
 
-## SAYING SOMETHING BACK (v0.3.0, 2026-09-21): ON BRANCH `say-back`, NOT RELEASED
+## SAYING SOMETHING BACK (v0.3.0, 2026-09-21): RELEASED
 
 Asked for by the first strangers who saw the app (a Reddit thread:
 "no point in receiving messages in English if he says he doesnt
-understand me"). The user: "hold on before pushing this to production -
-another branch. I will test later". **So: do not merge to master, tag or
-release it until the user has tried it in a game and said so.** master is
-still v0.2.14.
+understand me"). Built on a branch (`say-back`) because the user wanted to
+try it in a game before it reached anybody; they played with it that
+morning, found four faults (all below, all fixed), said "I think it works
+as it should", and it was merged and tagged v0.3.0 the same day.
+**Installed copies get it by themselves, with the key ON: every player
+who updates now has an app that can press keys in their game when they
+press Ctrl+Enter.** That is said in the README and in the page's catch.
 
 - **What it is:** the player types English into the game's OWN chat field
   and presses `Ctrl+Enter` (`sayHotkey`) instead of Enter. The app presses
