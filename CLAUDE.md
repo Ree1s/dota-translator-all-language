@@ -1206,16 +1206,38 @@ to allow one; do NOT put the link or the name in a public comment for them).
 - **The same wall stops the app's KEYS** (Windows will not deliver input
   from a normal program to an elevated window), so `Ctrl+Enter` would copy
   nothing and say nothing there. And it stops `tools/saychat.ps1`.
-- **THE 1080p CHECK ITSELF WAS NOT DONE.** What WAS seen before the wall:
-  the user's Dota in a 1920x1080 window at (1600,180) on the 5120x1440
-  desktop, minimap on the RIGHT (the flipped HUD - also never checked).
-  Two things that setup would have tested and still has not: the layout
-  numbers at 1080p, and whether the overlay follows a game window that is
-  not at the screen's top-left - the game reports its chat position in its
-  OWN pixels, and the overlay is placed in SCREEN pixels, so a windowed
-  game, or a borderless one rendering below the desktop's resolution, may
-  put the English in the wrong place. SUSPECTED from how the position is
-  read; not seen. To do it: Steam started normally, then the same steps.
+- **THE 1080p CHECK, DONE (the same evening, once Steam was restarted
+  normally) - and it found the bug that was suspected.** Bot match, the
+  game in a 1920x1080 WINDOW at (1600,180) on the 5120x1440 desktop, the
+  minimap on the RIGHT (flipped HUD). The game reported scale 1.0 and rows
+  25 high (34 / 1.33), the chat found in 9.3s.
+  - **SEEN, FIRST RUN: the English was drawn OUTSIDE the game**, on the
+    desktop to its left - at screen (598,580), which is exactly where it
+    belongs counted from the corner of the GAME'S picture. The game says
+    where its chat is in its own pixels; the overlay was placed as if they
+    were the screen's. They are the same only when the game covers the
+    screen from its top-left corner, which was all that had ever been run.
+    The user saw it too: "the translation was on the left, outside the dota
+    screen".
+  - **FIXED (v0.3.3), in the helper:** `DotaMem.SetOrigin` asks Windows
+    where the game window's client area begins (`ClientToScreen`, with the
+    helper made DPI-aware first so the answer is in real pixels like the
+    game's), once a second, adds it to the layout's x and y, and marks the
+    layout dirty when the window moves so a dragged window is followed.
+    SEEN AFTER: our line inside the game, portrait / `[Allies]` / name at
+    the same left edge as the game's own copy of the line beneath it, same
+    text size, 166px above it (162 units + the 4 gap at scale 1). So the
+    layout numbers DO hold at 1920x1080 and with the HUD flipped. The line
+    was read in 0.2s; the English took 4s that time (the model).
+  - Also seen there: the user's own "hello" + Ctrl+Enter went out as
+    "привет" in that window, so the keys work windowed at 1080p.
+  - STILL NOT SEEN: a dragged window being followed (built, not tried);
+    Windows display scaling other than 100%; 16:10 and 4:3; and a
+    BORDERLESS game rendering BELOW the desktop's resolution, where the
+    game's pixels are not the screen's pixels at all and adding an origin
+    is not enough - the position would need scaling too. Suspected, not
+    seen. The dark `box` look, which has no layout from the game, is still
+    placed against the SCREEN, not the game's window.
 
 ## Trust in the exe: what was looked at (2026-09-21)
 

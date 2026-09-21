@@ -106,6 +106,29 @@ public static class DotaMem {
   /// chat: they alt-tabbed and the English stayed up, drawn over their
   /// browser. The overlay cannot ask this itself - Electron knows only
   /// its own windows - and it is never in front, being unfocusable.
+  [StructLayout(LayoutKind.Sequential)] struct PT { public int X, Y; }
+  [DllImport("user32.dll")] static extern bool ClientToScreen(IntPtr hwnd, ref PT p);
+  [DllImport("user32.dll")] static extern bool SetProcessDPIAware();
+
+  /// Where the game's picture begins ON THE SCREEN. The game says where its
+  /// chat is in ITS OWN pixels, counted from the corner of its own picture;
+  /// the overlay is a window on the screen. They are the same numbers only
+  /// when the game covers the screen from its top-left corner - which is all
+  /// that had ever been tried. SEEN 2026-09-21, the first time the game ran
+  /// in a window (1920x1080 at 1600,180 on a 5120x1440 desktop): the English
+  /// was drawn at 598,580 - right for the game, 1600 to the left of it and
+  /// 180 above. Asked in real pixels, because the game speaks in those.
+  static int OriginX = 0, OriginY = 0;
+  static bool DpiSet = false;
+  public static void SetOrigin(IntPtr hwnd) {
+    if (hwnd == IntPtr.Zero) return;
+    if (!DpiSet) { DpiSet = true; try { SetProcessDPIAware(); } catch { } }
+    var p = new PT();
+    if (!ClientToScreen(hwnd, ref p)) return;
+    // A window that has moved is a chat that has moved: say so again.
+    if (p.X != OriginX || p.Y != OriginY) { OriginX = p.X; OriginY = p.Y; LayoutDirty = 3; }
+  }
+
   public static bool InFront(int pid) {
     int owner; GetWindowThreadProcessId(GetForegroundWindow(), out owner);
     return owner == pid;
@@ -714,7 +737,7 @@ public static class DotaMem {
             if (Rd(h, hud + UI_POS, f, 8) && Rd(h, hud + UI_SCALE, sc, 4)) {
               var inv = System.Globalization.CultureInfo.InvariantCulture;
               var sb = new StringBuilder("{\"t\":\"layout\",\"x\":");
-              sb.Append(BitConverter.ToSingle(f, 0).ToString("0.##", inv)).Append(",\"y\":").Append(BitConverter.ToSingle(f, 4).ToString("0.##", inv))
+              sb.Append((BitConverter.ToSingle(f, 0) + OriginX).ToString("0.##", inv)).Append(",\"y\":").Append((BitConverter.ToSingle(f, 4) + OriginY).ToString("0.##", inv))
                 .Append(",\"s\":").Append(BitConverter.ToSingle(sc, 0).ToString("0.###", inv)).Append(",\"rows\":[");
               // Newest first, and only as many as the game ever shows.
               for (int k = count - 1, n = 0; k >= 0 && n < LAYOUT_ROWS; k--, n++) {
@@ -778,6 +801,7 @@ $lastFull = [DateTime]::MinValue
 $lastPid = 0
 $proc = $null
 $wasFront = $null
+$originAt = [DateTime]::MinValue
 
 # How long to wait before sweeping the whole process AGAIN when the last
 # sweep found no chat at all. There is plenty of time with nothing to
@@ -843,6 +867,12 @@ while ($true) {
   # Said when it changes, and once to begin with.
   $front = [DotaMem]::InFront($proc.Id)
   if ($front -ne $wasFront) { $wasFront = $front; Emit @{ t = 'focus'; on = [int]$front } }
+  # Where the game's window is on the screen, once a second: a window can be
+  # dragged, and a Process object remembers its window until it is asked again.
+  if (((Get-Date) - $originAt).TotalMilliseconds -ge 1000) {
+    $originAt = Get-Date
+    try { $proc.Refresh(); [DotaMem]::SetOrigin($proc.MainWindowHandle) } catch { }
+  }
 
   if ($Panel -gt 0) {
     try {
