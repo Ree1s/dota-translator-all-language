@@ -129,9 +129,29 @@ it changed; a test holds `DEFAULTS.source` to `'memory'`.
   in teal, no portrait, as designed. The tester's English lines arrived in
   the feed and were rightly left alone. That closes the GSI test: own and
   others', both channels, live and replay.
+- **ON DIRE TOO (22:12, match 9010209601, both humans on dire):** a
+  teammate's allies chat is `channel_type` 12 there as well ("го мид"), all
+  chat 11. So 12 = "my team", whichever team.
+- **A DOUBT THIS RAISED, NOT CHECKED:** in that lobby the user was
+  `team_name: dire, player_slot: 2` and the tester `player_id` 1 - NOT 5-9,
+  as in the first live match (dire, slot 4). In a lobby with bots the ids
+  seem to follow join order, not the side. The reader paints a name in
+  `SLOT_COLOURS[player_id]`; if the GAME colours a dire player by their
+  seat (5-9), our colour - and the colour NAME we call a stranger by - is
+  wrong in such lobbies. **CONFIRMED WRONG THERE (the user): the tester,
+  `player_id` 1 on dire, was "rather yellow" in the game's chat; we would
+  have said Teal.** ("Not the brighter yellow that opponents are": so
+  OLIVE, seat 6 - the game colours by SEAT, radiant 0-4 / dire 5-9, and an
+  opponent in seat 3 is the bright Yellow.) In the radiant lobby the same id 1 WAS teal in the
+  game (screenshot). `team_slot` is no help: it read 0 for the user in all
+  three live matches, whatever their `player_slot` (4, 2, 2). So in a
+  bot lobby on dire, player_id -> colour is not known; whether a MATCHMADE
+  game numbers 0-4 / 5-9 (and is then right) is the thing to check in the
+  first real game: screenshot our row beside the game's. Compare a screenshot of our row with the game's
+  own line before trusting the colour names. Matchmade games may well be
+  0-4 / 5-9 and fine: NOT seen either.
 - NOT SEEN: a whole game, the ENEMY team's allies chat NOT arriving (it
-  must not; nothing suggests it does), `channel_type` for a DIRE player's
-  allies chat (12 seen on radiant only), the alt-tab behaviour.
+  must not; nothing suggests it does), the alt-tab behaviour.
 
 What follows is the probe's setup, as written before the result:
 
