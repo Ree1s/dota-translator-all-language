@@ -204,6 +204,22 @@ it changed; a test holds `DEFAULTS.source` to `'memory'`.
   slow, guessy, not built. Neither is a quick win. And all of it waits on
   the numbering question above: a portrait by slot is only as good as the
   slot.
+- **THE USER'S IDEA FOR (a)-(b)'s gap: ONE SCREEN GRAB A GAME** ("since it
+  is only 1 per game"). LOOKED AT in a screenshot already taken (5120x1440,
+  crop x1960-3160, y0-70): the game's TOP BAR shows all ten hero portraits
+  in SEAT order, five a side, each with its seat's COLOUR as a strip above
+  it. So one grab gives seat -> hero AND seat -> colour, with no memory
+  read (Electron's desktopCapturer, or CopyFromScreen, which is known to
+  capture the game). Matching is small: each of ten tiles against the
+  heroes `minimap` has named (or all 143 from `heroface.js`, which already
+  decodes the game's own portraits from disk - the top bar's drawing may
+  be a different crop of them: NOT compared). What it does NOT solve: which
+  SEAT a chat `player_id` is, where those differ (bot lobbies), and names.
+  A second grab would: when a line arrives, the game's own chat row shows
+  that speaker's portrait and coloured name at a known place - match that
+  one tile against the ten and the speaker's hero and colour are known
+  whatever the numbering. NOT built. It is screen capture of the player's
+  own game, which the README would have to say.
 - NOT SEEN: a whole game, the ENEMY team's allies chat NOT arriving (it
   must not; nothing suggests it does), the alt-tab behaviour.
 
