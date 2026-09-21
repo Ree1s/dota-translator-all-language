@@ -12,8 +12,14 @@ use English. That is the whole point of it.
 ## >>> MEMORY READING IS GONE (the user, 2026-09-22: "memory reading will not stay") <<<
 
 READ THIS FIRST; much of what is below it describes the memory reader and is
-HISTORY now. Decided and done, all LOCAL (nothing pushed, no tag; players
-still get v0.3.7, which reads memory, until the next release):
+HISTORY now. **RELEASED AS v0.4.0 (2026-09-22 01:10; the user: "push")** -
+master pushed and tagged together, because the site alone going live beside
+v0.3.7 would have described a download that did not exist. CHECKED: one
+release, three files, the 80.5 MB installer answers 200, latest.yml says
+0.4.0, the live page says "does not read Dota's memory". Installed copies
+update themselves and then need Dota restarted ONCE (the overlay says so):
+NOT seen on an updating copy. The probe cfg is deleted from Dota's folder.
+NOT done before it: the Electron 33 -> 44 bump. What was decided and done:
 
 - `DEFAULTS.source` is `'gsi'`; `main.js` starts the feed reader for anything
   but `'log'` and does not import the memory watcher; `src/memscan.ps1` is
