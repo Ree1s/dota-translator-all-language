@@ -1146,6 +1146,10 @@ ok('the landing page keeps the promises the project made about how it talks', ()
   assert.match(text, /not on an account you would mind losing/i);
   assert.match(text, /unsanctioned third-party tool/);
   assert.match(text, /source-available rather than open source/);
+  // Answering presses keys in the player's game. The page that offers it
+  // says so in the catch, not only in the README.
+  assert.match(text, /it presses keys for you/);
+  assert.match(text, /Nothing is written to the game/);
   for (const claim of [/\bis safe\b/i, /\bcompletely safe\b/i, /\bundetectable\b/i, /\bban-?proof\b/i, /\bVAC[- ]safe\b/i]) {
     assert.doesNotMatch(text, claim, 'the landing page claims ' + claim);
   }

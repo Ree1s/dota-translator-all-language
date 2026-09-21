@@ -487,10 +487,22 @@ still v0.2.14.
   - what Ctrl+A and Ctrl+C do with the chat CLOSED (they reach the game
     as whatever the player has bound);
   - the notes on the overlay; the clipboard being put back.
-- NOT done: the landing page and
-  key guide do not mention it (they are served from master's `docs/`),
-  and the landing page's "read-only" wording will need the same sentence
-  the README got before this is released.
+- **The landing page says it too** (the user, after playing with it: "I
+  think it works as it should. update landing page too"): a section "And
+  now you can answer" (`#back`) between what it does and the three steps -
+  three cards, every translation on them REAL OUTPUT from today - a line
+  in the hero, a bullet in the catch ("it presses keys for you ... input,
+  not memory ... can be switched off"), and a question in the FAQ that
+  asks Russian speakers to report bad lines in an issue. `npm test` holds
+  the page to "it presses keys for you" and "Nothing is written to the
+  game". SEEN: desktop 1280 (a full-page headless Edge render, cropped
+  with System.Drawing - `#hash` URLs rendered BLANK in headless Edge, the
+  bare URL did not) and 375 wide in the browser pane, no sideways scroll.
+  It is on the BRANCH: the live site is master's `docs/`, so it goes live
+  with the merge, not before - which is right, the page must not offer
+  what the download does not have.
+- NOT done: the key guide (`docs/key.html`) and `download.html` do not
+  mention it, and do not need to.
 
 ## REPLACE IN PLACE: asked for as the DEFAULT, not built, one experiment blocked
 
