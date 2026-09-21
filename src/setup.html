@@ -40,6 +40,10 @@
   .mode label { margin: 0; font-weight: 400; font-size: 14px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; cursor: pointer; display: flex; gap: 9px; align-items: flex-start; color: var(--dim); }
   .mode label b { display: block; color: var(--text); font-weight: 600; }
   .mode input { margin-top: 3px; accent-color: var(--accent); }
+  .mode.say { margin-top: 8px; }
+  .sayblock { margin-top: 22px; }
+  .sayblock h3 { font-size: 14px; font-weight: 600; }
+  .sayblock .hint { color: var(--faint); font-size: 12.5px; margin-top: 8px; }
   .mode label:has(input:checked) { border-color: var(--accent); background: rgba(240, 180, 76, 0.06); }
   /* More settings: shut until asked for. The first thing a new player
      sees stays "paste key, press button". */
@@ -86,6 +90,15 @@
   <div class="mode">
     <label><input type="radio" name="display" value="above" checked><span><b>Above Dota's chat</b>Plain text, like the game's own</span></label>
     <label><input type="radio" name="display" value="box"><span><b>In its own box</b>A dark panel in a corner</span></label>
+  </div>
+
+  <div class="sayblock">
+    <h3>Talking back: Ctrl+Enter in Dota's chat sends what you typed...</h3>
+    <div class="mode say">
+      <label><input type="radio" name="sayInto" value="theirs" checked><span><b>...in their language</b>Whatever your teammates type in - Russian, usually</span></label>
+      <label><input type="radio" name="sayInto" value="english"><span><b>...in English</b>You type Russian (or anything), they read English</span></label>
+    </div>
+    <p class="hint">Type in the game's chat as always, then press Ctrl+Enter instead of Enter. Plain Enter still sends it exactly as you typed it.</p>
   </div>
 
   <details class="more" id="more">

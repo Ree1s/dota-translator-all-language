@@ -20,12 +20,15 @@ function fill(s) {
     l.append(box, document.createTextNode(label)); LANGS.appendChild(l);
   }
   for (const id of ['showOriginal', 'showHeroes', 'autoUpdate']) $(id).checked = Boolean(s.settings[id]);
+  const into = document.querySelector(`input[name=sayInto][value="${s.settings.sayInto === 'english' ? 'english' : 'theirs'}"]`);
+  if (into) into.checked = true;
   $('fontSize').value = s.settings.fontSize; $('fontSizeOut').textContent = s.settings.fontSize + 'px';
 }
 const settingsNow = () => ({
   scripts: [...LANGS.querySelectorAll('input:checked')].map((b) => b.value),
   showOriginal: $('showOriginal').checked, showHeroes: $('showHeroes').checked, autoUpdate: $('autoUpdate').checked,
   fontSize: Number($('fontSize').value),
+  sayInto: document.querySelector('input[name=sayInto]:checked').value,
 });
 $('fontSize').addEventListener('input', () => { $('fontSizeOut').textContent = $('fontSize').value + 'px'; });
 $('more').addEventListener('toggle', () => window.setup.fit());

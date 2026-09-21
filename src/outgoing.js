@@ -57,7 +57,10 @@ export function tidySay(text) {
 
 export function outSystem(language) {
   return [
-    `You translate what a Dota 2 player wants to type in the in-game chat from English into ${language}.`,
+    // "from whatever language": the second key sends a line in ENGLISH, for
+    // the player who types Russian (or anything) to English speakers - the
+    // same tool pointed the other way (the user, 2026-09-21).
+    `You translate what a Dota 2 player wants to type in the in-game chat, from whatever language they wrote it in (usually English or Russian, sometimes Russian typed in Latin letters), into ${language}.`,
     'The input is JSON: {"text": "..."}. Answer with JSON: {"out": "..."}.',
     'Rules:',
     `- Write it the way a ${language}-speaking Dota player would actually type it in a match: short, informal, no formal register.`,

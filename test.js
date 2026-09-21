@@ -1035,8 +1035,17 @@ ok('what the settings window sends back is made safe before it is saved', () => 
 
 ok('the window is shown the five settings and never the key', () => {
   const shown = uiSettings({ ...mergeConfig({}), geminiApiKey: 'secret', geminiApiKeyEnc: 'c2VjcmV0' });
-  assert.deepEqual(Object.keys(shown).sort(), ['autoUpdate', 'fontSize', 'scripts', 'showHeroes', 'showOriginal']);
+  assert.deepEqual(Object.keys(shown).sort(), ['autoUpdate', 'fontSize', 'sayInto', 'scripts', 'showHeroes', 'showOriginal']);
   assert.ok(!JSON.stringify(shown).includes('secret'));
+  // Which way Ctrl+Enter translates: two choices, and a language somebody
+  // set by name in config.json is "theirs" and is not flattened by a save.
+  assert.equal(shown.sayInto, 'theirs');
+  assert.equal(uiSettings({ ...mergeConfig({}), replyLanguage: ' english ' }).sayInto, 'english');
+  assert.deepEqual(settingsPatch({ sayInto: 'english' }, { replyLanguage: 'auto' }), { replyLanguage: 'English' });
+  assert.deepEqual(settingsPatch({ sayInto: 'theirs' }, { replyLanguage: 'English' }), { replyLanguage: 'auto' });
+  assert.deepEqual(settingsPatch({ sayInto: 'theirs' }, { replyLanguage: 'Ukrainian' }), {});
+  assert.deepEqual(settingsPatch({ sayInto: 'theirs' }, { replyLanguage: 'auto' }), {});
+  assert.deepEqual(settingsPatch({ sayInto: 'klingon' }, { replyLanguage: 'auto' }), {});
   // Every language it offers is one the reader really knows.
   const { SCRIPTS } = { SCRIPTS: ['cyrillic', 'greek', 'han', 'hangul', 'arabic', 'thai'] };
   assert.deepEqual(LANGUAGES.map(([id]) => id).sort(), [...SCRIPTS].sort());

@@ -177,6 +177,9 @@ Plain `Enter` still sends exactly what you typed.
 - **Nothing is written to the game's memory, for this or for anything.**
   The app opens the game to read it and for nothing else, and `npm test`
   fails if that ever changes.
+- **It goes the other way too.** In the settings window, "Talking back" can
+  be set to *in English*: type Russian (or anything) and your teammates
+  read English. Same key.
 - The language is whatever the others were last seen typing in - the app
   reads their chat, so it knows - and Russian until anybody has typed.
   `replyLanguage` in `config.json` fixes it (`"Ukrainian"`).

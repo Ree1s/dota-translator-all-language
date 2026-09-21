@@ -282,6 +282,12 @@ function setSayHotkey(on) {
   } catch { sayKeyOn = false; /* not a key Electron knows: no hotkey, and nothing else breaks */ }
 }
 
+// One key, and a SETTING for which way it goes (the user: "better with
+// setting, but same hotkeys"): replyLanguage "auto" sends the line in the
+// language the others type in, Russian by default; "English" sends it in
+// English whatever it was typed in - for the player on the other side of
+// the same problem, typing Russian to English speakers. Read at each press,
+// so changing it in the setup window needs no restart.
 async function sayKey() {
   if (saying || !cfg.geminiApiKey) return;
   saying = true;
@@ -448,7 +454,7 @@ ipcMain.handle('setup:guide', () => {
 ipcMain.handle('setup:save', async (_e, payload) => {
   const display = payload && payload.display === 'box' ? 'box' : 'above';
   const typed = tidyKey(payload && payload.key);
-  const patch = settingsPatch(payload && payload.settings);
+  const patch = settingsPatch(payload && payload.settings, cfg);
   // No new key typed and one already saved: only the settings are changing.
   if (!typed && storedKey()) {
     saveConfig({ display, ...patch });

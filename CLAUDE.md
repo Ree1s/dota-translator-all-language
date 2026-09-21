@@ -403,6 +403,26 @@ still v0.2.14.
   says top/mid/bot are places; after: "иду топ, помогите". Nobody who
   speaks Russian has read these. "play safe" comes out oddly ("играйте
   сейвовенько").
+- **THE OTHER WAY TOO, by a SETTING on the same key** (the user: "we should
+  do russian to eng option as well ... better with setting ... but same
+  hotkeys ... in the first window"). A second key (Ctrl+Shift+Enter) was
+  half built and taken out again for that. It is `replyLanguage`, which
+  already existed: `"auto"` = their language (Russian by default),
+  `"English"` = English, whatever was typed - the player on the other side
+  of the same problem. The setup window has it on its FIRST screen, under
+  where the translations go, as two choices (`sayInto` in
+  `src/settings.js`); a language set BY NAME in config.json ("Ukrainian")
+  counts as "theirs" and saving the window does not flatten it. Read at
+  each press: no restart. The prompt now says "from whatever language".
+  REAL OUTPUT into English: "го рошан после драки" -> "rosh after fight";
+  "купите варды пожалуйста" -> "buy wards please"; "иду топ, помогите" ->
+  "going top, help"; "privet vsem, udachi" -> "hello everyone, gl hf" (the
+  "hf" is the model's own); "go mid" unchanged. SEEN: the window's page in
+  the browser pane, as a static snapshot. NOT seen: the real window, nor
+  saving the choice - the user's dev copy was running against Dota, and a
+  second copy would have opened their settings window over the game.
+  NOT done for that player: their INCOMING chat is still translated into
+  English only; a Russian speaker reading English teammates gets nothing.
 - **"Is it always the same translation?" (the user). It was not, and
   temperature cannot make it so.** MEASURED at temperature 0, three fresh
   calls each: "nice play" -> "хорошая игра" | "хорошо сыграно" | "найс
@@ -445,7 +465,7 @@ still v0.2.14.
   - what Ctrl+A and Ctrl+C do with the chat CLOSED (they reach the game
     as whatever the player has bound);
   - the notes on the overlay; the clipboard being put back.
-- NOT done: a setting for it in the setup window; the landing page and
+- NOT done: the landing page and
   key guide do not mention it (they are served from master's `docs/`),
   and the landing page's "read-only" wording will need the same sentence
   the README got before this is released.

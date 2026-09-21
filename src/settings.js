@@ -1,4 +1,4 @@
-// The settings the setup window offers - five of the twenty-five.
+// The settings the setup window offers - six of the twenty-odd.
 //
 // The rest are engine tuning (scan timing, memory windows, the offsets
 // URL, calls a minute) that a player should never need, and a panel of
@@ -20,6 +20,8 @@ export const LANGUAGES = [
   ['thai', 'Thai'],
 ];
 
+const isEnglish = (s) => String(s || '').trim().toLowerCase() === 'english';
+
 /** What the window is shown: only these, never the key. */
 export function uiSettings(cfg) {
   return {
@@ -28,6 +30,8 @@ export function uiSettings(cfg) {
     showHeroes: cfg.showHeroes !== false,
     fontSize: cfg.fontSize,
     autoUpdate: cfg.autoUpdate !== false,
+    // Which way Ctrl+Enter in Dota's chat translates what the player typed.
+    sayInto: isEnglish(cfg.replyLanguage) ? 'english' : 'theirs',
   };
 }
 
@@ -35,7 +39,7 @@ export function uiSettings(cfg) {
  * What the window sent back, as a patch for config.json. Anything missing
  * or wrong is simply not in the patch, so it stays as it was.
  */
-export function settingsPatch(raw) {
+export function settingsPatch(raw, cfg = {}) {
   const patch = {};
   if (!raw || typeof raw !== 'object') return patch;
   if (Array.isArray(raw.scripts)) {
@@ -47,6 +51,11 @@ export function settingsPatch(raw) {
   for (const key of ['showOriginal', 'showHeroes', 'autoUpdate']) {
     if (typeof raw[key] === 'boolean') patch[key] = raw[key];
   }
+  // Two choices in the window, and a third kept out of their way: a language
+  // set BY NAME in config.json ("Ukrainian") is somebody's own choice of
+  // "their language", and saving the window must not flatten it to auto.
+  if (raw.sayInto === 'english') patch.replyLanguage = 'English';
+  else if (raw.sayInto === 'theirs' && isEnglish(cfg.replyLanguage)) patch.replyLanguage = 'auto';
   const size = Number(raw.fontSize);
   if (Number.isFinite(size)) patch.fontSize = Math.min(28, Math.max(11, Math.round(size)));
   return patch;
