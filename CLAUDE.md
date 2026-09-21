@@ -1690,10 +1690,24 @@ you the first two are open questions, and they are not.
     documented, or leaves out February 2023 / "permanently banned" / "makes
     no exception". NOTES-2026-09-20-memory.md's VAC section still has the
     old claim: it is a dated note, left as written, and THIS supersedes it.
-  - **The user accepted the ban risk BEFORE this was known.** They were told
-    on 2026-09-21, the moment it was found. Do not treat the earlier
-    acceptance as covering it until they have said so again.
-  - **A TECHNICAL WORRY THIS RAISES, NOT INVESTIGATED:** how the honeypot
+  - **RE-ACCEPTED, KNOWING THIS (the user, 2026-09-21): "no its fine, let
+    is be as is."** Told of the 2023 bans and of the sweep worry, they chose
+    to ship as it is and NOT to have the panel find reworked. Their
+    reasoning: long-running, openly sold tools that read the game's memory
+    far more heavily have gone years without bans, and a chat translator is
+    a much lighter case. That is their judgement of the risk and it stands;
+    do not re-open it. Two things it does NOT establish, so neither goes on
+    the site or into anything posted: that such tools have had no bans at
+    all (not verifiable from here), and that Valve is fine with them (taking
+    card payments shows a lawful business, not Valve's approval). The
+    public wording stays as corrected above. Still NAME NO OTHER PRODUCT.
+  - A reviewer on Reddit suggested asking Valve. Drafts were written for
+    the user (a new issue on ValveSoftware/Dota2-Gameplay asking for chat
+    in GSI, and a Steam Support ticket); nothing was posted by me, and the
+    user has not said whether they posted either. Valve's contact page
+    lists no e-mail for game teams: Steam Support is the only route given.
+  - **A TECHNICAL WORRY THIS RAISES, NOT INVESTIGATED - and, by the
+    user's decision above, NOT TO BE WORKED ON unless they ask:** how the honeypot
     noticed a read is not public. One known way to notice an OUTSIDE
     process reading is a page that the game itself never touches: read it
     with ReadProcessMemory and it becomes resident, which the game can see.
