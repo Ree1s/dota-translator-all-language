@@ -109,8 +109,20 @@ it changed; a test holds `DEFAULTS.source` to `'memory'`.
   said, right names in the replay, the emoticon dropped. And END TO END
   with the real model (`watch`, source gsi, recorded payloads POSTed at
   it): "проверка zebra" -> "zebra check" in 2s, and the cfg landed in the
-  game's folder. NOT SEEN: Dota itself talking to the app's own port (it
-  needs the restart), the overlay in this mode, a whole game.
+  game's folder.
+- **SEEN OVER THE LIVE GAME (bot match, 21:55, dev copy, `source: gsi`,
+  Dota restarted so it read the app's cfg):** Dota connected to 47854 and
+  to the probe's 47853 at once (`netstat`: two cfgs, two feeds). Five lines
+  typed by `saychat.ps1`: the box came up above the game's chat with the
+  player's portrait, `[Allies]`/`[All]`, name in the slot's colour, italic
+  while waiting, then `english (original)`. Timed by screenshot from the
+  rig's Enter: NOT up at +1.1s, English up at +2.8s ("good game, thanks
+  everyone"). So said -> English is between 1.1 and 2.8s, against ~1.1s
+  for the panel reader; say -> SHOWN was not pinned down (one shot at
+  +2.0s had a line still pending). GSI's own delay is the unknown part.
+  All five lines reached the probe too (28 payloads each).
+- NOT SEEN: a whole game, a teammate's allies line, another player's
+  Cyrillic, the alt-tab behaviour.
 
 What follows is the probe's setup, as written before the result:
 
