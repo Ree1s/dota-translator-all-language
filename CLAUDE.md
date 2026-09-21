@@ -169,6 +169,17 @@ it changed; a test holds `DEFAULTS.source` to `'memory'`.
   first real game: screenshot our row beside the game's. Compare a screenshot of our row with the game's
   own line before trusting the colour names. Matchmade games may well be
   0-4 / 5-9 and fine: NOT seen either.
+- **AND THE PLAYER'S OWN LINE, SAME LOBBY (the user: "I am purple and it
+  shows blue"):** their chat events carried `player_id` 0 while `player`
+  said `player_slot` 2 - and purple IS colour 2. So in that lobby the game
+  colours by `player_slot`, and the chat's `player_id` is a DIFFERENT
+  number (it looks like the order the humans joined: user 0, tester 1).
+  The reader keys its roster by player_slot and looks up by player_id, so
+  the user's own line lost its name and hero too and was called "Blue".
+  Where the two numbers AGREED: the bot game alone (0/0) and the one
+  matchmade game (4/4). So the working theory is "they agree when nobody
+  shares the lobby with bots", i.e. in real games - ONE matchmade sample.
+  Ctrl+Enter in gsi mode WAS seen working in this run ("hi" -> "привет").
 - NOT SEEN: a whole game, the ENEMY team's allies chat NOT arriving (it
   must not; nothing suggests it does), the alt-tab behaviour.
 
