@@ -217,7 +217,7 @@ async function start() {
       if (s && s.kind === 'waiting') patchWatch.reset();
       send('status', s);
     },
-    onPending: (row) => { spoken.saw(row.text); send('pending', withFace(row)); },
+    onPending: (row) => { spoken.saw(row.text); itsMe(row); send('pending', withFace(row)); },
     onLayout,
     onSeen: (s) => { if (cfg.display === 'cover') send('seen', s); },
     // The game's chat is set in Valve's Radiance, which is not on anybody's
@@ -236,7 +236,7 @@ async function start() {
       if (!win || win.isDestroyed() || hidden) return;
       if (on) win.showInactive(); else win.hide();
     },
-    onResult: (row) => { spoken.saw(row.text); send('line', withFace(row)); },
+    onResult: (row) => { spoken.saw(row.text); itsMe(row); send('line', withFace(row)); },
   });
 }
 
@@ -273,6 +273,16 @@ const sayIt = createOutgoing({
 const keys = createKeySender();
 let sayKeyOn = false;
 let saying = false;
+// WHO the player is, learnt from the game: a line that comes back out of
+// the chat with the words the app has just sent for them is THEIR line,
+// and carries their name, colour slot and hero. Known from their first
+// translated message of a match; a new hero next match replaces it.
+let me = null;
+const sentForMe = new Set();
+function itsMe(row) {
+  if (!row || !sentForMe.has(row.text)) return;
+  me = { name: row.name, slot: row.slot, hero: row.hero };
+}
 
 function setSayHotkey(on) {
   if (!cfg.sayHotkey || on === sayKeyOn) return;
@@ -296,9 +306,14 @@ async function sayKey() {
     const r = await sayTranslated({
       keys, clipboard, into, explain: explainModelError,
       // The line comes back out of the chat within a moment: it means what was typed.
-      learned: (out, typed) => { if (watcher && watcher.know) watcher.know(out, typed); },
+      learned: (out, typed) => {
+        if (watcher && watcher.know) watcher.know(out, typed);
+        sentForMe.add(out);
+        if (sentForMe.size > 50) sentForMe.delete(sentForMe.values().next().value);
+      },
+      who: () => me,
       translate: (typed) => sayIt(typed, into),
-      note: (s) => send('status', s),
+      note: (s) => send('status', withFace(s)),
     });
     if (DEBUG) console.log('say', JSON.stringify(r));
   } finally { saying = false; }

@@ -244,7 +244,21 @@ function addNote(s) {
   if (!s.text) return;
   const el = document.createElement('div');
   el.className = 'row note';
-  if (cfg.showHeroes) el.appendChild(face(null));
+  // Drawn as the player's own chat row once the app knows who they are
+  // (their hero, name and colour come from the first of their own lines
+  // it reads back). Until then there is NO empty place kept for a
+  // portrait: every row of the game's starts at the same left edge, and a
+  // row that starts 45px further in reads as out of line (the user: "it
+  // doesn't start from the same line as dota chat").
+  if (s.name) {
+    if (cfg.showHeroes) el.appendChild(face(s.hero, s.face));
+    const bareLook = document.body.classList.contains('bare');
+    const name = span('name', bareLook ? s.name : s.name + ':');
+    const colour = SLOT_COLOURS[s.slot] || '#7fd4ff';
+    name.style.color = bareLook ? colour : readable(colour);
+    el.appendChild(name);
+    if (bareLook) el.appendChild(span('colon', ':'));
+  }
   el.appendChild(span('say', s.text));
   if (s.more) el.appendChild(span('orig', ' ' + s.more));
   noteEl = el;

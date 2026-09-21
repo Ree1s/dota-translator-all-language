@@ -1308,6 +1308,29 @@ longer available to new users".
   `sayTranslated` calls `learned(out, typed)` BEFORE `keys.send()`, and a
   test holds the ORDER. Tested with fakes only; NOT yet seen in the game.
   (The Russian itself was fine: "как часто ты моешься" is how it is asked.)
+- **The row shown while a line is away is the player's OWN chat row**
+  (the user, watching it: "it doesn't start from the same line as dota
+  chat ... maybe it is just me"). It was not just them: every row of the
+  game's starts at one left edge with a portrait, and ours kept an EMPTY
+  place for a portrait it did not have, so its text began ~45px further
+  in. SEEN in a 36-frame recording of their window (`burst.ps1` in the
+  scratchpad: the chat's neighbourhood every 0.8s - the way to "watch the
+  screen"). Now `main.js` learns WHO the player is from the game: a line
+  that comes back out of the chat with the words just sent for them is
+  theirs, and carries their name, colour slot and hero (`itsMe`). From
+  their second translated message of a match the row is portrait + name +
+  text; before that it has no gap and starts at the edge. No tag on it: the
+  app cannot tell which chat they opened. SEEN in headless Edge, both
+  versions, text at x=49 beside a game-style row / at the edge; NOT yet seen
+  over the game. **The same recording SHOWED v0.3.6's fix working**: "how
+  is it going" went out as "как дела" and came back above the chat as "how
+  is it going (как дела)", from the cache.
+- ASKED AND NOT DONE: pulling our lines DOWN so they sit on the game's
+  lowest visible line instead of one chat-height above it (in the
+  recording ours is six rows up with nothing between). It would need the
+  app to know how many of the game's lines are showing, and it would
+  overlap the history whenever the chat is opened - the overlap the user
+  did not like in `cover`. They were told, and did not ask again.
 - Also in v0.3.5: a failed OUTGOING line says "Google's translator is not
   answering right now ... Your line is still in the chat" instead of the
   raw "the model took too long".
@@ -1700,7 +1723,7 @@ npm start        # the overlay (Electron)
 npm run watch    # the same chain in a terminal - use this first
 npm run demo     # drives the chain from a fake source, no Dota needed
 npm run doctor   # no-key diagnostic
-npm test         # 117 tests, plain node assert, no runner
+npm test         # 118 tests, plain node assert, no runner
 ```
 
 Keep `npm test` green. It needs no game running and no API key.

@@ -1477,6 +1477,24 @@ await okAsync('what the line MEANS is handed over BEFORE the keys that say it', 
   assert.equal(typeof r.said, 'boolean');
 });
 
+await okAsync('the row shown while a line is away is the player\'s OWN row once the app knows who they are', async () => {
+  // Every row of the game's starts at one left edge, with a portrait. Ours
+  // kept an empty place for a portrait it did not have, and read as out of
+  // line. With nobody known the note carries no name (the overlay then
+  // starts it at the edge); with somebody known it carries who they are.
+  const run = async (who) => {
+    const board = fakeBoard('mine'); const notes = [];
+    await sayTranslated({ keys: fakeKeys(board, 'gg'), clipboard: board, who, translate: async () => ({ out: 'RU' }), note: (n) => notes.push(n), wait: noWait });
+    return notes[0];
+  };
+  assert.equal('name' in await run(null), false);
+  assert.equal('name' in await run(() => null), false);
+  const known = await run(() => ({ name: 'unc status', slot: 0, hero: 'storm_spirit', extra: 'not passed on' }));
+  assert.deepEqual([known.name, known.slot, known.hero, known.text, 'extra' in known], ['unc status', 0, 'storm_spirit', 'gg', false]);
+  const js = fs.readFileSync(path.join('src', 'overlay.js'), 'utf8');
+  assert.doesNotMatch(js, /row note';\s+if \(cfg\.showHeroes\) el\.appendChild\(face\(null\)\)/, 'the empty portrait is back');
+});
+
 await okAsync('nothing in the chat, or the game not in front: no call, no keys, clipboard as it was', async () => {
   for (const [field, opts] of [['', {}], ['go rosh', { copyOk: false }]]) {
     const board = fakeBoard('mine');

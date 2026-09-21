@@ -69,7 +69,7 @@ export function createKeySender({ spawnImpl = spawn, script = SEND_SCRIPT, timeo
  * copy what is in the chat field -> translate -> put it back and send.
  * The player's clipboard is theirs and is put back whatever happens.
  */
-export async function sayTranslated({ keys, clipboard, translate, into = '', explain = (m) => m, learned = () => {}, note = () => {}, wait = (ms) => new Promise((r) => setTimeout(r, ms)) }) {
+export async function sayTranslated({ keys, clipboard, translate, into = '', explain = (m) => m, learned = () => {}, who = null, note = () => {}, wait = (ms) => new Promise((r) => setTimeout(r, ms)) }) {
   const before = clipboard.readText();
   const restore = () => clipboard.writeText(before);
   // Emptied first: an empty clipboard afterwards means nothing was copied -
@@ -80,7 +80,10 @@ export async function sayTranslated({ keys, clipboard, translate, into = '', exp
   if (!typed) { restore(); return { said: false, why: copied.ok ? 'nothing typed' : copied.why }; }
   const ARROW = String.fromCharCode(0x2192), DOTS = String.fromCharCode(0x2026);
   const gone = () => note({ kind: 'note', text: '' });
-  note({ kind: 'note', text: typed, more: ARROW + ' ' + (into || 'translating') + DOTS, holdMs: 12000 });
+  // `who`: the player's own name, colour and hero, once the app has seen
+  // them - so the row is drawn as THEIR chat row, not as a loose line.
+  const mine = typeof who === 'function' ? who() : who;
+  note({ kind: 'note', text: typed, more: ARROW + ' ' + (into || 'translating') + DOTS, holdMs: 12000, ...(mine && mine.name ? { name: mine.name, slot: mine.slot, hero: mine.hero } : {}) });
   let out;
   try { out = (await translate(typed)).out; } catch (err) {
     restore();
