@@ -266,9 +266,29 @@ it changed; a test holds `DEFAULTS.source` to `'memory'`.
       is left.
     - The game's chat row in a REAL game has a rank/medal icon BEFORE the
       portrait; the portrait is still where it was measured.
-    - A fault in the rig: both chat grabs of a line carried the same
-      millisecond stamp, and showed a LATER line than the event that
-      triggered them. Not looked into.
+    - "A fault in the rig" that was not one: TWO copies of `grabtest.mjs`
+      were running (a `timeout 8` trial run had not died with its timeout),
+      so every grab was taken twice.
+    - **THE WHOLE MATCH, COUNTED (24 minutes, 110 top grabs of which every
+      8th was matched, all chat grabs):**
+      - **Speakers: 3 of 3 right, 16 of 16 grabs** - player_id 4 -> marci,
+        3 -> alchemist, 0 -> meepo, scores 0.89-0.92 with the next best hero
+        at 0.51-0.59, the same at +0.3s and +1.2s. Each is the hero in that
+        SEAT of the top bar: seat = player_id held for all three. A quiet
+        game: five lines in all, none Cyrillic.
+      - **Top bar: 6-9 of 10 sure in any ONE grab, never a WRONG hero above
+        the 0.8 line.** A tile drops below it when its hero is dead (the
+        portrait is greyed with a timer over it), or has something drawn on
+        it; which tiles dip changes from grab to grab, so a vote per seat
+        over a few grabs has all nine, and the feed's hero list gives the
+        tenth (PA's cosmetic portrait never matched: 0.56 every time).
+        After the match ended: 0 of 10, nothing above 0.43 - rightly unsure.
+      - So the design that follows: the CHAT-ROW grab is the strong signal
+        (it names the speaker directly and was never wrong); the top bar is
+        the fallback and the seat -> colour check. NOT built into the app.
+      - NOT seen: an enemy speaker, a wrapped newest line, two lines
+        arriving within a second (the newest row would be the second one's),
+        a 16:9 screen, a speaker whose portrait is a cosmetic one.
 - **"No better option than a screen grab?" (the user). LOOKED, 22:55:
   `console.log` is NOT one.** It does hold exactly what is wanted -
   `[Server] PR:SetSelectedHero 7:[I:0:0] npc_dota_hero_sniper(35)`, player
