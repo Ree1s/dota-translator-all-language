@@ -1239,6 +1239,19 @@ to allow one; do NOT put the link or the name in a public comment for them).
     seen. The dark `box` look, which has no layout from the game, is still
     placed against the SCREEN, not the game's window.
 
+- **v0.3.3's FIRST release run FAILED at `npm run dist`**, fifteen minutes
+  after v0.3.2's had passed, with nothing about the build changed. The
+  same build passed locally, and passed on GitHub when the run was
+  repeated - a download on the runner, most likely (electron-builder
+  fetches Electron and NSIS every time). GitHub's public API gives the
+  failing STEP but not its log. **How to repeat a release run without
+  GitHub's buttons:** delete the tag on the remote and push it again
+  (`git push origin :refs/tags/vX.Y.Z && git push origin vX.Y.Z`); the
+  workflow removes any half-made release under that tag itself. CHECKED
+  after: one release for v0.3.3, three files, `latest.yml` says 0.3.3 (it
+  said 0.3.2 for half a minute - a cache), the notes have the VirusTotal
+  link.
+
 ## Trust in the exe: what was looked at (2026-09-21)
 
 The user: strangers "cant trust me very much and .exe file might seem
