@@ -41,7 +41,11 @@ export const DEFAULTS = {
   // cannot name other players or say where the game's chat is (so: the
   // box). NEW 2026-09-21 and not the default until it has been through
   // whole games. 'log' reads console.log, which carries no chat.
-  source: 'memory',
+  // 'gsi': chat from Dota's own Game State Integration feed. The app does
+  // NOT read the game's memory (the user, 2026-09-22: "memory reading will
+  // not stay"); a config.json that still says "memory" gets gsi too, and
+  // the old reader is not in the installer. 'log' is the console.log reader.
+  source: 'gsi',
   gsiPort: 47854,           // where Dota sends its feed on this PC (source 'gsi')
   gsiRowGrab: true,         // source 'gsi': name a speaker's hero from a small screen grab of the game's chat row
   // MEASURED on a live match: a poll of the allocations known to hold

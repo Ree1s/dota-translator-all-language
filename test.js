@@ -1097,12 +1097,6 @@ ok('what the settings window sends back is made safe before it is saved', () => 
   // No language ticked would be an app that translates nothing and does
   // not say why: that one choice is not saved.
   assert.equal('scripts' in settingsPatch({ scripts: [] }), false);
-  // The reader: only ever memory <-> gsi, only when it CHANGES, and 'log' is left alone.
-  assert.equal(settingsPatch({ noMemory: true }, { source: 'memory' }).source, 'gsi');
-  assert.equal(settingsPatch({ noMemory: false }, { source: 'gsi' }).source, 'memory');
-  assert.equal('source' in settingsPatch({ noMemory: false }, { source: 'log' }), false);
-  assert.equal('source' in settingsPatch({ noMemory: true }, { source: 'gsi' }), false);
-  assert.equal(uiSettings({ source: 'gsi' }).noMemory, true);
   assert.equal('scripts' in settingsPatch({ scripts: ['klingon'] }), false);
   assert.equal(settingsPatch({ fontSize: 400 }).fontSize, 28);
   assert.equal(settingsPatch({ fontSize: 1 }).fontSize, 11);
@@ -1113,7 +1107,7 @@ ok('what the settings window sends back is made safe before it is saved', () => 
 
 ok('the window is shown the five settings and never the key', () => {
   const shown = uiSettings({ ...mergeConfig({}), geminiApiKey: 'secret', geminiApiKeyEnc: 'c2VjcmV0' });
-  assert.deepEqual(Object.keys(shown).sort(), ['autoUpdate', 'fontSize', 'noMemory', 'sayInto', 'scripts', 'showHeroes', 'showOriginal']);
+  assert.deepEqual(Object.keys(shown).sort(), ['autoUpdate', 'fontSize', 'sayInto', 'scripts', 'showHeroes', 'showOriginal']);
   assert.ok(!JSON.stringify(shown).includes('secret'));
   // Which way Ctrl+Enter translates: two choices, and a language somebody
   // set by name in config.json is "theirs" and is not flattened by a save.
@@ -1669,7 +1663,7 @@ ok('keys are sent from ONE place, only with the game in front, and nothing anywh
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
-  ok('gsi: a newly written cfg tells the player to restart Dota; the memory reader is still the default', () => {
+  ok('gsi: a newly written cfg tells the player to restart Dota; the feed is the default reader', () => {
     const status = [];
     let port = 0;
     const w = startWatchingGsi({ ...DEFAULTS, geminiApiKey: 'x' }, { onStatus: (s) => status.push(s.text) }, {
@@ -1679,7 +1673,10 @@ ok('keys are sent from ONE place, only with the game in front, and nothing anywh
     w.stop();
     assert.equal(port, 47854);
     assert.match(status.join('|'), /Restart Dota once/);
-    assert.equal(DEFAULTS.source, 'memory');
+    assert.equal(DEFAULTS.source, 'gsi');
+    // And the app cannot start the memory reader at all, whatever config.json says.
+    assert.doesNotMatch(fs.readFileSync(path.join('src', 'main.js'), 'utf8'), /startWatchingMemory|startMemorySource|memscan/);
+    assert.ok(JSON.parse(fs.readFileSync('package.json', 'utf8')).build.files.includes('!src/memscan.ps1'));
   });
 }
 

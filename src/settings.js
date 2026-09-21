@@ -30,8 +30,6 @@ export function uiSettings(cfg) {
     showHeroes: cfg.showHeroes !== false,
     fontSize: cfg.fontSize,
     autoUpdate: cfg.autoUpdate !== false,
-    // Chat from Dota's own feed (GSI) instead of from the game's memory.
-    noMemory: cfg.source === 'gsi',
     // Which way Ctrl+Enter in Dota's chat translates what the player typed.
     sayInto: isEnglish(cfg.replyLanguage) ? 'english' : 'theirs',
   };
@@ -53,8 +51,6 @@ export function settingsPatch(raw, cfg = {}) {
   for (const key of ['showOriginal', 'showHeroes', 'autoUpdate']) {
     if (typeof raw[key] === 'boolean') patch[key] = raw[key];
   }
-  // Only ever between these two: 'log' in somebody's config.json is theirs.
-  if (typeof raw.noMemory === 'boolean' && (raw.noMemory ? cfg.source !== 'gsi' : cfg.source === 'gsi')) patch.source = raw.noMemory ? 'gsi' : 'memory';
   // Two choices in the window, and a third kept out of their way: a language
   // set BY NAME in config.json ("Ukrainian") is somebody's own choice of
   // "their language", and saving the window must not flatten it to auto.

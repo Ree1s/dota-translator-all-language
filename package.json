@@ -31,6 +31,7 @@
       "!src/demo.js",
       "!src/doctor.js",
       "!src/watch.js",
+      "!src/memscan.ps1",
       "docs/key.html",
       "docs/logo-64.webp",
       "docs/favicon.ico"

@@ -14,7 +14,7 @@ import { uiSettings, settingsPatch, LANGUAGES } from './settings.js';
 import { checkKey, tidyKey } from './keycheck.js';
 import updater from 'electron-updater';
 import { startWatching } from './watcher.js';
-import { startWatchingMemory, explainModelError } from './memwatcher.js';
+import { explainModelError } from './memwatcher.js';
 import { startWatchingGsi } from './gsiwatcher.js';
 import { loadOffsets, bundledOffsets } from './offsets.js';
 import { createOutgoing, createLanguageTracker, targetLanguage } from './outgoing.js';
@@ -209,7 +209,8 @@ async function start() {
   }
   // 'memory' reads the running game, which is the only place the chat
   // actually is; 'log' is the old console.log reader, kept as a fallback.
-  const start = cfg.source === 'log' ? startWatching : cfg.source === 'gsi' ? startWatchingGsi : startWatchingMemory;
+  // Never the memory reader: see DEFAULTS.source.
+  const start = cfg.source === 'log' ? startWatching : startWatchingGsi;
   watcher = start(cfg, {
     onStatus: (s) => {
       // The one thing about how the app is getting on that IS the player's
