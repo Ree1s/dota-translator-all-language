@@ -69,7 +69,7 @@ export function createKeySender({ spawnImpl = spawn, script = SEND_SCRIPT, timeo
  * copy what is in the chat field -> translate -> put it back and send.
  * The player's clipboard is theirs and is put back whatever happens.
  */
-export async function sayTranslated({ keys, clipboard, translate, note = () => {}, wait = (ms) => new Promise((r) => setTimeout(r, ms)) }) {
+export async function sayTranslated({ keys, clipboard, translate, into = '', note = () => {}, wait = (ms) => new Promise((r) => setTimeout(r, ms)) }) {
   const before = clipboard.readText();
   const restore = () => clipboard.writeText(before);
   // Emptied first: an empty clipboard afterwards means nothing was copied -
@@ -78,10 +78,13 @@ export async function sayTranslated({ keys, clipboard, translate, note = () => {
   const copied = await keys.copy();
   const typed = copied.ok ? String(clipboard.readText() || '').trim() : '';
   if (!typed) { restore(); return { said: false, why: copied.ok ? 'nothing typed' : copied.why }; }
-  note({ kind: 'note', text: 'Translating: ' + typed });
+  const ARROW = String.fromCharCode(0x2192), DOTS = String.fromCharCode(0x2026);
+  const gone = () => note({ kind: 'note', text: '' });
+  note({ kind: 'note', text: typed, more: ARROW + ' ' + (into || 'translating') + DOTS, holdMs: 12000 });
   let out;
   try { out = (await translate(typed)).out; } catch (err) {
     restore();
+    gone();
     const why = String((err && err.message) || err);
     note({ kind: 'error', text: 'Not translated (' + why + ') - your line is still in the chat, Enter sends it as it is.' });
     return { said: false, why };
@@ -90,9 +93,10 @@ export async function sayTranslated({ keys, clipboard, translate, note = () => {
   const sent = await keys.send();
   if (!sent.ok) {
     // Left on the clipboard on purpose: the player can still paste it.
-    note({ kind: 'note', text: 'Copied: ' + out + '  -  Ctrl+V pastes it' });
+    note({ kind: 'note', text: out, more: '- copied: Ctrl+V pastes it' });
     return { said: false, why: sent.why, out };
   }
+  gone();
   // The game reads the clipboard when it is given Ctrl+V, not after.
   await wait(400);
   if (clipboard.readText() === out) restore();

@@ -1345,7 +1345,9 @@ await okAsync('what is typed in the chat is taken, translated, said - and the cl
   assert.equal(keys.said, 'RU:go rosh');
   assert.deepEqual(keys.log, ['copy', 'send']);
   assert.equal(board.text, 'something of the player\'s own');
-  assert.equal(notes[0].kind, 'note');
+  // Shown as the player's own line while it is away, and taken down when it is said.
+  assert.deepEqual([notes[0].kind, notes[0].text], ['note', 'go rosh']);
+  assert.deepEqual(notes.at(-1), { kind: 'note', text: '' });
 });
 
 await okAsync('nothing in the chat, or the game not in front: no call, no keys, clipboard as it was', async () => {
@@ -1377,7 +1379,8 @@ await okAsync('a translation that fails sends NOTHING and says so; keys that fai
   r = await sayTranslated({ keys, clipboard: board, translate: async () => ({ out: 'RU' }), note: (n) => notes.push(n), wait: noWait });
   assert.equal(r.said, false);
   assert.equal(board.text, 'RU');                    // on purpose: Ctrl+V still works
-  assert.match(notes.at(-1).text, /Ctrl\+V/);
+  assert.equal(notes.at(-1).text, 'RU');
+  assert.match(notes.at(-1).more, /Ctrl\+V/);
 });
 
 await okAsync('the key helper is asked one word at a time and its answers are read by the line', async () => {

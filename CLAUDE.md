@@ -403,6 +403,18 @@ still v0.2.14.
   says top/mid/bot are places; after: "иду топ, помогите". Nobody who
   speaks Russian has read these. "play safe" comes out oddly ("играйте
   сейвовенько").
+- **The note while a line is away** (the user: the "Translating.." label
+  was "misplaced randomly sometimes", "maybe the same color as text"). It
+  WAS a small green line at the box's left edge - under the portraits'
+  column, not where text starts - and stayed 8s whatever happened. Now it
+  is a chat row: the player's own words, the chat's cream, italic and
+  dimmed as a pending line is, starting where every row's text starts,
+  followed by "-> Russian..." (the language it is going into). Only ever
+  one; taken down the moment the line is said (an empty note clears it),
+  because the game's own chat then shows the line. SEEN: in headless Edge
+  with a stand-in for the preload bridge (a generated page that loads
+  `src/overlay.js` and calls the handlers - the quick way to look at the
+  overlay with no game), lined up under two chat rows. NOT seen over Dota.
 - **THE OTHER WAY TOO, by a SETTING on the same key** (the user: "we should
   do russian to eng option as well ... better with setting ... but same
   hotkeys ... in the first window"). A second key (Ctrl+Shift+Enter) was

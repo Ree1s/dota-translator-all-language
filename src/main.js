@@ -292,9 +292,10 @@ async function sayKey() {
   if (saying || !cfg.geminiApiKey) return;
   saying = true;
   try {
+    const into = targetLanguage(cfg.replyLanguage, spoken);
     const r = await sayTranslated({
-      keys, clipboard,
-      translate: (typed) => sayIt(typed, targetLanguage(cfg.replyLanguage, spoken)),
+      keys, clipboard, into,
+      translate: (typed) => sayIt(typed, into),
       note: (s) => send('status', s),
     });
     if (DEBUG) console.log('say', JSON.stringify(r));

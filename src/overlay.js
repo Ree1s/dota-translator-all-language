@@ -228,16 +228,40 @@ function addLine(row) {
   fade(el, withGame() ? Math.max(LATE_MIN_MS, el._born + GAME_LINE_MS - Date.now()) : cfg.holdSeconds * 1000);
 }
 
+// The player's OWN line, while it is being translated (Ctrl+Enter in the
+// game's chat): drawn as a chat row is - same type, same colour, starting
+// where the text of every other row starts - dimmed and italic as a
+// pending line is, with what is happening to it after it. There is only
+// ever ONE, a new one replaces it, and an empty one takes it away: when
+// the line has been said the game's own chat shows it, and a note that
+// lingers beside that is clutter. (It was a small green line at the
+// box's left edge, under the portraits' column, and it stayed 8 seconds
+// whatever happened - the user: "misplaced randomly sometimes", "maybe
+// the same color as text".)
+let noteEl = null;
+function addNote(s) {
+  if (noteEl) { clearTimeout(noteEl._fade); noteEl.remove(); noteEl = null; }
+  if (!s.text) return;
+  const el = document.createElement('div');
+  el.className = 'row note';
+  if (cfg.showHeroes) el.appendChild(face(null));
+  el.appendChild(span('say', s.text));
+  if (s.more) el.appendChild(span('orig', ' ' + s.more));
+  noteEl = el;
+  box.appendChild(el);
+  trim();
+  fade(el, s.holdMs || 8000);
+}
+
 function addStatus(s) {
   // Only when something is WRONG and the player can do something about
   // it. "Finding the chat in memory..." over the main menu told the user
   // nothing they wanted to know: how the app is getting on is for
   // `npm run watch` and DT_DEBUG, not for the screen they are playing on.
-  // And one thing the player ASKED for: what they wanted to say is on the
-  // clipboard (kind 'note').
-  if ((s.kind !== 'error' && s.kind !== 'note') || !s.text) return;
+  if (s.kind === 'note') { addNote(s); return; }
+  if (s.kind !== 'error' || !s.text) return;
   const el = document.createElement('div');
-  el.className = 'status' + (s.kind === 'note' ? ' note' : '');
+  el.className = 'status';
   el.textContent = s.text;
   box.appendChild(el);
   trim();
