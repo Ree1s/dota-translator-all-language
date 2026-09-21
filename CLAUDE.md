@@ -492,7 +492,8 @@ press Ctrl+Enter.** That is said in the README and in the page's catch.
   - the notes on the overlay; the clipboard being put back.
 - **The landing page says it too** (the user, after playing with it: "I
   think it works as it should. update landing page too"): a section "And
-  now you can answer" (`#back`) between what it does and the three steps -
+  now you can answer" (`#back`) straight after the hero, before the numbers
+  (the user moved it there from between what it does and the three steps) -
   three cards, every translation on them REAL OUTPUT from today - a line
   in the hero, a bullet in the catch ("it presses keys for you ... input,
   not memory ... can be switched off"), and a question in the FAQ that
