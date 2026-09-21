@@ -409,7 +409,20 @@ still v0.2.14.
   not know about these. In a loud minute an outgoing line can be the call
   that gets "quota exceeded" (then nothing is sent, and the overlay says
   so). Not seen; if it is, route it through the pipeline's budget.
-- **NOT SEEN, ANY OF IT, IN THE GAME - the user tests this themselves:**
+- **FIRST TRY IN THE GAME (the user, 2026-09-21): IT WORKED** - "hello",
+  typed in Dota's chat and sent with Ctrl+Enter, was said in Russian. So
+  Dota's chat field DOES do Ctrl+A, Ctrl+C and Ctrl+V, and Ctrl+Enter
+  reached the app. It came out as "Здарова" (which the user read as
+  "Едарова" and asked whether it was standard): right, natural, and
+  unreadable to the person it was said for. The prompt now keeps everyday
+  words plain and only GAME terms slang, with the example in it - without
+  the example "hello" got WORSE ("ку"). After: "hello" -> "привет", "hi
+  guys, good luck" -> "привет всем, удачи", "sorry my bad" -> "сорян моя
+  вина" (still slang; left). The user also did not understand the flow
+  from its description ("how do I switch to russian again?") - whatever
+  explains this to players must say: type, then Ctrl+Enter INSTEAD of
+  Enter, and nothing else.
+- **NOT SEEN BY ME, and partly answered by the above - the user tests this themselves:**
   - **that Dota's chat field does Ctrl+A and Ctrl+C at all.** Only PASTE
     is known to work (`saychat.ps1`). If select-all does not, Ctrl+V
     appends the Russian to the English; if copy does not, the key does

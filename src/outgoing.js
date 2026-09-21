@@ -61,7 +61,12 @@ export function outSystem(language) {
     'The input is JSON: {"text": "..."}. Answer with JSON: {"out": "..."}.',
     'Rules:',
     `- Write it the way a ${language}-speaking Dota player would actually type it in a match: short, informal, no formal register.`,
-    `- Use the Dota slang that players of that language really use. Hero, item and ability names as those players write them; leave a name in Latin letters when they would.`,
+    // REAL OUTPUT before this rule: "hello" -> "Здарова", "play safe" ->
+    // "играйте сейвовенько". Right, and natural - and the player, who cannot
+    // read it, wondered what had been said in their name (the user, first
+    // try in a game). Game terms stay slang; everything else stays plain.
+    '- Everyday words stay plain and common: the ordinary informal word, not heavy slang, abbreviations, diminutives or jokes (in Russian, "hello" is "привет" - not "ку", not "здарова"). The player cannot read what you write and must be able to trust it.',
+    `- Game terms are different: use the Dota slang that players of that language really use. Hero, item and ability names as those players write them; leave a name in Latin letters when they would.`,
     // REAL OUTPUT before this rule: "i'm going top" -> "иду хард" (the hard
     // lane), which is the wrong lane for half the players who type it.
     '- top, mid and bot are places on the map: say exactly that lane. Never turn one into "safe lane", "off lane" or "hard lane".',
