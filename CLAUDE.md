@@ -220,6 +220,15 @@ it changed; a test holds `DEFAULTS.source` to `'memory'`.
   one tile against the ten and the speaker's hero and colour are known
   whatever the numbering. NOT built. It is screen capture of the player's
   own game, which the README would have to say.
+- **"No better option than a screen grab?" (the user). LOOKED, 22:55:
+  `console.log` is NOT one.** It does hold exactly what is wanted -
+  `[Server] PR:SetSelectedHero 7:[I:0:0] npc_dota_hero_sniper(35)`, player
+  id, steam id, hero - but every `PR:` line is `[Server]`: they are written
+  only when the game HOSTS the match itself (the solo bot game, 21:54). The
+  two lobby games on Valve's servers (22:05, 22:12) logged not one `PR:`
+  line, no hero and no other player's name. So for a real game the log has
+  nothing, as the old notes said of chat. Nothing else without memory is
+  known: the feed (player view), the log, the public APIs are all checked.
 - NOT SEEN: a whole game, the ENEMY team's allies chat NOT arriving (it
   must not; nothing suggests it does), the alt-tab behaviour.
 
