@@ -220,6 +220,31 @@ it changed; a test holds `DEFAULTS.source` to `'memory'`.
   one tile against the ten and the speaker's hero and colour are known
   whatever the numbering. NOT built. It is screen capture of the player's
   own game, which the README would have to say.
+- **THE SCREEN-GRAB TEST RIG (built 23:10; the user: "test script ok"):**
+  `tools/grabtest.mjs` (run DURING a game, beside `gsiprobe.mjs`: grabs the
+  top bar every 30s and the game's chat window 0.3s and 1.2s after the feed
+  reports a line, into `grabs/`, gitignored; `tools/grab.ps1` does the
+  capture) and `tools/grabmatch.mjs` (AFTERWARDS: seat -> hero per top
+  grab, and per chat line the hero beside the game's newest row, hence the
+  speaker's seat and colour; `tools/grabmatch.ps1` compares 16x9 thumbnails
+  by zero-mean normalised correlation against ALL 143 of the game's own
+  portraits from `heroface.js`).
+  - **MEASURED on tonight's screenshots, before any game:** top bar 10 of
+    10 right against all 143 heroes, scores 0.87-0.97, the best WRONG hero
+    0.51-0.77; the chat-row portrait 2 of 2 (0.90, 0.93; next best 0.66).
+    The same picture shrunk to 1080p size (tiles 60x35, chat portrait
+    40x24 - the user: "normal player has 1920 x 1080"): 10 of 10 and the
+    chat tile again, scores within 0.02. A grab of the BROWSER (the user
+    had alt-tabbed) scored 0.29-0.55 everywhere: below the 0.8 line, so it
+    says "not sure" rather than naming a hero. The app must still only grab
+    with Dota in front.
+  - Geometry, in 1080-high units from the screen's centre line, ONE screen:
+    top-bar tile 60 x 34.5, pitch 62.25, radiant's first at -416.25, dire's
+    first at +107.25, 4.5 down; the newest chat row's portrait 39.75 x 24
+    at -362.25, 735.75 down. A real 16:9 screen, a flipped HUD, a HUD-scale
+    setting, a wrapped newest line, the pick screen: NOT seen.
+  - The PowerShell case trap bit again: `$refs` IS the `$Refs` parameter.
+  - NOT DONE: the test in a real game - that is what it is for.
 - **"No better option than a screen grab?" (the user). LOOKED, 22:55:
   `console.log` is NOT one.** It does hold exactly what is wanted -
   `[Server] PR:SetSelectedHero 7:[I:0:0] npc_dota_hero_sniper(35)`, player
