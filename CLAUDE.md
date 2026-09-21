@@ -1282,6 +1282,26 @@ longer available to new users".
   $2.50 per million is ~$0.00017 a line, ~2-3 cents for a loud game. The
   trap: a prepaid project with no credit FAILS rather than falling back to
   free.
+- **"Is the free model made slower on purpose, and do paid users get
+  priority?" (the user). Google's docs, read 2026-09-21, do NOT say either.**
+  The rate-limits page and the troubleshooting page say nothing about free
+  requests being lower priority, best-effort or first to get a 503; 503 is
+  just "retry with backoff". What the docs DO describe is tiers of
+  "criticality" you choose per request: Standard ("standard criticality",
+  the default), **Priority** ("highest criticality", "strictly
+  non-sheddable", overflow is downgraded to Standard instead of failing
+  with 503/429; 75-100% dearer; ONLY for paid Tier 2 and Tier 3 accounts;
+  rate limit 0.3x standard), Flex and Batch (sheddable, half price, minutes
+  to a day - useless for chat). Moving from Free to Tier 1 is "set up
+  billing" and is "typically instant". So: that paying Standard traffic is
+  served ahead of free traffic is what everybody assumes and what would
+  make sense, and it is NOT documented - it would have to be MEASURED, a
+  paid key beside a free one during a bad spell (`sample.mjs` in the
+  scratchpad was the free half: eight lines, 4.5s apart, 10s timeout).
+  Priority is out of reach for a single player (Tier 2 needs real spend)
+  and is exactly what a hosted key serving many players could buy.
+- v0.3.4 CHECKED: release run passed first time, one release,
+  `latest.yml` says 0.3.4, the installer answers 200.
 - **An idea the user floated and half dismissed, NOT decided: one paid key
   of theirs behind a small subscription, instead of every player getting
   their own.** What was said about it: the money works (a typical player is
