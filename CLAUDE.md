@@ -121,8 +121,17 @@ it changed; a test holds `DEFAULTS.source` to `'memory'`.
   for the panel reader; say -> SHOWN was not pinned down (one shot at
   +2.0s had a line still pending). GSI's own delay is the unknown part.
   All five lines reached the probe too (28 payloads each).
-- NOT SEEN: a whole game, a teammate's allies line, another player's
-  Cyrillic, the alt-tab behaviour.
+- **A TEAMMATE'S LINES, SEEN 22:05 (a second human in the user's lobby,
+  match 9010203548, the user radiant slot 2, the tester slot 1):** allies
+  chat from ANOTHER player arrives, `channel_type` 12, Cyrillic intact
+  ("го рошан", "всем привет"), and their all chat as 11. On the overlay:
+  `[All] Teal: hello everyone all (всем привет all)` - named by slot colour,
+  in teal, no portrait, as designed. The tester's English lines arrived in
+  the feed and were rightly left alone. That closes the GSI test: own and
+  others', both channels, live and replay.
+- NOT SEEN: a whole game, the ENEMY team's allies chat NOT arriving (it
+  must not; nothing suggests it does), `channel_type` for a DIRE player's
+  allies chat (12 seen on radiant only), the alt-tab behaviour.
 
 What follows is the probe's setup, as written before the result:
 
