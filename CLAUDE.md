@@ -298,6 +298,17 @@ when the dev copy started with a key saved (seen in the log, 22:35).
   the user: "it only missed for the first one, the others were correct".
   NOT caught in a screenshot (the user alt-tabs between lines). A WRONG
   TURN, reverted before commit: colouring by player_slot (2) there.
+- **A BUG IN IT, found by the user on 0.5.1 (bot game, Muerta): shown as
+  Vengeful Spirit, blue, for the whole game.** The row grab was not sure of
+  Muerta, so the TOP-BAR fallback looked at seat 0 - the feed's number for
+  the user in that lobby - which held a BOT (Vengeful Spirit), wrote that
+  down as seat 0's hero, and with a hero known the seat was never looked at
+  again: the re-seating could not happen. FIXED (v0.5.2): a top-bar hero is
+  `tentative`; a seat with a tentative hero is still grabbed on every line;
+  a sure ROW answer overrules it (and re-seats as before); a top answer
+  never overrules anything. Tested; NOT seen in a game. Why the row was not
+  sure of Muerta is NOT known (her portrait? the user alt-tabbed?) - the
+  installed app has no log; the dev copy with DT_DEBUG prints every grab.
 
 - **A WHOLE MATCHMADE GAME IN GSI MODE (9010363907, 2026-09-22 00:24-00:40,
   the user Furion, dire seat 5, dev copy; a recorder shot the chat area at

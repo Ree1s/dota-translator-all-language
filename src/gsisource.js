@@ -158,7 +158,14 @@ export function createGsiChat({ scripts = ['cyrillic'], onMessage = () => {}, on
       }
       return;
     }
-    roster.set(slot, { ...roster.get(slot), hero: found.hero });
+    // The top bar's answer is TENTATIVE: in a lobby with bots it looks at
+    // the seat the feed's number names, which may be a bot's (SEEN
+    // 2026-09-22: the user, Muerta, called Vengeful Spirit - the bot in seat
+    // 0 - and then never looked at again). A later chat-row answer overrules
+    // it; a top answer never overrules anything.
+    const had = roster.get(slot) || {};
+    if (found.from === 'top' && had.hero) return;
+    roster.set(slot, { ...had, hero: found.hero, tentative: found.from === 'top' });
   };
 
   return {
@@ -184,7 +191,7 @@ export function createGsiChat({ scripts = ['cyrillic'], onMessage = () => {}, on
         // U+E0B8 as a whole message); a line of nothing else is not a line.
         const text = c.text.replace(EMOTICONS, '').trim();
         // Any line is a chance to learn its speaker's hero, English too.
-        const grab = identify && (fresh === 1 || learning.has(c.slot)) && !(roster.get(c.slot) || {}).hero && !seatOf.has(c.slot) ? learn(c.slot, matchid) : null;
+        const grab = identify && (fresh === 1 || learning.has(c.slot)) && (!(roster.get(c.slot) || {}).hero || (roster.get(c.slot) || {}).tentative) && !seatOf.has(c.slot) ? learn(c.slot, matchid) : null;
         if (!text) continue;
         let channel = CHANNEL_TYPES[c.channelType];
         if (!channel) {

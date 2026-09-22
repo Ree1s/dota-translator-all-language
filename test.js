@@ -1815,6 +1815,30 @@ ok('keys are sent from ONE place, only with the game in front, and nothing anywh
     assert.deepEqual(top, [0, 0, 0]);
   });
 
+  await okAsync('gsi row grab: the top bar\'s answer is tentative - a bot lobby names a bot for the player\'s number, and the row overrules it later', async () => {
+    const said = [];
+    // The feed says the player (seat 2, marci) is player 0; seat 0 is a bot, vengefulspirit.
+    let answer = { hero: 'vengefulspirit', score: 0.9, from: 'top' };
+    const chat = createGsiChat({ onMessage: (m) => said.push(m), identify: async () => answer });
+    chat.payload(body([]));
+    chat.payload(body([ev(1, 0, RU + '1')])); await chat.idle();
+    assert.equal(said[0].hero, 'vengefulspirit');                   // wrong, as it was
+    answer = { hero: 'marci', score: 0.9 };                          // the row sees the player's own hero
+    chat.payload(body([ev(2, 0, RU + '2'), ev(1, 0, RU + '1')])); await chat.idle();
+    chat.payload(body([ev(3, 0, RU + '3'), ev(2, 0, RU + '2')])); await chat.idle();
+    assert.deepEqual(said.map((m) => [m.slot, m.name]), [[0, 'Blue'], [0, 'Blue'], [2, 'me']]);
+    assert.equal(said[2].hero, 'marci');
+    // And a top answer never overrules a hero the row has named.
+    const two = [];
+    answer = { hero: 'luna', score: 0.9 };
+    const c2 = createGsiChat({ onMessage: (m) => two.push(m.hero), identify: async () => answer });
+    c2.payload(body([]));
+    c2.payload(body([ev(1, 7, RU)])); await c2.idle();
+    answer = { hero: 'axe', score: 0.9, from: 'top' };
+    c2.payload(body([ev(2, 7, RU + RU), ev(1, 7, RU)])); await c2.idle();
+    assert.deepEqual(two, ['luna', 'luna']);
+  });
+
   await okAsync('gsi row grab: the helper is asked a line at a time, only a sure answer counts, it never opens the game nor presses a key', async () => {
     const child = new EventEmitter();
     const wrote = [];
