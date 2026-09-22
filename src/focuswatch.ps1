@@ -68,6 +68,7 @@ $lastOwner = -1
 $on = -1
 $hotkeyArmed = $false
 $hotkeySent = $false
+$hotkeyShifted = $false
 while ($true) {
   if (($null -ne $parent) -and $parent.HasExited) { exit 0 }
   $owner = [FrontWindow]::OwnerPid()
@@ -94,7 +95,9 @@ while ($true) {
     if ($down -and -not $hotkeyArmed) {
       $hotkeyArmed = $true
       $hotkeySent = $false
+      $hotkeyShifted = [FrontWindow]::KeyDown(0x10)
     }
+    if ($down -and [FrontWindow]::KeyDown(0x10)) { $hotkeyShifted = $true }
     if ($down -and $hotkeyArmed -and -not $hotkeySent) {
       $digit = ''
       for ($vk = 0x31; $vk -le 0x39; $vk++) {
@@ -109,11 +112,13 @@ while ($true) {
     }
     if (-not $down -and $hotkeyArmed) {
       if (-not $hotkeySent) {
-        [Console]::Out.WriteLine('{"t":"hotkey","key":"Control+Enter"}')
+        $key = if ($hotkeyShifted) { 'Control+Shift+Enter' } else { 'Control+Enter' }
+        [Console]::Out.WriteLine('{"t":"hotkey","key":"' + $key + '"}')
         [Console]::Out.Flush()
       }
       $hotkeyArmed = $false
       $hotkeySent = $false
+      $hotkeyShifted = $false
     }
     $c = [FrontWindow]::Client()
     $due = ([DateTime]::UtcNow - $clientAt).TotalSeconds -ge 5
@@ -124,6 +129,6 @@ while ($true) {
       [Console]::Out.WriteLine('{"t":"window","x":' + $n[0] + ',"y":' + $n[1] + ',"w":' + $n[2] + ',"h":' + $n[3] + '}')
       [Console]::Out.Flush()
     }
-  } else { $lastClient = ''; $hotkeyArmed = $false; $hotkeySent = $false }
+  } else { $lastClient = ''; $hotkeyArmed = $false; $hotkeySent = $false; $hotkeyShifted = $false }
   Start-Sleep -Milliseconds $IntervalMs
 }
