@@ -180,8 +180,6 @@ Plain `Enter` still sends exactly what you typed.
   `replyLanguage` in `config.json` fixes it (`"Ukrainian"`).
 - If the translation fails, NOTHING is sent: your line is still in the
   chat, and the overlay says why. Your clipboard is put back afterwards.
-- The model needs most of a second: it is for "buy wards" and "I'm going
-  top", not for a call in the middle of a fight.
 - Each new line is one call on the same free 15 a minute as the incoming
   chat. A line you have said before costs nothing.
 - **The same English is always the same line.** A model asked twice answers
