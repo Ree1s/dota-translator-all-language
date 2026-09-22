@@ -2005,8 +2005,50 @@ ok('gsi mode reads no memory: nothing of it opens the game, reads it, or starts 
   ok('hosted: the app only uses it with no key of the player\'s own, it is off until there is an address, and the server is not in this repository', () => {
     assert.ok(!fs.existsSync('server'), 'the server is a PRIVATE repository: it must not be in this one');
     const main = fs.readFileSync(path.join('src', 'main.js'), 'utf8');
-    assert.match(main, /\.\.\.\(hostedOn\(\) \? \{ translate/);       // the server whenever there is one, key or no key
+    assert.match(main, /hostedOn\(\) && languageCode\(cfg\.targetLanguage \|\| 'English'\) === 'en'/); // hosted protocol is English-only in the multilingual fork
     assert.equal(DEFAULTS.hostedUrl, 'https://translate.dotatranslator.live');
+  });
+}
+
+
+console.log('multilingual Dota');
+
+{
+  const { detectLanguage, shouldTranslate, dotaPromptNotes } = await import('./src/languages.js');
+
+  ok('multilingual detector covers Chinese, CIS and major SEA Dota languages', () => {
+    assert.equal(detectLanguage('先打肉山，拿盾').code, 'zh');
+    assert.equal(detectLanguage('го рошан потом мид').code, 'ru');
+    assert.equal(detectLanguage('йдемо рошана, потім мід').code, 'uk');
+    assert.equal(detectLanguage('go rosh then mid').code, 'en');
+    assert.equal(detectLanguage('ไปโรชานก่อน').code, 'th');
+    assert.equal(detectLanguage('đi roshan trước rồi mid').code, 'vi');
+    assert.equal(detectLanguage('ayo rosh dulu bang').code, 'id');
+    assert.equal(detectLanguage('jom rosh dulu').code, 'ms');
+    assert.equal(detectLanguage('tara rosh muna tayo').code, 'fil');
+    assert.equal(detectLanguage('ရိုရှန် သွားမယ်').code, 'my');
+    assert.equal(detectLanguage('ទៅ rosh មុន').code, 'km');
+    assert.equal(detectLanguage('ໄປ rosh ກ່ອນ').code, 'lo');
+  });
+
+  ok('incoming translation follows the player display language', () => {
+    assert.equal(shouldTranslate('go rosh', { targetLanguage: 'Chinese' }), true);
+    assert.equal(shouldTranslate('го рошан', { targetLanguage: 'Chinese' }), true);
+    assert.equal(shouldTranslate('先打肉山', { targetLanguage: 'Chinese' }), false);
+    assert.equal(shouldTranslate('go rosh', { targetLanguage: 'English' }), false);
+    assert.equal(shouldTranslate('ayo rosh dulu bang', { targetLanguage: 'English' }), true);
+  });
+
+  ok('Chinese and SEA prompts preserve real Dota vocabulary', () => {
+    assert.match(dotaPromptNotes('Chinese'), /肉山/);
+    assert.match(dotaPromptNotes('Chinese'), /买活/);
+    assert.match(dotaPromptNotes('Thai'), /code-switched/);
+    assert.match(buildRequest([{ name: 'x', text: 'go rosh' }], { targetLanguage: 'Chinese' }).systemInstruction.parts[0].text, /into Chinese/);
+  });
+
+  ok('the settings accept multilingual display targets without weakening old settings', () => {
+    assert.deepEqual(settingsPatch({ targetLanguage: 'zh', sourceLanguages: ['auto'] }), { targetLanguage: 'Chinese', sourceLanguages: ['auto'] });
+    assert.deepEqual(settingsPatch({ targetLanguage: 'klingon' }), {});
   });
 }
 

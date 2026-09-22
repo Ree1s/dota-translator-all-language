@@ -28,6 +28,7 @@ export function startWatching(cfg, { onResult, onStatus = () => {}, translate } 
   const doTranslate = translate || ((batch) => translateBatch(batch, {
     apiKey: cfg.geminiApiKey,
     model: cfg.model,
+    targetLanguage: cfg.targetLanguage || 'English',
   }));
 
   const pipe = createPipeline({
@@ -40,12 +41,12 @@ export function startWatching(cfg, { onResult, onStatus = () => {}, translate } 
   const learnPath = path.join(DATA_DIR, 'learn.log');
   const tail = new LogTail(file);
   tail.onLine = (line) => {
-    const msg = chatToTranslate(line, cfg.scripts);
+    const msg = chatToTranslate(line, { targetLanguage: cfg.targetLanguage || 'English', sourceLanguages: cfg.sourceLanguages || ['auto'] });
     if (msg) { pipe.push(msg); return; }
     // A line carrying a script we cannot read that the parser did NOT
     // take as chat is the one thing worth recording: it means the chat
     // format differs from what parseChatLine expects.
-    if (cfg.learn && !parseChatLine(line) && needsTranslation(line, cfg.scripts)) {
+    if (cfg.learn && !parseChatLine(line) && needsTranslation(line, { targetLanguage: cfg.targetLanguage || 'English', sourceLanguages: cfg.sourceLanguages || ['auto'] })) {
       try { fs.appendFileSync(learnPath, line + '\n'); } catch { /* best effort */ }
     }
   };

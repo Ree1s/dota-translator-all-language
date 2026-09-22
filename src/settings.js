@@ -1,16 +1,10 @@
-// The settings the setup window offers - six of the twenty-odd.
+// Settings exposed in the setup window.
 //
-// The rest are engine tuning (scan timing, memory windows, the offsets
-// URL, calls a minute) that a player should never need, and a panel of
-// all of them would make the app look harder than it is. They stay in
-// config.json, the window says so, and a button opens the folder.
-//
-// Whatever arrives from the window is made safe HERE before it is saved:
-// the page is ours, but a settings file is no place for "whatever came".
+// The old script checkbox API is kept for compatibility with upstream
+// configs/tests. The multilingual fork adds a separate target-language list.
 
-import { SCRIPTS } from './chatlog.js';
+import { SUPPORTED_LANGUAGES, SCRIPTS, languageCode } from './languages.js';
 
-// In the order the window lists them. Russian first: it is what this is for.
 export const LANGUAGES = [
   ['cyrillic', 'Russian'],
   ['han', 'Chinese'],
@@ -20,9 +14,11 @@ export const LANGUAGES = [
   ['thai', 'Thai'],
 ];
 
-const isEnglish = (s) => String(s || '').trim().toLowerCase() === 'english';
+export const TARGET_LANGUAGES = SUPPORTED_LANGUAGES.map((x) => [x.code, x.label]);
 
-/** What the window is shown: only these, never the key. */
+const isEnglish = (s) => ['english', 'en'].includes(String(s || '').trim().toLowerCase());
+
+/** What the legacy settings surface sees: never include the key. */
 export function uiSettings(cfg) {
   return {
     scripts: (cfg.scripts || []).filter((s) => s in SCRIPTS),
@@ -30,32 +26,43 @@ export function uiSettings(cfg) {
     showHeroes: cfg.showHeroes !== false,
     fontSize: cfg.fontSize,
     autoUpdate: cfg.autoUpdate !== false,
-    // Which way Ctrl+Enter in Dota's chat translates what the player typed.
     sayInto: isEnglish(cfg.replyLanguage) ? 'english' : 'theirs',
   };
 }
 
-/**
- * What the window sent back, as a patch for config.json. Anything missing
- * or wrong is simply not in the patch, so it stays as it was.
- */
+/** Validate a settings payload before it reaches config.json. */
 export function settingsPatch(raw, cfg = {}) {
   const patch = {};
   if (!raw || typeof raw !== 'object') return patch;
+
+  // Upstream-compatible script selection.
   if (Array.isArray(raw.scripts)) {
     const known = LANGUAGES.map(([id]) => id).filter((id) => raw.scripts.includes(id));
-    // Nothing ticked would be an app that translates nothing and says
-    // nothing about why. Not saved.
     if (known.length) patch.scripts = known;
   }
+
+  // New multilingual target and optional source filter.
+  if (typeof raw.targetLanguage === 'string') {
+    const code = languageCode(raw.targetLanguage, 'und');
+    const known = SUPPORTED_LANGUAGES.find((x) => x.code === code);
+    if (known) patch.targetLanguage = known.name;
+  }
+  if (Array.isArray(raw.sourceLanguages)) {
+    if (raw.sourceLanguages.includes('auto')) patch.sourceLanguages = ['auto'];
+    else {
+      const knownCodes = new Set(SUPPORTED_LANGUAGES.map((x) => x.code));
+      const selected = [...new Set(raw.sourceLanguages.map((x) => languageCode(x, 'und')).filter((x) => knownCodes.has(x)))];
+      if (selected.length) patch.sourceLanguages = selected;
+    }
+  }
+
   for (const key of ['showOriginal', 'showHeroes', 'autoUpdate']) {
     if (typeof raw[key] === 'boolean') patch[key] = raw[key];
   }
-  // Two choices in the window, and a third kept out of their way: a language
-  // set BY NAME in config.json ("Ukrainian") is somebody's own choice of
-  // "their language", and saving the window must not flatten it to auto.
+
   if (raw.sayInto === 'english') patch.replyLanguage = 'English';
   else if (raw.sayInto === 'theirs' && isEnglish(cfg.replyLanguage)) patch.replyLanguage = 'auto';
+
   const size = Number(raw.fontSize);
   if (Number.isFinite(size)) patch.fontSize = Math.min(28, Math.max(11, Math.round(size)));
   return patch;

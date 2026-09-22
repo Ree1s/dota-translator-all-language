@@ -17,7 +17,7 @@
 // nothing after the source knows the difference.
 
 import http from 'node:http';
-import { needsTranslation } from './chatlog.js';
+import { shouldTranslate } from './languages.js';
 
 export const GSI_PORT = 47854;
 
@@ -116,7 +116,7 @@ export function readGsiPayload(body) {
  * said before the app was looking, and is remembered without being shown -
  * the same priming rule the memory reader follows.
  */
-export function createGsiChat({ scripts = ['cyrillic'], onMessage = () => {}, onUnknownChannel = () => {}, identify = null, onSteamId = () => {} } = {}) {
+export function createGsiChat({ scripts = ['cyrillic'], sourceLanguages = ['auto'], targetLanguage = 'English', onMessage = () => {}, onUnknownChannel = () => {}, identify = null, onSteamId = () => {} } = {}) {
   let steamid = '';
   let seen = new Set();
   let matchid = null;
@@ -199,7 +199,7 @@ export function createGsiChat({ scripts = ['cyrillic'], onMessage = () => {}, on
           if (!unknown.has(c.channelType)) { unknown.add(c.channelType); onUnknownChannel(c.channelType); }
           channel = 'all';
         }
-        if (!needsTranslation(text, scripts)) continue;
+        if (!shouldTranslate(text, { targetLanguage, sourceLanguages })) continue;
         const say = () => {
           const seat = seatOf.has(c.slot) ? seatOf.get(c.slot) : c.slot;
           const who = roster.get(seat) || {};
@@ -220,6 +220,8 @@ export function createGsiChat({ scripts = ['cyrillic'], onMessage = () => {}, on
  */
 export function startGsiSource({
   scripts = ['cyrillic'],
+  sourceLanguages = ['auto'],
+  targetLanguage = 'English',
   port = GSI_PORT,
   quietMs = 15000,
   onMessage = () => {},
@@ -229,7 +231,7 @@ export function startGsiSource({
   identify = null,
   onSteamId = () => {},
 } = {}) {
-  const chat = createGsiChat({ scripts, onMessage, identify, onSteamId, onUnknownChannel: (n) => onUnknownTag('channel_type ' + n) });
+  const chat = createGsiChat({ scripts, sourceLanguages, targetLanguage, onMessage, identify, onSteamId, onUnknownChannel: (n) => onUnknownTag('channel_type ' + n) });
   let hearing = false;
   let quiet = null;
 

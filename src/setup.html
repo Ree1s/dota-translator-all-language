@@ -26,8 +26,9 @@
   .sub { color: var(--dim); margin-top: 12px; }
   label { display: block; margin-top: 24px; font-weight: 600; font-size: 14px; }
   .keyrow { display: flex; gap: 8px; margin-top: 8px; }
-  input[type=password], input[type=text] { flex: 1; min-width: 0; background: var(--panel); color: var(--text); border: 1px solid var(--line-strong); border-radius: 10px; padding: 12px 14px; font-family: var(--mono); font-size: 14px; outline: none; -webkit-user-select: text; user-select: text; }
-  input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(240, 180, 76, 0.2); }
+  input[type=password], input[type=text], select { flex: 1; min-width: 0; background: var(--panel); color: var(--text); border: 1px solid var(--line-strong); border-radius: 10px; padding: 12px 14px; font-family: var(--mono); font-size: 14px; outline: none; -webkit-user-select: text; user-select: text; }
+  select { width: 100%; margin-top: 8px; background: var(--panel); color: var(--text); border: 1px solid var(--line-strong); border-radius: 10px; padding: 11px 12px; font: inherit; }
+  input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(240, 180, 76, 0.2); }
   button { font: inherit; cursor: pointer; border-radius: 10px; border: 1px solid var(--line-strong); background: transparent; color: var(--text); padding: 11px 15px; font-weight: 600; white-space: nowrap; }
   button:hover { border-color: var(--text); }
   button.solid { background: var(--accent); color: var(--accent-ink); border-color: transparent; padding: 13px 20px; font-size: 16px; }
@@ -81,6 +82,18 @@
   <h1>Ready to <span>play</span></h1>
   <p class="sub">Nothing to sign up for and nothing to pay. <b>Restart Dota once</b> after installing - the game picks up its chat feed only when it starts - then play in Borderless Window or Windowed mode (not Exclusive Fullscreen). Translations appear above the game's chat.</p>
 
+  <div class="sayblock">
+    <h3>Translate incoming chat into</h3>
+    <select id="targetLanguage" aria-label="Display language"></select>
+    <p class="hint">Source language is detected automatically, including Chinese, Russian/Ukrainian, English, Japanese, Korean, Thai, Vietnamese, Indonesian, Malay, Filipino/Tagalog, Burmese, Khmer and Lao.</p>
+  </div>
+
+  <div class="sayblock">
+    <h3>Gemini API key</h3>
+    <input id="key" type="password" autocomplete="off" placeholder="Optional for English; required for other display languages">
+    <p class="hint" id="keyState"></p>
+  </div>
+
   <div class="mode">
     <label><input type="radio" name="display" value="above" checked><span><b>Above Dota's chat</b>Plain text, like the game's own</span></label>
     <label><input type="radio" name="display" value="box"><span><b>In its own box</b>A dark panel in a corner</span></label>
@@ -89,19 +102,15 @@
   <div class="sayblock">
     <h3>Your own messages: Ctrl+Enter in Dota's chat translates them</h3>
     <div class="mode say">
-      <label><input type="radio" name="sayInto" value="theirs" checked><span><b>English &rarr; Russian</b>You type English, they read Russian</span></label>
-      <label><input type="radio" name="sayInto" value="english"><span><b>Russian &rarr; English</b>You type Russian, they read English</span></label>
+      <label><input type="radio" name="sayInto" value="theirs" checked><span><b>To teammates' language</b>Auto-detect what your teammates are using</span></label>
+      <label><input type="radio" name="sayInto" value="english"><span><b>To English</b>Always send an English translation</span></label>
     </div>
-    <p class="hint">Type in the game's chat as always, then press Ctrl+Enter instead of Enter. Plain Enter sends it exactly as you typed it. (If your teammates write Chinese, English goes to Chinese.) <span id="sayNow" style="color: var(--good)"></span></p>
+    <p class="hint">Type normally, then press Ctrl+Enter instead of Enter. The translator can follow Russian, Chinese and common SEA languages automatically. Plain Enter sends exactly what you typed. <span id="sayNow" style="color: var(--good)"></span></p>
   </div>
 
   <details class="more" id="more">
     <summary>More settings</summary>
     <div class="body">
-      <div>
-        <h3>Translate these languages</h3>
-        <div class="langs" id="langs"></div>
-      </div>
       <label class="check"><input type="checkbox" id="showOriginal"><span><b>Show what was said, in brackets</b>go mid (&#1080;&#1076;&#1080; &#1084;&#1080;&#1076;) - so a bad translation never hides the original</span></label>
       <label class="check"><input type="checkbox" id="showHeroes"><span><b>Hero portraits before names</b>As Dota's chat has them. Read from your Dota install, or from Valve's image server if not found there</span></label>
       <label class="check"><input type="checkbox" id="autoUpdate"><span><b>Update automatically</b>Checked at startup, installed when you next close the app</span></label>
@@ -121,7 +130,7 @@
     <span class="grow"></span>
     <button id="close" type="button">Close</button>
   </div>
-  <p class="trust">Chat lines that need translating go to this project's translator (translate.dotatranslator.live) and on to Google's Gemini. Nothing that is said is logged there. Lines already in English never leave your PC. The source is public, so anybody can check that.</p>
+  <p class="trust">English display can use the original hosted translator. For Chinese, Russian or other display languages, translations go directly from this app to Google's Gemini using your API key. Source-language detection happens locally first.</p>
   <p class="trust" id="version"><span class="dot" id="dot"></span><span id="updateText"></span> <button class="link" id="checkNow" type="button">Check now</button> <button class="link" id="installNow" type="button" hidden>Quit and install</button></p>
 
   <script src="setup.js"></script>

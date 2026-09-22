@@ -10,23 +10,27 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { SCRIPTS, shouldTranslate } from './languages.js';
 
-// Which scripts count as "not something I can read". Cyrillic is the one
-// that matters here; the others are there so the config can widen it
-// without a code change.
-export const SCRIPTS = {
-  cyrillic: /[\u0400-\u04FF]/,
-  greek: /[\u0370-\u03FF]/,
-  han: /[\u4E00-\u9FFF]/,
-  hangul: /[\uAC00-\uD7AF]/,
-  arabic: /[\u0600-\u06FF]/,
-  thai: /[\u0E00-\u0E7F]/,
-};
+// Backward-compatible wrapper. Old callers pass an array of scripts; the
+// multilingual path passes an options object with a target language.
+export { SCRIPTS };
 
-export function needsTranslation(text, scripts = ['cyrillic']) {
-  return scripts.some((name) => {
-    const re = SCRIPTS[name];
-    return re ? re.test(text) : false;
+export function needsTranslation(text, scriptsOrOptions = ['cyrillic']) {
+  if (Array.isArray(scriptsOrOptions)) {
+    // Old configs keep their exact behaviour unless they opt into "auto".
+    if (!scriptsOrOptions.includes('auto')) {
+      return scriptsOrOptions.some((name) => {
+        const re = SCRIPTS[name];
+        return re ? re.test(String(text || '')) : false;
+      });
+    }
+    return shouldTranslate(text, { targetLanguage: 'English', sourceLanguages: ['auto'] });
+  }
+  const opts = scriptsOrOptions && typeof scriptsOrOptions === 'object' ? scriptsOrOptions : {};
+  return shouldTranslate(text, {
+    targetLanguage: opts.targetLanguage || 'English',
+    sourceLanguages: opts.sourceLanguages || ['auto'],
   });
 }
 
@@ -53,10 +57,10 @@ export function parseChatLine(line) {
 // A chat line worth acting on: one we can read as chat AND cannot read as
 // language. The script test is what makes the parser's guesswork safe -
 // the engine's own output is ASCII, so it can never pass this.
-export function chatToTranslate(line, scripts) {
+export function chatToTranslate(line, scriptsOrOptions) {
   const msg = parseChatLine(line);
   if (!msg) return null;
-  return needsTranslation(msg.text, scripts) ? msg : null;
+  return needsTranslation(msg.text, scriptsOrOptions) ? msg : null;
 }
 
 // Steam's library list, so a Dota on a second drive is still found.

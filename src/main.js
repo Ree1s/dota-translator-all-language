@@ -10,7 +10,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { loadConfig, saveConfig, onDisk, CONFIG_PATH, DATA_DIR } from './config.js';
 import { faces } from './heroface.js';
 import { createPatchWatch, SLOW_TEXT } from './patchwatch.js';
-import { uiSettings, settingsPatch, LANGUAGES } from './settings.js';
+import { uiSettings, settingsPatch, TARGET_LANGUAGES } from './settings.js';
 import { checkKey, tidyKey } from './keycheck.js';
 import updater from 'electron-updater';
 import { startWatching } from './watcher.js';
@@ -21,6 +21,7 @@ import { createOutgoing, createLanguageTracker, targetLanguage } from './outgoin
 import { createKeySender, sayTranslated } from './sendchat.js';
 import { createHosted, hashId } from './hosted.js';
 import crypto from 'node:crypto';
+import { languageCode } from './languages.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 // The first start ever (no settings file yet) shows the window once: it says
@@ -204,7 +205,8 @@ async function start() {
   send('config', { textLeft: TEXT_LEFT });
   if (DEBUG) console.log('offsets', cfg.offsets.source, 'v' + cfg.offsets.version, cfg.offsets.updated);
   cfg.geminiApiKey = storedKey();
-  if (firstRun || (!hostedOn() && !cfg.geminiApiKey)) {
+  const targetNeedsOwnKey = languageCode(cfg.targetLanguage || 'English') !== 'en';
+  if (firstRun || (targetNeedsOwnKey ? !cfg.geminiApiKey : (!hostedOn() && !cfg.geminiApiKey))) {
     // Not an error to be read off an overlay: a window that asks for it.
     openSetup();
     return;
@@ -227,7 +229,7 @@ async function start() {
     onPending: (row) => { spoken.saw(row.text); itsMe(row); send('pending', withFace(row)); },
     onLayout,
     // No key of the player's own: the hosted translator does the asking.
-    ...(hostedOn() ? { translate: (batch) => hosted.translate(batch) } : {}),
+    ...(hostedOn() && languageCode(cfg.targetLanguage || 'English') === 'en' ? { translate: (batch) => hosted.translate(batch) } : {}),
     onSteamId: (steamid) => { playerId = hashId('steam', steamid); },
     // GSI mode only: where the game's window is. The dark box is then placed
     // in IT, not on the screen (a windowed game had the box on the desktop).
@@ -310,7 +312,7 @@ function heartbeat(on) {
   beat.unref?.();
 }
 
-const spoken = createLanguageTracker();
+const spoken = createLanguageTracker({ fallback: cfg.targetLanguage || 'Russian' });
 // What has been said before is said the same way again: said.json, beside
 // the settings, English -> what was sent. The player can read and correct it.
 const SAID_PATH = path.join(DATA_DIR, 'said.json');
@@ -534,7 +536,7 @@ function toggleHidden() {
   if (hidden) win.hide(); else if (inFront) win.showInactive();
 }
 
-ipcMain.handle('setup:state', () => ({ version: app.getVersion(), update: updateState, hasKey: Boolean(storedKey()), display: cfg.display, settings: uiSettings(cfg), languages: LANGUAGES }));
+ipcMain.handle('setup:state', () => ({ version: app.getVersion(), update: updateState, hasKey: Boolean(storedKey()), display: cfg.display, targetLanguage: languageCode(cfg.targetLanguage || 'English'), settings: uiSettings(cfg), languages: TARGET_LANGUAGES }));
 ipcMain.handle('setup:folder', () => {
   // The file may not exist yet on a fresh install: make it, so that there
   // is something in the folder to find.
@@ -547,7 +549,10 @@ ipcMain.handle('setup:folder', () => {
 // the reader restarted if WHICH LANGUAGES changed, since that is decided
 // where the lines are read.
 function applySettings(patch) {
-  const languagesChanged = patch.scripts && JSON.stringify(patch.scripts) !== JSON.stringify(cfg.scripts);
+  const languagesChanged =
+    (patch.scripts && JSON.stringify(patch.scripts) !== JSON.stringify(cfg.scripts)) ||
+    (patch.sourceLanguages && JSON.stringify(patch.sourceLanguages) !== JSON.stringify(cfg.sourceLanguages)) ||
+    (patch.targetLanguage && patch.targetLanguage !== cfg.targetLanguage);
   // Another reader altogether: the watcher starts again with it.
   const sourceChanged = Boolean(patch.source) && patch.source !== cfg.source;
   Object.assign(cfg, patch);
@@ -578,6 +583,10 @@ ipcMain.handle('setup:save', async (_e, payload) => {
   // The window has had no key field since v0.5.0 (the hosted translator);
   // a key typed by an old page, or in config.json by hand, still works.
   if (!typed) {
+    const nextTarget = patch.targetLanguage || cfg.targetLanguage || 'English';
+    if (languageCode(nextTarget) !== 'en' && !storedKey()) {
+      return { ok: false, why: 'A Gemini API key is required when the display language is not English. The original hosted translator only guarantees English output.' };
+    }
     saveConfig({ display, ...patch });
     const restart = applySettings(patch);
     applyDisplay(display);

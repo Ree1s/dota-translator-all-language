@@ -1,4 +1,4 @@
-// Turning a batch of chat lines into English with Gemini.
+// Turning a batch of chat lines into the user's chosen language with Gemini.
 //
 // The pure halves (the request, and reading the reply) are exported so
 // test.js can cover them without a key; askGemini is the one impure
@@ -7,35 +7,42 @@
 export const API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 export const MODEL = 'gemini-3.5-flash-lite';
 
+import { canonicalLanguage, dotaPromptNotes } from './languages.js';
+
 // Written for game chat on purpose. A general translator turns "го рошан"
 // into "go Roshan" well enough but mangles the shorthand people actually
 // type, and a polite rewrite of an insult is a mistranslation: what was
 // said is the thing being asked for.
-export const SYSTEM = [
-  'You translate Dota 2 in-game chat into English. Most of it is Russian; some is Chinese.',
-  'The input is a JSON array of {i, name, text}. Answer with a JSON array of {i, en}, one entry per input, same i values.',
-  'Rules:',
-  '- Translate only the text. Never translate or change a player name.',
-  // REAL OUTPUT before this rule: "меня зовут кристьян" -> "my name is christian".
-  '- The name of a person inside the text is written in Latin letters as it SOUNDS, never swapped for an English name: Кристьян is Kristjan or Kristyan, not Christian; Иван is Ivan, not John.',
-  '- Keep it short and plain, the way the line would be typed in English.',
-  '- Dota shorthand stays shorthand: mid, top, bot, gank, ward, roshan, bkb, tp, gg, ff, ss/miss, rune, stack, push, def, rosh, smoke, buyback, courier.',
-  '- Translate insults and swearing as they are. Do not soften, censor or explain them.',
-  '- Transliterated Russian typed in Latin letters is still Russian: translate it.',
-  '- Chinese is often a pasted voice line or a meme: translate what it says, briefly, and do not explain it.',
-  '- If a line is already English, or is only emotes, numbers or punctuation, return it unchanged.',
-  '- Numbers, timings and item counts stay exactly as typed.',
-  '- Never add commentary, notes or quotation marks. Use "-" instead of a dash character.',
-].join('\n');
+export function systemFor(targetLanguage = 'English') {
+  const target = canonicalLanguage(targetLanguage);
+  return [
+    `You translate Dota 2 in-game chat into ${target}. The chat may be Russian, Chinese, English, Ukrainian, Japanese, Korean, Thai, Vietnamese, Indonesian, Malay, Filipino/Tagalog, Burmese, Khmer, Lao, Arabic, or a code-switched mixture.`,
+    'The input is a JSON array of {i, name, text}. Answer with a JSON array of {i, en}, one entry per input, same i values. The field is named en for backward compatibility even when the target is not English.',
+    'Rules:',
+    '- Translate only the text. Never translate or change a player name.',
+    '- Preserve personal names rather than replacing them with culturally different names; they are never swapped for an English name.',
+    `- Keep it short and plain, the way a ${target}-speaking Dota player would type it in a match.`,
+    '- Dota shorthand stays natural: mid, top, bot, gank, ward, roshan/rosh, bkb, tp, gg, ff, ss/miss, rune, stack, push, def, smoke, buyback, courier, ult/CD.',
+    '- Translate insults and swearing as they are. Do not soften, censor or explain them.',
+    '- Treat transliterated and code-switched chat as the language it is trying to express.',
+    '- Numbers, timings and item counts stay exactly as typed.',
+    '- If a line is already naturally in the target language, or is only emotes, numbers or punctuation, return it unchanged.',
+    '- Never add commentary, notes or quotation marks. Use "-" instead of a dash character.',
+    dotaPromptNotes(target),
+  ].join('\n');
+}
 
-export function buildRequest(items, { system = SYSTEM } = {}) {
+export const SYSTEM = systemFor('English');
+
+export function buildRequest(items, { system = null, targetLanguage = 'English' } = {}) {
+  const chosenSystem = system || systemFor(targetLanguage);
   const input = items.map((it, n) => ({
     i: typeof it.i === 'number' ? it.i : n,
     name: String(it.name || '').slice(0, 32),
     text: String(it.text || '').slice(0, 400),
   }));
   return {
-    systemInstruction: { parts: [{ text: system }] },
+    systemInstruction: { parts: [{ text: chosenSystem }] },
     contents: [{ role: 'user', parts: [{ text: JSON.stringify(input) }] }],
     generationConfig: {
       temperature: 0.2,

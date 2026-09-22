@@ -11,34 +11,33 @@
 // type, so it knows what they write in: the script seen most recently
 // decides, and Russian - what this is for - until anything has been seen.
 
-import { SCRIPTS } from './chatlog.js';
 import { askGeminiHedged } from './translate.js';
+import { canonicalLanguage, detectLanguage, dotaPromptNotes, languageCode } from './languages.js';
 
-// A script is not a language - Cyrillic is also Ukrainian, Arabic script
-// also Persian - but on the servers this is for, it is the right bet, and
-// `replyLanguage` in config.json overrides it.
+// Legacy exports kept for callers that imported these names. Language
+// tracking itself now uses the multilingual detector instead of equating a
+// Unicode script with one language.
 export const SCRIPT_LANGUAGE = {
-  cyrillic: 'Russian',
-  han: 'Chinese',
-  hangul: 'Korean',
-  greek: 'Greek',
-  arabic: 'Arabic',
-  thai: 'Thai',
+  cyrillic: 'Russian', han: 'Chinese', hangul: 'Korean', greek: 'Greek',
+  arabic: 'Arabic', thai: 'Thai', lao: 'Lao', myanmar: 'Burmese', khmer: 'Khmer',
 };
 
 export const MAX_SAY = 200;          // a chat line, not a letter
 
 export function scriptOf(text) {
-  for (const name of Object.keys(SCRIPT_LANGUAGE)) if (SCRIPTS[name].test(String(text || ''))) return name;
-  return '';
+  const code = detectLanguage(text).code;
+  return ({ ru: 'cyrillic', uk: 'cyrillic', zh: 'han', ja: 'han', ko: 'hangul', th: 'thai', ar: 'arabic', lo: 'lao', my: 'myanmar', km: 'khmer' })[code] || '';
 }
 
-/** Remembers what the others last wrote in. */
+/** Remembers the most recent confidently detected language teammates used. */
 export function createLanguageTracker({ fallback = 'Russian' } = {}) {
   let last = '';
   return {
-    saw(text) { const s = scriptOf(text); if (s) last = s; },
-    get language() { return SCRIPT_LANGUAGE[last] || fallback; },
+    saw(text) {
+      const d = detectLanguage(text);
+      if (d.code !== 'und' && d.confidence >= 0.72) last = d.name;
+    },
+    get language() { return last || fallback; },
   };
 }
 
@@ -46,9 +45,9 @@ export function createLanguageTracker({ fallback = 'Russian' } = {}) {
 export function targetLanguage(setting, tracker) {
   const s = String(setting || 'auto').trim();
   if (!s || s.toLowerCase() === 'auto') return tracker ? tracker.language : 'Russian';
-  // It goes into a prompt: letters and spaces, and not many of them.
   const clean = s.replace(/[^\p{L} ]/gu, '').slice(0, 24).trim();
-  return clean || 'Russian';
+  if (!clean) return 'Russian';
+  return languageCode(clean, 'und') === 'und' ? clean : canonicalLanguage(clean, 'Russian');
 }
 
 export function tidySay(text) {
@@ -56,14 +55,15 @@ export function tidySay(text) {
 }
 
 export function outSystem(language) {
+  const target = canonicalLanguage(language, 'Russian');
   return [
     // "from whatever language": the second key sends a line in ENGLISH, for
     // the player who types Russian (or anything) to English speakers - the
     // same tool pointed the other way (the user, 2026-09-21).
-    `You translate what a Dota 2 player wants to type in the in-game chat, from whatever language they wrote it in (usually English or Russian, sometimes Russian typed in Latin letters), into ${language}.`,
+    `You translate what a Dota 2 player wants to type in the in-game chat, from whatever language they wrote it in (usually English or Russian, sometimes Russian typed in Latin letters), into ${target}.`,
     'The input is JSON: {"text": "..."}. Answer with JSON: {"out": "..."}.',
     'Rules:',
-    `- Write it the way a ${language}-speaking Dota player would actually type it in a match: short, informal, no formal register.`,
+    `- Write it the way a ${target}-speaking Dota player would actually type it in a match: short, informal, no formal register.`,
     // REAL OUTPUT before this rule: "hello" -> "Здарова", "play safe" ->
     // "играйте сейвовенько". Right, and natural - and the player, who cannot
     // read it, wondered what had been said in their name (the user, first
@@ -76,7 +76,8 @@ export function outSystem(language) {
     '- Keep the tone exactly: a friendly line stays friendly, a blunt one stays blunt. Do not soften, censor, or add politeness that was not there.',
     '- Numbers, timings and item counts stay exactly as typed.',
     '- One line, no line breaks, no quotation marks, no notes, no transliteration, no explanation.',
-    `- If the text is already in ${language}, return it unchanged.`,
+    `- If the text is already in ${target}, return it unchanged.`,
+    dotaPromptNotes(target),
   ].join('\n');
 }
 
