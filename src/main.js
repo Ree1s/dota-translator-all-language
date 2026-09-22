@@ -241,6 +241,10 @@ async function start() {
       if (key !== coverAt) { coverAt = key; win.setBounds(b); }
     },
     onSeen: (s) => { if (cfg.display === 'cover') send('seen', s); },
+    // Exclusive fullscreen can swallow Electron global shortcuts. The
+    // Windows focus watcher also reports the physical Ctrl+Enter chord
+    // while dota2.exe owns the foreground window.
+    onHotkey: () => { if (DEBUG) console.log('hotkey', cfg.sayHotkey); sayKey(); },
     // The game's chat is set in Valve's Radiance, which is not on anybody's
     // machine except inside the game. It is loaded from THERE - the
     // player's own copy - and never copied into this repo.
