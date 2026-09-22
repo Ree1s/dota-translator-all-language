@@ -1,22 +1,31 @@
 // Settings exposed in the setup window.
+//
+// The old script checkbox API is kept for compatibility with upstream
+// configs/tests. The multilingual fork adds a separate target-language list.
 
-import { SUPPORTED_LANGUAGES, canonicalLanguage, languageCode } from './languages.js';
+import { SUPPORTED_LANGUAGES, SCRIPTS, languageCode } from './languages.js';
 
-export const LANGUAGES = SUPPORTED_LANGUAGES.map((x) => [x.code, x.label]);
+export const LANGUAGES = [
+  ['cyrillic', 'Russian'],
+  ['han', 'Chinese'],
+  ['hangul', 'Korean'],
+  ['greek', 'Greek'],
+  ['arabic', 'Arabic'],
+  ['thai', 'Thai'],
+];
+
+export const TARGET_LANGUAGES = SUPPORTED_LANGUAGES.map((x) => [x.code, x.label]);
 
 const isEnglish = (s) => languageCode(s) === 'en';
 
-/** What the window is shown: only these, never the key. */
+/** What the legacy settings surface sees: never include the key. */
 export function uiSettings(cfg) {
   return {
-    targetLanguage: languageCode(cfg.targetLanguage || 'English'),
-    sourceLanguages: Array.isArray(cfg.sourceLanguages) && cfg.sourceLanguages.length ? cfg.sourceLanguages.slice() : ['auto'],
+    scripts: (cfg.scripts || []).filter((s) => s in SCRIPTS),
     showOriginal: cfg.showOriginal !== false,
     showHeroes: cfg.showHeroes !== false,
     fontSize: cfg.fontSize,
     autoUpdate: cfg.autoUpdate !== false,
-    // Keep the old two-way send control. "theirs" now means the latest
-    // teammate language detected by languages.js, not "Russian".
     sayInto: isEnglish(cfg.replyLanguage) ? 'english' : 'theirs',
   };
 }
@@ -26,12 +35,18 @@ export function settingsPatch(raw, cfg = {}) {
   const patch = {};
   if (!raw || typeof raw !== 'object') return patch;
 
+  // Upstream-compatible script selection.
+  if (Array.isArray(raw.scripts)) {
+    const known = LANGUAGES.map(([id]) => id).filter((id) => raw.scripts.includes(id));
+    if (known.length) patch.scripts = known;
+  }
+
+  // New multilingual target and optional source filter.
   if (typeof raw.targetLanguage === 'string') {
     const code = languageCode(raw.targetLanguage, 'und');
     const known = SUPPORTED_LANGUAGES.find((x) => x.code === code);
     if (known) patch.targetLanguage = known.name;
   }
-
   if (Array.isArray(raw.sourceLanguages)) {
     if (raw.sourceLanguages.includes('auto')) patch.sourceLanguages = ['auto'];
     else {
