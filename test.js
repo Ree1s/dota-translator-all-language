@@ -1389,13 +1389,14 @@ ok('a language set by name wins, and only letters of it reach the prompt', () =>
   assert.equal(targetLanguage('!!!', t), 'Russian');
 });
 
-ok('numbered Ctrl+Enter chords force a language', () => {
-  const map = ['English','Russian','Chinese','Thai','Vietnamese','Indonesian','Malay','Filipino','Ukrainian','Japanese'];
+ok('numbered Ctrl+Enter chords force only the three configured languages', () => {
+  const map = ['English','Russian','Filipino'];
   assert.equal(languageFromHotkey('Control+Enter+1', map), 'English');
-  assert.equal(languageFromHotkey('Control+Enter+3', map), 'Chinese');
-  assert.equal(languageFromHotkey('Control+Enter+0', map), 'Japanese');
+  assert.equal(languageFromHotkey('Control+Enter+2', map), 'Russian');
+  assert.equal(languageFromHotkey('Control+Enter+3', map), 'Filipino');
+  assert.equal(languageFromHotkey('Control+Enter+4', map), '');
+  assert.equal(languageFromHotkey('Control+Enter+0', map), '');
   assert.equal(languageFromHotkey('Control+Enter', map), '');
-  assert.equal(languageFromHotkey('Control+Enter+4', ['English']), '');
 });
 
 ok('what is typed is made one short line before it goes anywhere', () => {
@@ -1404,6 +1405,9 @@ ok('what is typed is made one short line before it goes anywhere', () => {
   assert.equal(tidySay(null), '');
   const req = buildOutRequest('go rosh', 'Russian');
   assert.match(req.systemInstruction.parts[0].text, /into Russian/);
+  assert.match(req.systemInstruction.parts[0].text, /insults, profanity, trash talk or contempt/);
+  assert.match(req.systemInstruction.parts[0].text, /comparable force/);
+  assert.match(req.systemInstruction.parts[0].text, /do not make the abuse stronger than the source/i);
   assert.deepEqual(JSON.parse(req.contents[0].parts[0].text), { text: 'go rosh' });
 });
 
@@ -1598,8 +1602,7 @@ ok('keys are sent from ONE place, only with the game in front, and nothing anywh
   assert.ok(at('InFront($id)', loop) < at('Chord(', loop));
   assert.ok(at('InFront($id)', at('::V)', loop)) < at('Tap([SayKeys]::ENTER)', loop));
   assert.equal(DEFAULTS.sayHotkey, 'Control+Enter');
-  assert.deepEqual(DEFAULTS.sayLanguageHotkeys.slice(0, 3), ['English', 'Russian', 'Chinese']);
-  assert.equal(DEFAULTS.sayLanguageHotkeys[9], 'Japanese');
+  assert.deepEqual(DEFAULTS.sayLanguageHotkeys, ['English', 'Russian', 'Filipino']);
   assert.equal(DEFAULTS.replyLanguage, 'auto');
 });
 

@@ -246,6 +246,11 @@ async function start() {
     // while dota2.exe owns the foreground window.
     onHotkey: (key) => {
       const forced = languageFromHotkey(key, cfg.sayLanguageHotkeys || []);
+      const numbered = /^Control\+Enter\+[0-9]$/.test(String(key || ''));
+      if (numbered && !forced) {
+        if (DEBUG) console.log('hotkey', key, 'unmapped');
+        return;
+      }
       if (DEBUG) console.log('hotkey', key, forced || 'default');
       sayKey(forced || '');
     },

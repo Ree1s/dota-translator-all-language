@@ -23,7 +23,7 @@ export const SCRIPT_LANGUAGE = {
 };
 
 export const MAX_SAY = 200;          // a chat line, not a letter
-export const HOTKEY_DIGITS = ['1','2','3','4','5','6','7','8','9','0'];
+export const HOTKEY_DIGITS = ['1','2','3'];
 
 export function languageFromHotkey(key, languages = []) {
   const m = /^Control\+Enter\+([0-9])$/.exec(String(key || ''));
@@ -83,7 +83,9 @@ export function outSystem(language) {
     // REAL OUTPUT before this rule: "i'm going top" -> "иду хард" (the hard
     // lane), which is the wrong lane for half the players who type it.
     '- top, mid and bot are places on the map: say exactly that lane. Never turn one into "safe lane", "off lane" or "hard lane".',
-    '- Keep the tone exactly: a friendly line stays friendly, a blunt one stays blunt. Do not soften, censor, or add politeness that was not there.',
+    '- Keep the tone and intent faithful. Friendly stays friendly; blunt stays blunt; hostile stays hostile.',
+    '- If the source contains insults, profanity, trash talk or contempt, translate them into natural target-language game-chat wording of comparable force. Prefer an idiomatic local insult/profanity over an awkward literal translation.',
+    '- Do not censor, sanitize, euphemize, or add politeness. Also do not make the abuse stronger than the source, invent new personal attacks, or introduce slurs/protected-class references that were not present.',
     '- Numbers, timings and item counts stay exactly as typed.',
     '- One line, no line breaks, no quotation marks, no notes, no transliteration, no explanation.',
     `- If the text is already in ${target}, return it unchanged.`,
