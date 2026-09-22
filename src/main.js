@@ -10,7 +10,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { loadConfig, saveConfig, onDisk, CONFIG_PATH, DATA_DIR } from './config.js';
 import { faces } from './heroface.js';
 import { createPatchWatch, SLOW_TEXT } from './patchwatch.js';
-import { uiSettings, settingsPatch, LANGUAGES } from './settings.js';
+import { uiSettings, settingsPatch, TARGET_LANGUAGES } from './settings.js';
 import { checkKey, tidyKey } from './keycheck.js';
 import updater from 'electron-updater';
 import { startWatching } from './watcher.js';
@@ -536,7 +536,7 @@ function toggleHidden() {
   if (hidden) win.hide(); else if (inFront) win.showInactive();
 }
 
-ipcMain.handle('setup:state', () => ({ version: app.getVersion(), update: updateState, hasKey: Boolean(storedKey()), display: cfg.display, settings: uiSettings(cfg), languages: LANGUAGES }));
+ipcMain.handle('setup:state', () => ({ version: app.getVersion(), update: updateState, hasKey: Boolean(storedKey()), display: cfg.display, targetLanguage: languageCode(cfg.targetLanguage || 'English'), settings: uiSettings(cfg), languages: TARGET_LANGUAGES }));
 ipcMain.handle('setup:folder', () => {
   // The file may not exist yet on a fresh install: make it, so that there
   // is something in the folder to find.
