@@ -45,6 +45,6 @@ export function startWatchingGsi(cfg, handlers = {}, { ensure = ensureGsiConfig,
     const l = cfg.display === 'above' && handlers.onLayout ? layoutFromWindow(w) : null;
     if (l) handlers.onLayout(l);
   };
-  const focus = handlers.onFocus || handlers.onLayout ? watchFocus({ onFocus: handlers.onFocus || (() => {}), onWindow }) : null;
+  const focus = handlers.onFocus || handlers.onLayout || handlers.onHotkey ? watchFocus({ onFocus: handlers.onFocus || (() => {}), onWindow, onHotkey: handlers.onHotkey || (() => {}) }) : null;
   return { ...watcher, stop() { if (focus) focus.stop(); if (rows) rows.stop(); watcher.stop(); } };
 }
