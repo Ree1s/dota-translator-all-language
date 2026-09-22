@@ -16,7 +16,7 @@ export const LANGUAGES = [
 
 export const TARGET_LANGUAGES = SUPPORTED_LANGUAGES.map((x) => [x.code, x.label]);
 
-const isEnglish = (s) => languageCode(s) === 'en';
+const isEnglish = (s) => ['english', 'en'].includes(String(s || '').trim().toLowerCase());
 
 /** What the legacy settings surface sees: never include the key. */
 export function uiSettings(cfg) {
