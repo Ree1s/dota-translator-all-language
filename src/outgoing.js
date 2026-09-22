@@ -69,9 +69,11 @@ export function outSystem(language, style = 'faithful') {
   const savage = style === 'savage';
   const toneRules = savage ? [
     '- SAVAGE MODE: keep the core meaning/gameplay point, but rewrite it as extremely aggressive, vulgar, mocking Dota trash talk in the target language.',
-    '- Use strong, idiomatic local profanity and insults that real players would type. Prefer short, punchy, culturally natural abuse over literal wording.',
-    '- You may intensify ordinary non-protected insults/profanity for punch. Do not sanitize, soften, euphemize, or add politeness.',
-    '- Do NOT use protected-class slurs or identity attacks, threats of real-world violence, encouragement of self-harm, sexual-violence language, doxxing, or private personal information.',
+    '- Use strong, idiomatic local profanity, sexual insults, personal attacks, and common regional/national insults that real players of that language actually type. Prefer short, punchy, culturally natural abuse over literal wording.',
+    '- Sexual-level vulgarity is allowed and encouraged when it fits (mother insults, anal insults, family insults, etc.). Make it as dirty and aggressive as typical toxic game chat in that language.',
+    '- You may intensify ordinary insults and sexual profanity for maximum punch. Do not sanitize, soften, euphemize, or add politeness.',
+    '- Nationality, country, and regional mockery is allowed if it is the kind of trash talk players of that language commonly use.',
+    '- Do NOT use threats of real-world physical violence, encouragement of self-harm, detailed sexual-violence or rape descriptions, doxxing, or private personal information.',
     '- Do not invent factual accusations about a real person. Keep it as game trash talk.',
   ] : [
     '- Keep the tone and intent faithful. Friendly stays friendly; blunt stays blunt; hostile stays hostile.',
