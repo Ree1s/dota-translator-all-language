@@ -107,8 +107,9 @@ measurements.
 You need Windows and Dota 2. The app's small helpers run through PowerShell,
 which Windows already has.
 
-1. **Run Dota borderless windowed.** Settings, Video, Display Mode. An
-   exclusive fullscreen game owns the screen and no overlay can sit on it.
+1. **Run Dota in Borderless Window or Windowed mode.** Settings, Video,
+   Display Mode; either works. Not Exclusive Fullscreen: that owns the screen
+   and no overlay can sit on it.
 
 2. **Install it.** [Download `Dota-Translator-Setup.exe`](https://github.com/sc0rebreaker/dota-translator/releases/latest/download/Dota-Translator-Setup.exe)
    (always the latest release) and run it. It installs for your user only (no
