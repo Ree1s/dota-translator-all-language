@@ -309,6 +309,11 @@ when the dev copy started with a key saved (seen in the log, 22:35).
   never overrules anything. Tested; NOT seen in a game. Why the row was not
   sure of Muerta is NOT known (her portrait? the user alt-tabbed?) - the
   installed app has no log; the dev copy with DT_DEBUG prints every grab.
+  SEEN with the dev copy right after (bot game, Muerta): the ROW was sure
+  both times (muerta 0.918, next best grimstroke 0.54), first line Blue,
+  from the second "unc status", muerta, seat 5 - so the Muerta portrait is
+  fine, and the earlier failure was the row being unsure for some other
+  reason (alt-tab is the likely one), then the top bar naming the bot.
 
 - **A WHOLE MATCHMADE GAME IN GSI MODE (9010363907, 2026-09-22 00:24-00:40,
   the user Furion, dire seat 5, dev copy; a recorder shot the chat area at
