@@ -521,7 +521,7 @@ ipcMain.handle('setup:close', () => { if (setupWin && !setupWin.isDestroyed()) s
 ipcMain.handle('setup:guide', () => {
   // The live page, not the copy that came with the app: a file:// address
   // in the browser looks wrong, and a key is no use offline anyway.
-  shell.openExternal('https://sc0rebreaker.github.io/dota-translator/key.html');
+  shell.openExternal('https://dotatranslator.live/key.html');
 });
 ipcMain.handle('setup:save', async (_e, payload) => {
   const display = payload && payload.display === 'box' ? 'box' : 'above';

@@ -2335,7 +2335,13 @@ The user asked for a page "to make it sell (even though it's free)",
 like Paperbook's (`Desktop/paperbook/web/src/WelcomeV3.jsx`) but shorter,
 with a slider. What was built, and the rules it follows:
 
-- **LIVE at https://sc0rebreaker.github.io/dota-translator/** (since
+- **THE SITE IS https://dotatranslator.live FROM 2026-09-22** (the user bought the
+  domain; GitHub Pages custom domain via `docs/CNAME`, four A records at the
+  registrar for the root and `www` CNAME to sc0rebreaker.github.io; the old
+  address redirects). Every absolute URL in the site and the app uses it.
+  "Enforce HTTPS" in repo Settings > Pages is the user's click once GitHub
+  has issued the certificate. Before that it was
+- LIVE at https://sc0rebreaker.github.io/dota-translator/ (since
   2026-09-20; the user asked for Pages to be turned on). It is served from
   the `gh-pages` BRANCH, which is nothing but `docs/` of master:
   pushing a branch of that name switched Pages on by itself, with no
