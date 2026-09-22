@@ -17,7 +17,7 @@ import { startWatching } from './watcher.js';
 import { explainModelError } from './memwatcher.js';
 import { startWatchingGsi } from './gsiwatcher.js';
 import { loadOffsets, bundledOffsets } from './offsets.js';
-import { createOutgoing, createLanguageTracker, targetLanguage } from './outgoing.js';
+import { createOutgoing, createLanguageTracker, targetLanguage, languageFromHotkey } from './outgoing.js';
 import { createKeySender, sayTranslated } from './sendchat.js';
 import { createHosted, hashId } from './hosted.js';
 import crypto from 'node:crypto';
@@ -244,7 +244,11 @@ async function start() {
     // Exclusive fullscreen can swallow Electron global shortcuts. The
     // Windows focus watcher also reports the physical Ctrl+Enter chord
     // while dota2.exe owns the foreground window.
-    onHotkey: () => { if (DEBUG) console.log('hotkey', cfg.sayHotkey); sayKey(); },
+    onHotkey: (key) => {
+      const forced = languageFromHotkey(key, cfg.sayLanguageHotkeys || []);
+      if (DEBUG) console.log('hotkey', key, forced || 'default');
+      sayKey(forced || '');
+    },
     // The game's chat is set in Valve's Radiance, which is not on anybody's
     // machine except inside the game. It is loaded from THERE - the
     // player's own copy - and never copied into this repo.
@@ -342,7 +346,15 @@ function itsMe(row) {
 function setSayHotkey(on) {
   if (!cfg.sayHotkey || on === sayKeyOn) return;
   try {
-    if (on) { sayKeyOn = globalShortcut.register(cfg.sayHotkey, sayKey); keys.warm(); }
+    // GSI mode has a Windows key watcher that works in exclusive fullscreen
+    // and can distinguish Ctrl+Enter+number. Registering Electron's plain
+    // Ctrl+Enter as well would fire before the number can choose a language.
+    if (cfg.source === 'gsi') {
+      sayKeyOn = Boolean(on);
+      if (on) keys.warm();
+      return;
+    }
+    if (on) { sayKeyOn = globalShortcut.register(cfg.sayHotkey, () => sayKey('')); keys.warm(); }
     else { globalShortcut.unregister(cfg.sayHotkey); sayKeyOn = false; }
   } catch { sayKeyOn = false; /* not a key Electron knows: no hotkey, and nothing else breaks */ }
 }
@@ -353,11 +365,11 @@ function setSayHotkey(on) {
 // English whatever it was typed in - for the player on the other side of
 // the same problem, typing Russian to English speakers. Read at each press,
 // so changing it in the setup window needs no restart.
-async function sayKey() {
+async function sayKey(forcedLanguage = '') {
   if (saying || (!hostedOn() && !cfg.geminiApiKey)) return;
   saying = true;
   try {
-    const into = targetLanguage(cfg.replyLanguage, spoken);
+    const into = forcedLanguage || targetLanguage(cfg.replyLanguage, spoken);
     const r = await sayTranslated({
       keys, clipboard, into, explain: explainModelError,
       // The line comes back out of the chat within a moment: it means what was typed.

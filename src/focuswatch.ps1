@@ -66,7 +66,8 @@ $lastClient = ''
 $clientAt = [DateTime]::MinValue
 $lastOwner = -1
 $on = -1
-$hotkeyDown = $false
+$hotkeyArmed = $false
+$hotkeySent = $false
 while ($true) {
   if (($null -ne $parent) -and $parent.HasExited) { exit 0 }
   $owner = [FrontWindow]::OwnerPid()
@@ -84,14 +85,36 @@ while ($true) {
   }
   if ($on -eq 1) {
     # Electron's globalShortcut can be swallowed by an exclusive-fullscreen
-    # game. Poll the physical key state while Dota owns the foreground
-    # window instead; emit once on the Ctrl+Enter down edge.
+    # game. Poll the physical key state while Dota owns the foreground.
+    #
+    # A numbered chord (Ctrl+Enter+1 etc.) must not first fire plain
+    # Ctrl+Enter. So the plain chord is emitted only when Ctrl+Enter is
+    # released without a number; a number is emitted immediately and only once.
     $down = [FrontWindow]::KeyDown(0x11) -and [FrontWindow]::KeyDown(0x0D)
-    if ($down -and -not $hotkeyDown) {
-      [Console]::Out.WriteLine('{"t":"hotkey","key":"Control+Enter"}')
-      [Console]::Out.Flush()
+    if ($down -and -not $hotkeyArmed) {
+      $hotkeyArmed = $true
+      $hotkeySent = $false
     }
-    $hotkeyDown = $down
+    if ($down -and $hotkeyArmed -and -not $hotkeySent) {
+      $digit = ''
+      for ($vk = 0x31; $vk -le 0x39; $vk++) {
+        if ([FrontWindow]::KeyDown($vk)) { $digit = [char]$vk; break }
+      }
+      if (-not $digit -and [FrontWindow]::KeyDown(0x30)) { $digit = '0' }
+      if ($digit) {
+        [Console]::Out.WriteLine('{"t":"hotkey","key":"Control+Enter+' + $digit + '"}')
+        [Console]::Out.Flush()
+        $hotkeySent = $true
+      }
+    }
+    if (-not $down -and $hotkeyArmed) {
+      if (-not $hotkeySent) {
+        [Console]::Out.WriteLine('{"t":"hotkey","key":"Control+Enter"}')
+        [Console]::Out.Flush()
+      }
+      $hotkeyArmed = $false
+      $hotkeySent = $false
+    }
     $c = [FrontWindow]::Client()
     $due = ([DateTime]::UtcNow - $clientAt).TotalSeconds -ge 5
     if ($c -and (($c -ne $lastClient) -or $due)) {
@@ -101,6 +124,6 @@ while ($true) {
       [Console]::Out.WriteLine('{"t":"window","x":' + $n[0] + ',"y":' + $n[1] + ',"w":' + $n[2] + ',"h":' + $n[3] + '}')
       [Console]::Out.Flush()
     }
-  } else { $lastClient = ''; $hotkeyDown = $false }
+  } else { $lastClient = ''; $hotkeyArmed = $false; $hotkeySent = $false }
   Start-Sleep -Milliseconds $IntervalMs
 }

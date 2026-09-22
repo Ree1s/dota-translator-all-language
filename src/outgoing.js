@@ -23,6 +23,16 @@ export const SCRIPT_LANGUAGE = {
 };
 
 export const MAX_SAY = 200;          // a chat line, not a letter
+export const HOTKEY_DIGITS = ['1','2','3','4','5','6','7','8','9','0'];
+
+export function languageFromHotkey(key, languages = []) {
+  const m = /^Control\+Enter\+([0-9])$/.exec(String(key || ''));
+  if (!m) return '';
+  const at = HOTKEY_DIGITS.indexOf(m[1]);
+  if (at < 0 || at >= languages.length) return '';
+  if (languageCode(languages[at], 'und') === 'und') return '';
+  return canonicalLanguage(languages[at]);
+}
 
 export function scriptOf(text) {
   const code = detectLanguage(text).code;
