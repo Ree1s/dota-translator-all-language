@@ -11,22 +11,31 @@ function say(kind, html) {
 }
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-const LANGS = document.getElementById('langs');
+const TARGET = $('targetLanguage');
+
 function fill(s) {
-  LANGS.textContent = '';
+  TARGET.textContent = '';
   for (const [id, label] of s.languages) {
-    const l = document.createElement('label'); l.className = 'check';
-    const box = document.createElement('input'); box.type = 'checkbox'; box.value = id; box.checked = s.settings.scripts.includes(id);
-    l.append(box, document.createTextNode(label)); LANGS.appendChild(l);
+    const opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = label;
+    TARGET.appendChild(opt);
   }
+  TARGET.value = s.settings.targetLanguage || 'en';
   for (const id of ['showOriginal', 'showHeroes', 'autoUpdate']) $(id).checked = Boolean(s.settings[id]);
   const into = document.querySelector(`input[name=sayInto][value="${s.settings.sayInto === 'english' ? 'english' : 'theirs'}"]`);
   if (into) into.checked = true;
-  $('fontSize').value = s.settings.fontSize; $('fontSizeOut').textContent = s.settings.fontSize + 'px';
+  $('fontSize').value = s.settings.fontSize;
+  $('fontSizeOut').textContent = s.settings.fontSize + 'px';
+  $('keyState').textContent = s.hasKey ? 'A Gemini key is already saved on this PC.' : 'English display can use the original hosted translator. Other display languages need your own Gemini API key.';
 }
+
 const settingsNow = () => ({
-  scripts: [...LANGS.querySelectorAll('input:checked')].map((b) => b.value),
-  showOriginal: $('showOriginal').checked, showHeroes: $('showHeroes').checked, autoUpdate: $('autoUpdate').checked,
+  targetLanguage: TARGET.value,
+  sourceLanguages: ['auto'],
+  showOriginal: $('showOriginal').checked,
+  showHeroes: $('showHeroes').checked,
+  autoUpdate: $('autoUpdate').checked,
   fontSize: Number($('fontSize').value),
   sayInto: document.querySelector('input[name=sayInto]:checked').value,
 });
@@ -34,7 +43,7 @@ const settingsNow = () => ({
 for (const r of document.querySelectorAll('input[name=sayInto]')) {
   r.addEventListener('change', async () => {
     const now = await window.setup.sayInto(r.value);
-    $('sayNow').textContent = now.sayInto === 'english' ? 'Saved: Russian → English.' : 'Saved: English → Russian.';
+    $('sayNow').textContent = now.sayInto === 'english' ? 'Saved: your message → English.' : 'Saved: your message → teammates\' detected language.';
     window.setup.fit();
   });
 }
@@ -80,10 +89,11 @@ save.addEventListener('click', async () => {
   save.disabled = true;
   say('busy', 'Saving...');
   const display = document.querySelector('input[name=display]:checked').value;
-  const r = await window.setup.save({ display, settings: settingsNow() });
+  const r = await window.setup.save({ display, key: $('key').value, settings: settingsNow() });
   save.disabled = false;
   if (r.ok) {
-    say('ok', '<b>Saved.</b> You can close this window: Dota Translator keeps running as the small icon by the clock (behind the ^ arrow), and clicking it brings this window back.');
+    $('key').value = '';
+    say('ok', '<b>Saved.</b> Incoming Dota chat will use your selected display language. You can close this window; the translator keeps running in the tray.');
   } else {
     say('bad', '<b>Not saved.</b> ' + esc(r.why));
   }
