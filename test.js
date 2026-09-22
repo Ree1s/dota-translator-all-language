@@ -1271,8 +1271,10 @@ ok('the landing page keeps the promises the project made about how it talks', ()
   for (const claim of [/\bis safe\b/i, /\bcompletely safe\b/i, /\bundetectable\b/i, /\bban-?proof\b/i, /\bVAC[- ]safe\b/i]) {
     assert.doesNotMatch(text, claim, 'the landing page claims ' + claim);
   }
-  // The key guide: linked from the page, there, and showing no real key.
-  assert.ok(html.includes('href="key.html"'));
+  // No key on the page since v0.5.0 (the hosted translator); the guide stays for an own key.
+  assert.doesNotMatch(html, /Get a free Gemini key|paste the key|paste your key|need a free Gemini key/i, 'the landing page still asks for a key');
+  assert.match(text, /translate\.dotatranslator\.live/);
+  assert.match(text, /Nothing that is said is logged/);
   const guide = fs.readFileSync(path.join('docs', 'key.html'), 'utf8');
   assert.doesNotMatch(guide, /AIza[0-9A-Za-z_-]{10,}/, 'something shaped like a real Google key is in the guide');
   assert.match(guide, /not a screenshot/);
@@ -1953,7 +1955,7 @@ ok('gsi mode reads no memory: nothing of it opens the game, reads it, or starts 
     assert.deepEqual(rows[1], { name: 'x', text: RU + RU, channel: 'all', slot: 1, id: 8, en: RU + RU, translated: false });
     reply.status = 429; reply.body = { error: 'allowance' };
     assert.match((await refusal(h.translate([{ text: RU }]))).message, /come back tomorrow/);
-    assert.match(explainHosted('budget'), /own free Gemini key/);
+    assert.match(explainHosted('budget'), /back on the 1st/);
     // The id is a hash: a Steam id never leaves the PC as itself.
     assert.match(ID, /^[a-f0-9]{64}$/);
     assert.ok(!ID.includes('76561198'));
@@ -1976,7 +1978,7 @@ ok('gsi mode reads no memory: nothing of it opens the game, reads it, or starts 
     assert.ok(!fs.existsSync('server'), 'the server is a PRIVATE repository: it must not be in this one');
     const main = fs.readFileSync(path.join('src', 'main.js'), 'utf8');
     assert.match(main, /!cfg\.geminiApiKey && hostedOn\(\) \? \{ translate/);
-    assert.equal(DEFAULTS.hostedUrl, '');
+    assert.equal(DEFAULTS.hostedUrl, 'https://translate.dotatranslator.live');
   });
 }
 

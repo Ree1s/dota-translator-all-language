@@ -1,8 +1,8 @@
 # Dota Translator
 
 Translates Russian Dota 2 chat into English, live, on a transparent overlay
-above the game. Free for players, source available, and it runs on your own
-Gemini key - no account, no server, nothing to sign up for.
+above the game. Free for players, source available, nothing to sign up for:
+download, restart Dota once, play.
 
 ```
 [all]  unc status: hello everyone
@@ -45,8 +45,14 @@ What it does do, all of it:
   the app presses select, copy, paste and Enter through Windows, as a macro
   key would ([`src/sendchat.ps1`](src/sendchat.ps1)). `"sayHotkey": ""`
   turns it off.
-- **Sends the chat lines that need translating to Google's Gemini**, on your
-  own key. Lines already in English are never sent.
+- **Sends the chat lines that need translating to this project's own
+  translator** (`translate.dotatranslator.live`), which passes them to
+  Google's Gemini and returns the English. Nothing that is said is logged
+  there; it keeps a short-lived cache of text and translation, with nothing
+  about who said it. Lines already in English never leave your PC. There is
+  a fair daily allowance per player that normal play never reaches. Your own
+  Gemini key in `config.json` (`geminiApiKey`) is used instead, if you have
+  one.
 
 What nobody can promise you: Valve has not reviewed or approved this app,
 and the Steam Subscriber Agreement does not bless third-party tools in
@@ -105,40 +111,22 @@ which Windows already has.
 1. **Run Dota borderless windowed.** Settings, Video, Display Mode. An
    exclusive fullscreen game owns the screen and no overlay can sit on it.
 
-2. **Get a Gemini key** at <https://aistudio.google.com/apikey> - there is a
-   [step-by-step guide with pictures](https://sc0rebreaker.github.io/dota-translator/key.html)
-   ([source](docs/key.html)). The free
-   tier is plenty. Two traps, both of which cost an hour to find:
-   - Make it in a project with **no billing enabled**. A project with prepay
-     billing does *not* fall back to the free tier; it fails outright with
-     *"prepayment credits are depleted"*.
-   - A brand-new project can answer **403 "Your project has been denied
-     access"** on every model while still happily listing them. If that
-     happens, make the key in a different project.
-
-3. **Install it.** [Download `Dota-Translator-Setup.exe`](https://github.com/sc0rebreaker/dota-translator/releases/latest/download/Dota-Translator-Setup.exe)
+2. **Install it.** [Download `Dota-Translator-Setup.exe`](https://github.com/sc0rebreaker/dota-translator/releases/latest/download/Dota-Translator-Setup.exe)
    (always the latest release) and run it. It installs for your user only (no
    administrator needed), adds a shortcut and starts the app. The installer
    is not code-signed, so Windows SmartScreen asks first: *More info*, then
    *Run anyway*.
 
-   The first time, the overlay asks you to **restart Dota once**: the game
-   reads its feed settings only when it starts.
-
    From source instead: `npm install`, then `npm start`. `npm run dist`
    builds the installer into `dist/`.
 
-4. **Paste your key into the window that opens.** The first time, the app
-   asks for it: paste, press **Check and save**, and it tries the key with
-   one real translation before saving it, so you know it works - or says in
-   plain words why it does not. The key is stored on your PC only, encrypted
-   by Windows for your user. The same window is behind the tray icon later,
-   for changing the key or where the translations appear.
+3. **Restart Dota once, and play.** The window that opens says so: Dota
+   reads its chat-feed setting only when it starts. The same window is behind
+   the tray icon later, for the settings.
 
-   Prefer files? `cp config.example.json config.json` and put the key in
-   `geminiApiKey`, or set `GEMINI_API_KEY` in the environment, which wins
-   over both and never touches the disk. `npm run watch` (the terminal
-   mode) needs one of those two: it cannot read the encrypted key.
+   Your own Gemini key instead of the project's server: put it in
+   `config.json` as `geminiApiKey`, or set `GEMINI_API_KEY` in the
+   environment. Make it in a Google project with no billing enabled.
 
 `-condebug` is **not** needed. That was for the old log reader.
 
@@ -213,7 +201,8 @@ Plain `Enter` still sends exactly what you typed.
 
 | key | what it does |
 |---|---|
-| `geminiApiKey` | your key. `GEMINI_API_KEY` in the environment wins over it |
+| `geminiApiKey` | optional: your own Gemini key. With one, the lines go to Google directly and the project's server is not used. `GEMINI_API_KEY` in the environment wins over it |
+| `hostedUrl` | the project's translator, used when there is no key of your own. `""` never uses it (then a key is needed) |
 | `model` | `gemini-3.5-flash-lite` by default |
 | `gsiPort` | the port on your own PC that Dota sends its feed to (47854) |
 | `gsiRowGrab` | name a speaker's hero from a small capture of the game's chat row and top bar. `false` captures nothing; other players are then shown by colour only (true) |
@@ -320,5 +309,6 @@ Calling it open source would be wrong, so it is not called that here.
 Note what the licence does *not* restrict: your own use is noncommercial
 whether or not you happen to stream, and nothing here limits fair use.
 
-No subscription, no licence key, no paid tier and no hosted API key - you
-bring your own, which is why this costs nothing to run and nothing to host.
+No subscription, no licence key, no paid tier. The translating runs on the
+project's own server so that there is nothing to set up; bring your own key
+if you would rather not.

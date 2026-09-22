@@ -13,8 +13,8 @@ export const hashId = (kind, value) => crypto.createHash('sha256').update('dota-
 
 // What the server refused with, in the player's words.
 export function explainHosted(code) {
-  if (code === 'allowance') return 'Today\'s free translations are used up - they come back tomorrow. Your own free Gemini key has no such limit: tray icon, Settings and key.';
-  if (code === 'budget') return 'The shared translator has reached its limit for this month. Your own free Gemini key keeps it going: tray icon, Settings and key.';
+  if (code === 'allowance') return 'Today\'s translations are used up - they come back tomorrow.';
+  if (code === 'budget') return 'The translator has reached its limit for this month - it is back on the 1st.';
   return null;
 }
 

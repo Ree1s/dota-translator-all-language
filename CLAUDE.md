@@ -97,7 +97,23 @@ key is always used instead of the server.
   сегодня" through the server; the server's /health counted the lines. The
   user: "seems to be working". The setup window still shows a key field
   (the user asked; told it goes with the next change).
-- NOT done here: the default `hostedUrl` and the release that switches it
+- **SWITCHED ON, v0.5.0 (2026-09-22; the user: "ok go with those and build the
+  release", allowance 200 lines a player a day, ceiling 100000 a month):**
+  `hostedUrl` defaults to https://translate.dotatranslator.live; the setup
+  window has NO key field any more ("Ready to play ... restart Dota once";
+  Save saves the settings); the first start ever (no config file yet) opens
+  it once; the tray balloon comes with or without a key; refusals say
+  "used up, back tomorrow" / "back on the 1st" with no key mentioned. An own
+  key in config.json / GEMINI_API_KEY still wins and is documented as the
+  option. Site: "Two steps, two minutes", no key step, the FAQ says where the
+  chat goes (the server, nothing logged) and that an own key is possible;
+  download.html: "talks to three places" starts with the translator. README
+  likewise. `docs/key.html` stays, unlinked from the steps. A test fails if
+  the landing page asks for a key again. SEEN (DT_SHOT): the first-run
+  window - Ready to play, the two looks, the direction, More settings, Save.
+- NOT done: a privacy page of its own (one FAQ answer and one README bullet
+  say what is kept); the first-run path seen on a clean install.
+- OLD, done: the default `hostedUrl` and the release that switches it
   on; the setup window's first-run wording; the SITE and README, which the
   user said to LEAVE until the server has been seen working ("hold on with
   changing readmes") - and whose claims ("no server of ours", the three

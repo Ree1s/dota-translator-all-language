@@ -23,6 +23,9 @@ import { createHosted, hashId } from './hosted.js';
 import crypto from 'node:crypto';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+// The first start ever (no settings file yet) shows the window once: it says
+// the app is ready and that Dota must be restarted once for its chat feed.
+const firstRun = !fs.existsSync(CONFIG_PATH);
 const cfg = loadConfig();
 let win = null;
 let watcher = null;
@@ -201,7 +204,7 @@ async function start() {
   send('config', { textLeft: TEXT_LEFT });
   if (DEBUG) console.log('offsets', cfg.offsets.source, 'v' + cfg.offsets.version, cfg.offsets.updated);
   cfg.geminiApiKey = storedKey();
-  if (!cfg.geminiApiKey && !hostedOn()) {
+  if (firstRun || (!cfg.geminiApiKey && !hostedOn())) {
     // Not an error to be read off an overlay: a window that asks for it.
     openSetup();
     return;
@@ -473,7 +476,7 @@ function makeTray() {
   // With a key there is no window at all at startup, and Windows hides a
   // new tray icon behind the ^ arrow: say where the app went. A balloon
   // takes no focus, and Windows holds it back itself over a fullscreen game.
-  if (storedKey()) {
+  if (storedKey() || hostedOn()) {
     tray.displayBalloon({ iconType: 'info', title: 'Dota Translator is running', content: 'It sits here by the clock (behind the ^ arrow) and shows translations above the chat in Dota. Click the icon for settings.' });
     tray.on('balloon-click', openSetup);
   }
@@ -524,8 +527,9 @@ ipcMain.handle('setup:save', async (_e, payload) => {
   const display = payload && payload.display === 'box' ? 'box' : 'above';
   const typed = tidyKey(payload && payload.key);
   const patch = settingsPatch(payload && payload.settings, cfg);
-  // No new key typed and one already saved: only the settings are changing.
-  if (!typed && storedKey()) {
+  // The window has had no key field since v0.5.0 (the hosted translator);
+  // a key typed by an old page, or in config.json by hand, still works.
+  if (!typed) {
     saveConfig({ display, ...patch });
     const restart = applySettings(patch);
     applyDisplay(display);

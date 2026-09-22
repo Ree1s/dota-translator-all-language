@@ -76,16 +76,8 @@
 </head>
 <body>
   <div class="brand"><img src="logo.webp" width="28" height="28" alt=""><span>Dota <b>Translator</b></span></div>
-  <h1>One thing first: <span>your key</span></h1>
-  <p class="sub">The translating is done by Google's Gemini, on a free key that is yours. There is no account to make here and nothing to pay.</p>
-
-  <label for="key">Your Gemini key</label>
-  <div class="keyrow">
-    <input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="Paste it here">
-    <button id="show" type="button">Show</button>
-  </div>
-  <p class="have" id="have">A key is already saved and working. Paste a new one only if you want to replace it.</p>
-  <p class="help">No key yet? <button class="link" id="guide" type="button">Get one free in two minutes - step by step</button></p>
+  <h1>Ready to <span>play</span></h1>
+  <p class="sub">Nothing to sign up for and nothing to pay. <b>Restart Dota once</b> after installing - the game picks up its chat feed only when it starts - then play in Borderless Window. Translations appear above the game's chat.</p>
 
   <div class="mode">
     <label><input type="radio" name="display" value="above" checked><span><b>Above Dota's chat</b>Plain text, like the game's own</span></label>
@@ -123,11 +115,11 @@
   <div id="result" role="status"></div>
 
   <div class="actions">
-    <button class="solid" id="save" type="button">Check and save</button>
+    <button class="solid" id="save" type="button">Save</button>
     <span class="grow"></span>
     <button id="close" type="button">Close</button>
   </div>
-  <p class="trust">Your key is tried once against Google, then saved on this PC, encrypted by Windows for your user. It is sent to Google and to nobody else - there is no server of ours. The source is public, so anybody can check that.</p>
+  <p class="trust">Chat lines that need translating go to this project's translator (translate.dotatranslator.live) and on to Google's Gemini. Nothing that is said is logged there. Lines already in English never leave your PC. The source is public, so anybody can check that.</p>
   <p class="trust" id="version"></p>
 
   <script src="setup.js"></script>

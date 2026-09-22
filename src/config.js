@@ -159,7 +159,7 @@ export const DEFAULTS = {
   // The hosted translator (server/): used when the player has NO key of their
   // own, so that the app works straight after installing. Blank = there is
   // none, and the app asks for a key as it always did. A key always wins.
-  hostedUrl: '',
+  hostedUrl: 'https://translate.dotatranslator.live',
   // A random id for this install, made on first use: who is asking, until
   // the game's feed has said which player this is. Only its hash is sent.
   installId: '',

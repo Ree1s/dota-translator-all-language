@@ -1,8 +1,8 @@
-// The setup window's page. It never sees a saved key: it is told only
-// WHETHER one is saved, and sends a new one off to be checked.
+// The settings window's page. Since v0.5.0 there is no key in it: the
+// translating runs through the project's own server.
 
 const $ = (id) => document.getElementById(id);
-const key = $('key'), result = $('result'), save = $('save');
+const result = $('result'), save = $('save');
 
 function say(kind, html) {
   result.className = kind;
@@ -47,37 +47,21 @@ window.setup.state().then((s) => {
   document.title = 'Dota Translator ' + s.version;
   $('version').textContent = 'Version ' + s.version;
   fill(s);
-  // Somebody who already has a key is here for the settings: a plain Save.
-  if (s.hasKey) save.textContent = 'Save';
-  if (s.hasKey) { $('have').style.display = 'block'; key.placeholder = 'Saved. Paste a new key to replace it'; }
   const mode = document.querySelector(`input[name=display][value="${s.display === 'box' ? 'box' : 'above'}"]`);
   if (mode) mode.checked = true;
-  if (!s.hasKey) key.focus();
   window.setup.fit();
 });
 
-$('show').addEventListener('click', () => {
-  const hidden = key.type === 'password';
-  key.type = hidden ? 'text' : 'password';
-  $('show').textContent = hidden ? 'Hide' : 'Show';
-});
-$('guide').addEventListener('click', () => window.setup.guide());
 $('close').addEventListener('click', () => window.setup.close());
-key.addEventListener('keydown', (e) => { if (e.key === 'Enter') save.click(); });
 
 save.addEventListener('click', async () => {
   save.disabled = true;
-  say('busy', key.value.trim() ? 'Asking Google to translate one line with your key...' : 'Saving...');
+  say('busy', 'Saving...');
   const display = document.querySelector('input[name=display]:checked').value;
-  const r = await window.setup.save({ key: key.value, display, settings: settingsNow() });
+  const r = await window.setup.save({ display, settings: settingsNow() });
   save.disabled = false;
   if (r.ok) {
-    key.value = '';
-    $('have').style.display = 'block';
-    save.textContent = 'Save';
-    say('ok', r.checked
-      ? `<b>It works.</b> Google translated <code>${esc(r.sample)}</code> as <code>${esc(r.en)}</code>. Saved - start a match and the translations appear above the chat. You can close this window: Dota Translator keeps running as the small icon by the clock (behind the ^ arrow), and clicking it brings this window back.`
-      : '<b>Saved.</b> You can close this window.');
+    say('ok', '<b>Saved.</b> You can close this window: Dota Translator keeps running as the small icon by the clock (behind the ^ arrow), and clicking it brings this window back.');
   } else {
     say('bad', '<b>Not saved.</b> ' + esc(r.why));
   }
