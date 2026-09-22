@@ -50,9 +50,7 @@ What it does do, all of it:
   Google's Gemini and returns the English. Nothing that is said is logged
   there; it keeps a short-lived cache of text and translation, with nothing
   about who said it. Lines already in English never leave your PC. There is
-  a fair daily allowance per player that normal play never reaches. Your own
-  Gemini key in `config.json` (`geminiApiKey`) is used instead, if you have
-  one.
+  a fair daily allowance per player that normal play never reaches.
 
 What nobody can promise you: Valve has not reviewed or approved this app,
 and the Steam Subscriber Agreement does not bless third-party tools in
@@ -80,7 +78,17 @@ memory reader is not started by the app and is not in the installer.
 What the program does on your PC, how to check the download against the
 source, and how to report a problem: [SECURITY.md](SECURITY.md).
 
-## What was tried, and measured
+## How the chat is read, and what was tried first
+
+- **Game State Integration carries chat, and it is the right way.** Dota's
+  own feed for overlays and stream tools sends, in its `events` section,
+  `chat_message` events with the text, the channel and the speaker's seat.
+  Seen: own and others' lines, team and all chat, Cyrillic intact, live
+  games and replays. Nothing of the game's is touched. What it does not
+  carry is who the seat IS - no name, no hero - which is what the two
+  screen spots are for.
+
+Before that was found, every other route was tried and measured:
 
 - **`console.log` does not contain chat.** Dota draws chat with Panorama and
   never sends it to the engine console. Tested with `-condebug` on, in a
@@ -88,12 +96,6 @@ source, and how to report a problem: [SECURITY.md](SECURITY.md).
 - **The `DOTA_CHAT` log channel cannot be switched on.**
   `log_level DOTA_CHAT default` answers **"Log verbosity levels are
   locked"** - in a match and in the main menu alike.
-- **Game State Integration DOES carry chat** - in its `events` section, as
-  `chat_message` with the text, the channel and the speaker's seat. For two
-  days this README said it did not; that had been read somewhere, not seen.
-  Seen since: own and others' lines, team and all chat, Cyrillic intact,
-  live games and replays. What it does not carry is who the seat IS - no
-  name, no hero - which is what the two screen spots are for.
 - **Reading the whole screen with a vision model works, but not for free**:
   roughly 1,200 API calls a game.
 - **Reading memory worked** - 0.2 seconds from said to shown - and is gone,
@@ -123,10 +125,6 @@ which Windows already has.
 3. **Restart Dota once, and play.** The window that opens says so: Dota
    reads its chat-feed setting only when it starts. The same window is behind
    the tray icon later, for the settings.
-
-   Your own Gemini key instead of the project's server: put it in
-   `config.json` as `geminiApiKey`, or set `GEMINI_API_KEY` in the
-   environment. Make it in a Google project with no billing enabled.
 
 `-condebug` is **not** needed. That was for the old log reader.
 
@@ -201,13 +199,10 @@ Plain `Enter` still sends exactly what you typed.
 
 | key | what it does |
 |---|---|
-| `geminiApiKey` | optional: your own Gemini key. With one, the lines go to Google directly and the project's server is not used. `GEMINI_API_KEY` in the environment wins over it |
-| `hostedUrl` | the project's translator, used when there is no key of your own. `""` never uses it (then a key is needed) |
 | `model` | `gemini-3.5-flash-lite` by default |
 | `gsiPort` | the port on your own PC that Dota sends its feed to (47854) |
 | `gsiRowGrab` | name a speaker's hero from a small capture of the game's chat row and top bar. `false` captures nothing; other players are then shown by colour only (true) |
 | `scripts` | which writing systems to translate. `["cyrillic", "han"]` by default - Russian, which is what this is built for, and Chinese, because so many pasted voice lines are. `greek`, `hangul`, `arabic` and `thai` are also known |
-| `callsPerMinute` | with your own key: how many calls a minute it allows. The free tier is 15. The busier the chat, the more lines share one call, so a loud game stays inside it (15) |
 | `batchMs` | how long to gather lines before one call (80) |
 | `holdSeconds` | how long a line stays on screen (14) |
 | `fadeWithGame` | in `above` mode a translated line disappears when Dota's own line does, about 7 seconds after it is said, and `holdSeconds` is ignored. `false` keeps it for `holdSeconds` (true) |
@@ -225,7 +220,7 @@ Plain `Enter` still sends exactly what you typed.
 Almost nothing. Only lines containing Cyrillic are sent, and lines arriving
 together go in one call, so Dota's own chat wheel ("Pushing mid", already in
 your language) never costs anything at all. A normal game is a handful of
-calls carrying a few dozen short lines - well inside a player's daily allowance, and inside the free tier with an own key.
+calls carrying a few dozen short lines - well inside a player's daily allowance.
 
 
 ## How it works
@@ -240,7 +235,7 @@ Worth knowing if you are reviewing the code:
   only **primes**, so starting the app mid-game does not dump the match so
   far onto your screen.
 - Only lines in the languages you ticked go to the model, several to a
-  call when the chat is busy, inside the free tier's 15 calls a minute with an own key.
+  call when the chat is busy.
 - The text is placed from the game window's position and size alone
   ([`src/gsilayout.js`](src/gsilayout.js)): Dota lays its chat out at a
   fixed place in 1080-high units. Seen on 5120x1440; if it sits wrong on
@@ -310,5 +305,4 @@ Note what the licence does *not* restrict: your own use is noncommercial
 whether or not you happen to stream, and nothing here limits fair use.
 
 No subscription, no licence key, no paid tier. The translating runs on the
-project's own server so that there is nothing to set up; bring your own key
-if you would rather not.
+project's own server so that there is nothing to set up.
