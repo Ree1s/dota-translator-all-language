@@ -426,7 +426,7 @@ app.whenReady().then(() => {
   // Alt+D hides and shows it, for a screenshot or a clear view of a fight.
   globalShortcut.register('Alt+D', toggleHidden);
   makeTray();
-  globalShortcut.register('Alt+Shift+D', () => app.quit());});
+  globalShortcut.register('Alt+Shift+D', quitApp);});
 
 // ---- THE SETUP WINDOW ------------------------------------------------
 // Where a player gives the app its key without ever seeing config.json
@@ -516,7 +516,7 @@ function makeTray() {
     { label: 'Support the developer (Ko-fi)', click: () => shell.openExternal('https://ko-fi.com/sc0rebreaker') },
     { label: 'Version ' + app.getVersion(), enabled: false },
     { type: 'separator' },
-    { label: 'Quit', click: () => app.quit() },
+    { label: 'Quit', click: quitApp },
   ]));
   tray.on('click', openSetup);
   // With a key there is no window at all at startup, and Windows hides a
@@ -564,7 +564,7 @@ ipcMain.handle('setup:sayInto', (_e, which) => {
   return { sayInto: uiSettings(cfg).sayInto };
 });
 ipcMain.handle('setup:update', () => { lookForUpdate(); return updateState; });
-ipcMain.handle('setup:quitInstall', () => { if (updateState.status === 'ready') { try { updater.autoUpdater.quitAndInstall(false, true); } catch { app.quit(); } } });
+ipcMain.handle('setup:quitInstall', quitApp);
 ipcMain.handle('setup:close', () => { if (setupWin && !setupWin.isDestroyed()) setupWin.close(); });
 ipcMain.handle('setup:guide', () => {
   // The live page, not the copy that came with the app: a file:// address
@@ -605,4 +605,15 @@ app.on('will-quit', () => {
 });
 
 app.on('window-all-closed', () => app.quit());
-ipcMain.on('quit', () => app.quit());
+ipcMain.on('quit', quitApp);
+
+// Quitting with an update ready INSTALLS it and STARTS the new version. Left
+// to electron-updater's own quit handler the install is silent and the app
+// stays closed (SEEN: the user's copy 'just closed after updating and I had
+// to manually reopen').
+function quitApp() {
+  if (updateState.status === 'ready') {
+    try { updater.autoUpdater.quitAndInstall(true, true); return; } catch { /* then a plain quit */ }
+  }
+  app.quit();
+}
