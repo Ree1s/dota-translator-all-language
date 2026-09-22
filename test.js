@@ -2005,7 +2005,7 @@ ok('gsi mode reads no memory: nothing of it opens the game, reads it, or starts 
   ok('hosted: the app only uses it with no key of the player\'s own, it is off until there is an address, and the server is not in this repository', () => {
     assert.ok(!fs.existsSync('server'), 'the server is a PRIVATE repository: it must not be in this one');
     const main = fs.readFileSync(path.join('src', 'main.js'), 'utf8');
-    assert.match(main, /!cfg\.geminiApiKey && hostedOn\(\) \? \{ translate/);
+    assert.match(main, /\.\.\.\(hostedOn\(\) \? \{ translate/);       // the server whenever there is one, key or no key
     assert.equal(DEFAULTS.hostedUrl, 'https://translate.dotatranslator.live');
   });
 }

@@ -115,6 +115,13 @@ key is always used instead of the server.
   is in use, `main.js` posts `/v1/ping` (the id, nothing else) at once and
   every minute, so the server's /health can say how many players are in a
   game NOW (the user asked for live users). A failed ping is silent.
+- **THE SERVER WINS OVER A SAVED KEY (v0.5.4).** SEEN the same evening: the
+  user's installed copy still held the key it had saved before 0.5.0, so it
+  went to Google's free tier directly - which was in a bad spell ("high
+  demand", timeouts) - while the server, on the paid key, answered in 0.8s.
+  "Translation is very slow" was that. Now hostedUrl set = the server, full
+  stop; a key is used only with hostedUrl blank. The user's installed
+  config had its saved key blanked by hand the same evening.
 - NOT done: a privacy page of its own (one FAQ answer and one README bullet
   say what is kept); the first-run path seen on a clean install.
 - OLD, done: the default `hostedUrl` and the release that switches it
