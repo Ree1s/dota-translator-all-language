@@ -49,7 +49,7 @@ What it does do, all of it:
   translator** (`translate.dotatranslator.live`), which passes them to
   Google's Gemini and returns the English. Nothing that is said is logged
   there; it keeps a short-lived cache of text and translation, with nothing
-  about who said it. Lines already in English never leave your PC. There is
+  about who said it, and counts how many players used it each day. Lines already in English never leave your PC. There is
   a fair daily allowance per player that normal play never reaches.
 
 What nobody can promise you: Valve has not reviewed or approved this app,
