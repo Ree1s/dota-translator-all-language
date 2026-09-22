@@ -431,8 +431,20 @@ function storedKey() {
   try { return safeStorage.decryptString(Buffer.from(cfg.geminiApiKeyEnc, 'base64')); } catch { return ''; }
 }
 
+// The window on TOP, whatever is in front. Windows refuses a background app
+// the focus (the user, 2026-09-22: it opened behind Chrome, and they had to
+// minimise Chrome to find it), so it is made topmost for a moment.
+function surface(w) {
+  w.show();
+  w.setAlwaysOnTop(true);
+  w.moveTop();
+  w.focus();
+  app.focus({ steal: true });
+  setTimeout(() => { if (!w.isDestroyed()) w.setAlwaysOnTop(false); }, 400);
+}
+
 function openSetup() {
-  if (setupWin && !setupWin.isDestroyed()) { setupWin.show(); setupWin.focus(); return; }
+  if (setupWin && !setupWin.isDestroyed()) { surface(setupWin); return; }
   setupWin = new BrowserWindow({
     // Wide enough that nothing wraps awkwardly; the HEIGHT is whatever the
     // page turns out to need (fitSetup) - a fixed one was a guess, and the
@@ -443,7 +455,7 @@ function openSetup() {
   });
   setupWin.removeMenu();
   setupWin.loadFile(path.join(here, 'setup.html'));
-  setupWin.once('ready-to-show', async () => { await fitSetup(); if (setupWin && !setupWin.isDestroyed()) setupWin.show(); });
+  setupWin.once('ready-to-show', async () => { await fitSetup(); if (setupWin && !setupWin.isDestroyed()) surface(setupWin); });
   // Nothing in this window goes anywhere but the page it was given.
   setupWin.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   setupWin.webContents.on('will-navigate', (e) => e.preventDefault());
