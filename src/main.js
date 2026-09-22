@@ -440,7 +440,9 @@ function surface(w) {
   w.moveTop();
   w.focus();
   app.focus({ steal: true });
-  setTimeout(() => { if (!w.isDestroyed()) w.setAlwaysOnTop(false); }, 400);
+  // Topmost until the player has had it and clicked elsewhere; a timer was
+  // not enough (SEEN: up for a blink, then behind Chrome again).
+  w.once('blur', () => { if (!w.isDestroyed()) w.setAlwaysOnTop(false); });
 }
 
 function openSetup() {
