@@ -59,21 +59,18 @@ advantage in the game - but a tool that captures bits of the screen and can
 press keys is still yours to judge. **Use it at your own risk**, as with
 any third-party program.
 
-### It used to read memory. It does not any more.
+### Why it does not read the game's memory
 
-Versions up to 0.3.7 read the chat out of the running game's memory,
-because every gentler route then known had failed (below). That was always
-the uncomfortable part: in February 2023 Valve
-[banned over 40,000 accounts](https://www.dota2.com/newsentry/3677788723152833273)
-for cheat software that read hidden data from the client, and wrote that
-running any application that reads data from the client can get an account
-"permanently banned" - with no exception for a tool that only reads chat.
-No ban was ever reported for this app, but the honest answer to "is reading
-memory allowed?" was no.
-
-Then somebody on Reddit pointed out that the feed carries chat after all.
-It was tested the same evening, it does, and the app was rebuilt on it. The
-memory reader is not started by the app and is not in the installer.
+Because Valve treats that as cheating, whatever is read. In February 2023
+Valve [banned over 40,000 accounts](https://www.dota2.com/newsentry/3677788723152833273)
+for software that read data out of the Dota client - caught by a trap, a
+piece of memory that normal play never touches - and wrote that running any
+application that reads data from the client while you play can get an
+account "permanently banned". The sentence makes no exception for a tool
+that only reads the chat already on your screen. Earlier versions of this
+app did read memory, because nothing gentler was then known to work; once
+the game's own feed turned out to carry chat, the memory reader was taken
+out. It is not in the app and not in the installer.
 
 What the program does on your PC, how to check the download against the
 source, and how to report a problem: [SECURITY.md](SECURITY.md).

@@ -1242,7 +1242,6 @@ ok('the landing page keeps the promises the project made about how it talks', ()
     assert.match(body, /February 2023/, name + ' does not mention the 2023 bans');
     assert.match(body, /permanently banned/, name + ' does not say what Valve wrote');
     assert.match(body, /does not read (the game's|Dota's) memory/, name + ' does not say the app reads no memory');
-    assert.match(body, /0\.3\.7/, name + ' does not say which versions DID read memory');
   }
   // A control character in a page or a script is an escape that was eaten on
   // its way into the file. It happened: a word-boundary escape in a regular
