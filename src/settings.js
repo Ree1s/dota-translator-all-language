@@ -9,7 +9,7 @@ const isEnglish = (s) => languageCode(s) === 'en';
 /** What the window is shown: only these, never the key. */
 export function uiSettings(cfg) {
   return {
-    targetLanguage: canonicalLanguage(cfg.targetLanguage || 'English'),
+    targetLanguage: languageCode(cfg.targetLanguage || 'English'),
     sourceLanguages: Array.isArray(cfg.sourceLanguages) && cfg.sourceLanguages.length ? cfg.sourceLanguages.slice() : ['auto'],
     showOriginal: cfg.showOriginal !== false,
     showHeroes: cfg.showHeroes !== false,
