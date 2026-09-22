@@ -388,7 +388,7 @@ async function sayKey(forcedLanguage = '', style = 'faithful') {
         // SEEN 2026-09-22: Russian pasted and sent with this key goes out
         // unchanged, and "it means what was typed" then told the reader that
         // Russian means Russian - the player's own line was never translated.
-        if (watcher && watcher.know && out.trim() !== typed.trim()) watcher.know(out, typed);
+        if (style === 'faithful' && watcher && watcher.know && out.trim() !== typed.trim()) watcher.know(out, typed);
         sentForMe.add(out);
         if (sentForMe.size > 50) sentForMe.delete(sentForMe.values().next().value);
       },
