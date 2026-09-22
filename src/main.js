@@ -312,7 +312,7 @@ function heartbeat(on) {
   beat.unref?.();
 }
 
-const spoken = createLanguageTracker();
+const spoken = createLanguageTracker({ fallback: cfg.targetLanguage || 'Russian' });
 // What has been said before is said the same way again: said.json, beside
 // the settings, English -> what was sent. The player can read and correct it.
 const SAID_PATH = path.join(DATA_DIR, 'said.json');
