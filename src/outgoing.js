@@ -151,7 +151,7 @@ export function createOutgoing({ apiKey, model, ask = askGeminiHedged, cacheSize
     const mode = style === 'savage' ? 'savage' : 'faithful';
     if (!clean) throw new Error('nothing to translate');
     const key = language + '|' + mode + '|' + clean.toLowerCase();
-    if (cache.has(key)) return { out: cache.get(key), language, style: mode, cached: true };
+    if (cache.has(key)) return { out: cache.get(key), language, cached: true };
     // Two tries, not three: the incoming chat lives on the same 15 calls a minute.
     // `remote()` answers a function when the hosted translator is in use (no
     // key of the player's own): it is sent the line, never a prompt.
@@ -165,6 +165,6 @@ export function createOutgoing({ apiKey, model, ask = askGeminiHedged, cacheSize
     cache.set(key, out);
     if (cache.size > cacheSize) cache.delete(cache.keys().next().value);
     keep();
-    return { out, language, style: mode, cached: false };
+    return { out, language, cached: false };
   };
 }
