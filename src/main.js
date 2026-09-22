@@ -24,9 +24,9 @@ import crypto from 'node:crypto';
 import { languageCode } from './languages.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-// The first start ever (no settings file yet) shows the window once: it says
-// the app is ready and that Dota must be restarted once for its chat feed.
-const firstRun = !fs.existsSync(CONFIG_PATH);
+// A missing settings file means first run. Check the file at the moment we
+// start the watcher, rather than caching this at process launch: Save can
+// create it without restarting the Electron process.
 const cfg = loadConfig();
 let win = null;
 let watcher = null;
@@ -206,7 +206,7 @@ async function start() {
   if (DEBUG) console.log('offsets', cfg.offsets.source, 'v' + cfg.offsets.version, cfg.offsets.updated);
   cfg.geminiApiKey = storedKey();
   const targetNeedsOwnKey = languageCode(cfg.targetLanguage || 'English') !== 'en';
-  if (firstRun || (targetNeedsOwnKey ? !cfg.geminiApiKey : (!hostedOn() && !cfg.geminiApiKey))) {
+  if (!fs.existsSync(CONFIG_PATH) || (targetNeedsOwnKey ? !cfg.geminiApiKey : (!hostedOn() && !cfg.geminiApiKey))) {
     // Not an error to be read off an overlay: a window that asks for it.
     openSetup();
     return;
