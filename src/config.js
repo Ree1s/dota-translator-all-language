@@ -153,6 +153,9 @@ export const DEFAULTS = {
   // exists only while Dota is the window in front. "" turns it all off,
   // and then the app sends the game no keys at all.
   sayHotkey: 'Control+Enter',
+  // Hold Ctrl+Enter and tap a number to force the outgoing language.
+  // Digits are 1..9,0 in this array order.
+  sayLanguageHotkeys: ['English', 'Russian', 'Chinese', 'Thai', 'Vietnamese', 'Indonesian', 'Malay', 'Filipino', 'Ukrainian', 'Japanese'],
   // What to translate it into. "auto" is whatever the others were last
   // seen typing in, Russian until anything has been seen; or a language by
   // name ("Russian", "Ukrainian", "Chinese").
