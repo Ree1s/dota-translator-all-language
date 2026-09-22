@@ -90,6 +90,13 @@ key is always used instead of the server.
   `hosted.translate`, Ctrl+Enter through `hosted.say` (createOutgoing's
   `remote`); said.json and the local cache work as before. `hostedUrl` is
   BLANK in the defaults: nothing has changed for anybody yet.
+- **SEEN WORKING, 2026-09-22 (bot match, dev copy with a config holding NO key
+  and `hostedUrl` = https://translate.dotatranslator.live):** no key window,
+  straight to "Reading chat."; incoming Russian translated and shown with
+  portrait and name; Ctrl+Enter said "how are we doing today" as "как дела
+  сегодня" through the server; the server's /health counted the lines. The
+  user: "seems to be working". The setup window still shows a key field
+  (the user asked; told it goes with the next change).
 - NOT done here: the default `hostedUrl` and the release that switches it
   on; the setup window's first-run wording; the SITE and README, which the
   user said to LEAVE until the server has been seen working ("hold on with
