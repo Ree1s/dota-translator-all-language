@@ -455,9 +455,9 @@ async function fitSetup() {
 ipcMain.handle('setup:fit', fitSetup);
 
 function makeTray() {
-  // The app's own icon: two chat bubbles, what was said behind what you
-  // read. Drawn for this project (build/icon-source.html) - NOT Dota's
-  // logo, which is Valve's trademark and not ours to use.
+  // The app's own icon: an amber square with a D (docs/logo.svg, rendered
+  // by tools/makeicons.mjs) - NOT Dota's logo, which is Valve's trademark
+  // and not ours to use.
   tray = new Tray(nativeImage.createFromPath(path.join(here, 'tray.png')).resize({ width: 16, height: 16 }));
   tray.setToolTip('Dota Translator ' + app.getVersion());
   tray.setContextMenu(Menu.buildFromTemplate([

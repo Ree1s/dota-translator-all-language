@@ -1721,8 +1721,14 @@ icon".)
   it reached GitHub and answered "No published versions", which was true.
   **NOT seen: an actual update** - that needs two releases. Unsigned
   builds update fine on Windows (no publisherName is set to verify).
-- **The icon is ours**: two chat bubbles, a grey "Я" behind an amber "A"
-  (`build/icon-source.html` is the drawing; `build/icon.ico` 16-256,
+- **The icon is ours. FROM v0.5.1 (2026-09-22, the user: the tray icon "looks
+  weird ... full orange with letter D on it, without using the black
+  background"): an amber rounded square with a dark D, nothing else.**
+  `docs/logo.svg` is the drawing; `npx electron tools/makeicons.mjs` renders
+  EVERY icon file from it (Electron is the only rasteriser here; the .ico
+  files are PNG-entry ICOs written by the script). Before: two chat bubbles,
+  a grey "Я" behind an amber "A"
+  (`build/icon-source.html` was the drawing; `build/icon.ico` 16-256,
   `src/tray.png`, `docs/logo-{64,192,512}.webp`, `docs/logo.svg`,
   `docs/favicon.ico`). The user asked for "something with dota logo (if
   they allow it)": they do not - it is Valve's trademark - so nothing of
