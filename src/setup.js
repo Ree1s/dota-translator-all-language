@@ -42,10 +42,32 @@ $('fontSize').addEventListener('input', () => { $('fontSizeOut').textContent = $
 $('more').addEventListener('toggle', () => window.setup.fit());
 $('folder').addEventListener('click', () => window.setup.folder());
 
+// The version line: a dot and a sentence. Green = this is the latest.
+function showUpdate(u) {
+  const v = u.version;
+  const map = {
+    source: ['', 'Version ' + v + ' - run from source, no updates'],
+    off: ['', 'Version ' + v + ' - automatic updates are off'],
+    checking: ['wait', 'Version ' + v + ' - checking for a newer one...'],
+    latest: ['ok', 'Version ' + v + ' - up to date'],
+    downloading: ['wait', 'Version ' + v + ' - downloading ' + u.latest + (u.percent ? ' (' + u.percent + '%)' : '') + '...'],
+    ready: ['wait', 'Version ' + v + ' - ' + u.latest + ' is ready and installs when you quit'],
+    error: ['bad', 'Version ' + v + ' - could not check for updates (offline?)'],
+  };
+  const [dot, text] = map[u.status] || map.source;
+  $('dot').className = 'dot ' + dot;
+  $('updateText').textContent = text;
+  $('checkNow').hidden = !(u.status === 'latest' || u.status === 'error');
+  $('installNow').hidden = u.status !== 'ready';
+}
+$('checkNow').addEventListener('click', async () => showUpdate(await window.setup.update()));
+$('installNow').addEventListener('click', () => window.setup.quitInstall());
+window.setup.onUpdate(showUpdate);
+
 window.setup.state().then((s) => {
   // Which version this is, where it can be seen: the title bar and the foot.
   document.title = 'Dota Translator ' + s.version;
-  $('version').textContent = 'Version ' + s.version;
+  showUpdate(s.update || { status: 'source', version: s.version });
   fill(s);
   const mode = document.querySelector(`input[name=display][value="${s.display === 'box' ? 'box' : 'above'}"]`);
   if (mode) mode.checked = true;

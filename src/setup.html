@@ -71,6 +71,8 @@
   #result code { font-family: var(--mono); color: var(--text); }
   .actions { margin-top: 0; padding-top: 24px; display: flex; gap: 10px; align-items: center; }
   .actions .grow { flex: 1; }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--faint); margin-right: 8px; vertical-align: 1px; }
+  .dot.ok { background: var(--good); } .dot.wait { background: var(--accent); } .dot.bad { background: var(--warn); }
   .trust { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--faint); font-size: 12.5px; }
 </style>
 </head>
@@ -120,7 +122,7 @@
     <button id="close" type="button">Close</button>
   </div>
   <p class="trust">Chat lines that need translating go to this project's translator (translate.dotatranslator.live) and on to Google's Gemini. Nothing that is said is logged there. Lines already in English never leave your PC. The source is public, so anybody can check that.</p>
-  <p class="trust" id="version"></p>
+  <p class="trust" id="version"><span class="dot" id="dot"></span><span id="updateText"></span> <button class="link" id="checkNow" type="button">Check now</button> <button class="link" id="installNow" type="button" hidden>Quit and install</button></p>
 
   <script src="setup.js"></script>
 </body>

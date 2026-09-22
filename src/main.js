@@ -378,16 +378,32 @@ async function sayKey() {
 // background and installs it when the app is next closed - never in the
 // middle of a match, and never with a dialog over the game. Run from
 // source there is nothing to update and nothing is asked.
+// What the settings window shows about it (the user, 2026-09-22: an
+// indicator that this copy is up to date). `status`: source (run from
+// source, nothing to check), off (autoUpdate false), checking, latest,
+// downloading, ready (installs when the app quits), error.
+const updateState = { status: app.isPackaged ? (cfg.autoUpdate === false ? 'off' : 'checking') : 'source', version: app.getVersion(), latest: '', checked: 0 };
+function setUpdate(patch) {
+  Object.assign(updateState, patch);
+  if (setupWin && !setupWin.isDestroyed()) setupWin.webContents.send('update', updateState);
+}
+let lookForUpdate = () => {};
 function checkForUpdates() {
   if (!app.isPackaged || cfg.autoUpdate === false) return;
   const { autoUpdater } = updater;
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
-  autoUpdater.on('error', (err) => { if (DEBUG) console.log('update:', String((err && err.message) || err)); });
+  autoUpdater.on('checking-for-update', () => setUpdate({ status: 'checking' }));
+  autoUpdater.on('update-not-available', (info) => setUpdate({ status: 'latest', latest: info && info.version || app.getVersion(), checked: Date.now() }));
+  autoUpdater.on('update-available', (info) => setUpdate({ status: 'downloading', latest: info.version, checked: Date.now() }));
+  autoUpdater.on('download-progress', (p) => setUpdate({ status: 'downloading', percent: Math.round(p.percent || 0) }));
+  autoUpdater.on('error', (err) => { setUpdate({ status: 'error', checked: Date.now() }); if (DEBUG) console.log('update:', String((err && err.message) || err)); });
   autoUpdater.on('update-downloaded', (info) => {
+    setUpdate({ status: 'ready', latest: info.version, checked: Date.now() });
     if (tray) tray.setToolTip('Dota Translator - version ' + info.version + ' installs when you quit');
   });
   const look = () => autoUpdater.checkForUpdates().catch(() => { /* offline, or no release yet: next time */ });
+  lookForUpdate = look;
   look();
   // And again every few hours. It used to look ONCE, at startup - and the
   // user's own copy, started before three releases came out and left
@@ -518,7 +534,7 @@ function toggleHidden() {
   if (hidden) win.hide(); else if (inFront) win.showInactive();
 }
 
-ipcMain.handle('setup:state', () => ({ version: app.getVersion(), hasKey: Boolean(storedKey()), display: cfg.display, settings: uiSettings(cfg), languages: LANGUAGES }));
+ipcMain.handle('setup:state', () => ({ version: app.getVersion(), update: updateState, hasKey: Boolean(storedKey()), display: cfg.display, settings: uiSettings(cfg), languages: LANGUAGES }));
 ipcMain.handle('setup:folder', () => {
   // The file may not exist yet on a fresh install: make it, so that there
   // is something in the folder to find.
@@ -547,6 +563,8 @@ ipcMain.handle('setup:sayInto', (_e, which) => {
   if (Object.keys(patch).length) { saveConfig(patch); Object.assign(cfg, patch); }
   return { sayInto: uiSettings(cfg).sayInto };
 });
+ipcMain.handle('setup:update', () => { lookForUpdate(); return updateState; });
+ipcMain.handle('setup:quitInstall', () => { if (updateState.status === 'ready') { try { updater.autoUpdater.quitAndInstall(false, true); } catch { app.quit(); } } });
 ipcMain.handle('setup:close', () => { if (setupWin && !setupWin.isDestroyed()) setupWin.close(); });
 ipcMain.handle('setup:guide', () => {
   // The live page, not the copy that came with the app: a file:// address
