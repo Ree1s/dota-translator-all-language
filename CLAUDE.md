@@ -122,6 +122,13 @@ key is always used instead of the server.
   "Translation is very slow" was that. Now hostedUrl set = the server, full
   stop; a key is used only with hostedUrl blank. The user's installed
   config had its saved key blanked by hand the same evening.
+- **THE SETTINGS WINDOW IS ALWAYS ON TOP while open (v0.5.8).** The user: it
+  opened behind Chrome and "goes back the moment I move my mouse towards the
+  browser" - and so did Windows Settings, so something on their PC keeps
+  Chrome topmost (PowerToys Always On Top or the hover-activate option;
+  told). v0.5.6 tried topmost-for-400ms and v0.5.7 topmost-until-blur;
+  neither held. SEEN in a 25-frame screen recording: 0.5.6's window behind
+  Chrome in every frame with Chrome up. The user: "this way its better".
 - NOT done: a privacy page of its own (one FAQ answer and one README bullet
   say what is kept); the first-run path seen on a clean install.
 - OLD, done: the default `hostedUrl` and the release that switches it
