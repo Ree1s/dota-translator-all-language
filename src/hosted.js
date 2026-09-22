@@ -18,7 +18,7 @@ export function explainHosted(code) {
   return null;
 }
 
-export function createHosted({ url, id, version = '', fetchImpl = globalThis.fetch, timeoutMs = 8000 } = {}) {
+export function createHosted({ url, id, version = '', fetchImpl = globalThis.fetch, timeoutMs = 20000 } = {}) {
   const post = async (route, body) => {
     const base = String(typeof url === 'function' ? url() : url || '').replace(/\/+$/, '');
     const ctl = new AbortController();
