@@ -251,8 +251,9 @@ async function start() {
         if (DEBUG) console.log('hotkey', key, 'unmapped');
         return;
       }
-      if (DEBUG) console.log('hotkey', key, forced || 'default');
-      sayKey(forced || '');
+      const style = key === 'Control+Shift+Enter' ? 'savage' : 'faithful';
+      if (DEBUG) console.log('hotkey', key, forced || 'default', style);
+      sayKey(forced || '', style);
     },
     // The game's chat is set in Valve's Radiance, which is not on anybody's
     // machine except inside the game. It is loaded from THERE - the
@@ -370,8 +371,13 @@ function setSayHotkey(on) {
 // English whatever it was typed in - for the player on the other side of
 // the same problem, typing Russian to English speakers. Read at each press,
 // so changing it in the setup window needs no restart.
-async function sayKey(forcedLanguage = '') {
-  if (saying || (!hostedOn() && !cfg.geminiApiKey)) return;
+async function sayKey(forcedLanguage = '', style = 'faithful') {
+  if (saying) return;
+  if (style === 'savage' && !cfg.geminiApiKey) {
+    send('status', { kind: 'error', text: 'Ctrl+Shift+Enter savage mode needs your Gemini API key.' });
+    return;
+  }
+  if (!hostedOn() && !cfg.geminiApiKey) return;
   saying = true;
   try {
     const into = forcedLanguage || targetLanguage(cfg.replyLanguage, spoken);
@@ -387,7 +393,7 @@ async function sayKey(forcedLanguage = '') {
         if (sentForMe.size > 50) sentForMe.delete(sentForMe.values().next().value);
       },
       who: () => me,
-      translate: (typed) => sayIt(typed, into),
+      translate: (typed) => sayIt(typed, into, style),
       note: (s) => send('status', withFace(s)),
     });
     if (DEBUG) console.log('say', JSON.stringify(r));
