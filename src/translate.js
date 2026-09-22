@@ -20,7 +20,7 @@ export function systemFor(targetLanguage = 'English') {
     'The input is a JSON array of {i, name, text}. Answer with a JSON array of {i, en}, one entry per input, same i values. The field is named en for backward compatibility even when the target is not English.',
     'Rules:',
     '- Translate only the text. Never translate or change a player name.',
-    '- Preserve personal names rather than replacing them with culturally different names.',
+    '- Preserve personal names rather than replacing them with culturally different names; they are never swapped for an English name.',
     `- Keep it short and plain, the way a ${target}-speaking Dota player would type it in a match.`,
     '- Dota shorthand stays natural: mid, top, bot, gank, ward, roshan/rosh, bkb, tp, gg, ff, ss/miss, rune, stack, push, def, smoke, buyback, courier, ult/CD.',
     '- Translate insults and swearing as they are. Do not soften, censor or explain them.',
