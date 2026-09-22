@@ -33,6 +33,7 @@ export function startWatchingMemory(cfg, { onResult, onPending = () => {}, onSta
   const doTranslate = translate || ((batch, { hedge = true } = {}) => translateBatch(batch, {
     apiKey: cfg.geminiApiKey,
     model: cfg.model,
+    targetLanguage: cfg.targetLanguage || 'English',
     attempts: hedge ? undefined : 1,
   }));
 
@@ -42,7 +43,7 @@ export function startWatchingMemory(cfg, { onResult, onPending = () => {}, onSta
   const cache = new Map();
   const remember = (row) => {
     if (!row.translated) return;
-    cache.set(row.text, row.en);
+    cache.set((cfg.targetLanguage || 'English') + '|' + row.text, row.en);
     if (cache.size > 500) cache.delete(cache.keys().next().value);
   };
   let nextId = 1;
@@ -70,6 +71,8 @@ export function startWatchingMemory(cfg, { onResult, onPending = () => {}, onSta
 
   const source = startSource({
     scripts: cfg.scripts,
+    sourceLanguages: cfg.sourceLanguages || ['auto'],
+    targetLanguage: cfg.targetLanguage || 'English',
     intervalMs: cfg.scanIntervalMs,
     fullRescanMs: cfg.fullRescanMs,
     onStatus,
@@ -80,7 +83,7 @@ export function startWatchingMemory(cfg, { onResult, onPending = () => {}, onSta
       // is the difference between a box that keeps up with the game and
       // one that is always a second behind it.
       const item = { ...msg, id: nextId++ };
-      const known = cache.get(msg.text);
+      const known = cache.get((cfg.targetLanguage || 'English') + '|' + msg.text);
       if (known) { onResult({ ...item, en: known, translated: true, cached: true }); return; }
       onPending(item);
       pipe.push(item);
@@ -135,7 +138,8 @@ export function startWatchingMemory(cfg, { onResult, onPending = () => {}, onSta
     know(text, en) {
       const t = String(text || '').trim(), e = String(en || '').trim();
       if (!t || !e) return;
-      cache.delete(t); cache.set(t, e);
+      const k = (cfg.targetLanguage || 'English') + '|' + t;
+      cache.delete(k); cache.set(k, e);
       if (cache.size > 500) cache.delete(cache.keys().next().value);
     },
   };
