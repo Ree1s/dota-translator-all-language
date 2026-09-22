@@ -53,6 +53,9 @@ export function createHosted({ url, id, version = '', fetchImpl = globalThis.fet
         return { ...it, en: ok ? r.en : it.text, translated: ok };
       });
     },
+    // Once a minute while Dota is in front: 'somebody is in a game'. The id
+    // and nothing else; a failure is nobody's business.
+    async ping() { try { await post('/v1/ping', {}); } catch { /* the count is the server's problem */ } },
     async say(text, into) {
       const data = await post('/v1/say', { text, into });
       return typeof (data && data.out) === 'string' ? data.out : '';

@@ -1976,6 +1976,11 @@ ok('gsi mode reads no memory: nothing of it opens the game, reads it, or starts 
     assert.deepEqual(sent[0].body, { id: ID, lines: [{ name: 'Ivan', text: RU }, { name: 'x', text: RU + RU }] });
     assert.deepEqual(rows[0], { name: 'Ivan', text: RU, channel: 'team', slot: 3, id: 7, en: 'go mid', translated: true });
     assert.deepEqual(rows[1], { name: 'x', text: RU + RU, channel: 'all', slot: 1, id: 8, en: RU + RU, translated: false });
+    await h.ping();
+    assert.equal(sent[1].url, 'https://example.invalid/v1/ping');
+    assert.deepEqual(sent[1].body, { id: ID });
+    reply.status = 500; reply.body = {};
+    await h.ping();                                                     // a failed ping is silent
     reply.status = 429; reply.body = { error: 'allowance' };
     assert.match((await refusal(h.translate([{ text: RU }]))).message, /come back tomorrow/);
     assert.match(explainHosted('budget'), /back on the 1st/);

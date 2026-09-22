@@ -111,6 +111,10 @@ key is always used instead of the server.
   likewise. `docs/key.html` stays, unlinked from the steps. A test fails if
   the landing page asks for a key again. SEEN (DT_SHOT): the first-run
   window - Ready to play, the two looks, the direction, More settings, Save.
+- **A HEARTBEAT (v0.5.3):** while Dota is in front and the hosted translator
+  is in use, `main.js` posts `/v1/ping` (the id, nothing else) at once and
+  every minute, so the server's /health can say how many players are in a
+  game NOW (the user asked for live users). A failed ping is silent.
 - NOT done: a privacy page of its own (one FAQ answer and one README bullet
   say what is kept); the first-run path seen on a clean install.
 - OLD, done: the default `hostedUrl` and the release that switches it

@@ -252,6 +252,7 @@ async function start() {
     onFocus: (on) => {
       setSayHotkey(on);
       inFront = on;
+      heartbeat(on);
       if (!win || win.isDestroyed() || hidden) return;
       if (on) win.showInactive(); else win.hide();
     },
@@ -294,6 +295,17 @@ function installHash() {
   return hashId('install', cfg.installId);
 }
 const hosted = createHosted({ url: () => cfg.hostedUrl, id: () => playerId || installHash(), version: app.getVersion() });
+
+// While the game is in front and the hosted translator is in use, tell it
+// once a minute that a player is in a game (players.now on its /health).
+let beat = null;
+function heartbeat(on) {
+  if (beat) { clearInterval(beat); beat = null; }
+  if (!on || cfg.geminiApiKey || !hostedOn()) return;
+  hosted.ping();
+  beat = setInterval(() => hosted.ping(), 60000);
+  beat.unref?.();
+}
 
 const spoken = createLanguageTracker();
 // What has been said before is said the same way again: said.json, beside
