@@ -30,7 +30,8 @@ export function languageFromHotkey(key, languages = []) {
   if (!m) return '';
   const at = HOTKEY_DIGITS.indexOf(m[1]);
   if (at < 0 || at >= languages.length) return '';
-  return canonicalLanguage(languages[at], '');
+  if (languageCode(languages[at], 'und') === 'und') return '';
+  return canonicalLanguage(languages[at]);
 }
 
 export function scriptOf(text) {
