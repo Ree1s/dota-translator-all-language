@@ -440,9 +440,10 @@ function surface(w) {
   w.moveTop();
   w.focus();
   app.focus({ steal: true });
-  // Topmost until the player has had it and clicked elsewhere; a timer was
-  // not enough (SEEN: up for a blink, then behind Chrome again).
-  w.once('blur', () => { if (!w.isDestroyed()) w.setAlwaysOnTop(false); });
+  // And it STAYS on top while it is open. A timer was not enough (SEEN: up
+  // for a blink, then behind Chrome again), nor was until-blur (the user:
+  // 'it goes back the moment I move my mouse towards the browser'). It is
+  // small and has a Close button.
 }
 
 function openSetup() {
