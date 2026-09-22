@@ -2343,8 +2343,12 @@ with a slider. What was built, and the rules it follows:
   domain; GitHub Pages custom domain via `docs/CNAME`, four A records at the
   registrar for the root and `www` CNAME to sc0rebreaker.github.io; the old
   address redirects). Every absolute URL in the site and the app uses it.
-  "Enforce HTTPS" in repo Settings > Pages is the user's click once GitHub
-  has issued the certificate. Before that it was
+  LIVE ON HTTPS since 2026-09-22 evening: the DNS is at CLOUDFLARE (the
+  user moved the zone there; root A x4 and www CNAME DNS-only, `translate`
+  proxied with SSL Full (strict) - Flexible would loop with Caddy). GitHub's
+  "DNS check" sat for two hours because it ran before the nameservers had
+  switched; Remove + re-add of the domain in Settings > Pages fixed it in a
+  minute. Before that it was
 - LIVE at https://sc0rebreaker.github.io/dota-translator/ (since
   2026-09-20; the user asked for Pages to be turned on). It is served from
   the `gh-pages` BRANCH, which is nothing but `docs/` of master:
