@@ -207,7 +207,7 @@ Plain `Enter` still sends exactly what you typed.
 | `gsiPort` | the port on your own PC that Dota sends its feed to (47854) |
 | `gsiRowGrab` | name a speaker's hero from a small capture of the game's chat row and top bar. `false` captures nothing; other players are then shown by colour only (true) |
 | `scripts` | which writing systems to translate. `["cyrillic", "han"]` by default - Russian, which is what this is built for, and Chinese, because so many pasted voice lines are. `greek`, `hangul`, `arabic` and `thai` are also known |
-| `callsPerMinute` | how many calls a minute your key allows. The free tier is 15. The busier the chat, the more lines share one call, so a loud game stays inside it (15) |
+| `callsPerMinute` | with your own key: how many calls a minute it allows. The free tier is 15. The busier the chat, the more lines share one call, so a loud game stays inside it (15) |
 | `batchMs` | how long to gather lines before one call (80) |
 | `holdSeconds` | how long a line stays on screen (14) |
 | `fadeWithGame` | in `above` mode a translated line disappears when Dota's own line does, about 7 seconds after it is said, and `holdSeconds` is ignored. `false` keeps it for `holdSeconds` (true) |
@@ -225,7 +225,7 @@ Plain `Enter` still sends exactly what you typed.
 Almost nothing. Only lines containing Cyrillic are sent, and lines arriving
 together go in one call, so Dota's own chat wheel ("Pushing mid", already in
 your language) never costs anything at all. A normal game is a handful of
-calls carrying a few dozen short lines - well inside the free tier.
+calls carrying a few dozen short lines - well inside a player's daily allowance, and inside the free tier with an own key.
 
 
 ## How it works
@@ -240,7 +240,7 @@ Worth knowing if you are reviewing the code:
   only **primes**, so starting the app mid-game does not dump the match so
   far onto your screen.
 - Only lines in the languages you ticked go to the model, several to a
-  call when the chat is busy, inside the free tier's 15 calls a minute.
+  call when the chat is busy, inside the free tier's 15 calls a minute with an own key.
 - The text is placed from the game window's position and size alone
   ([`src/gsilayout.js`](src/gsilayout.js)): Dota lays its chat out at a
   fixed place in 1080-high units. Seen on 5120x1440; if it sits wrong on
