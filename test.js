@@ -1408,6 +1408,11 @@ ok('what is typed is made one short line before it goes anywhere', () => {
   assert.match(req.systemInstruction.parts[0].text, /insults, profanity, trash talk or contempt/);
   assert.match(req.systemInstruction.parts[0].text, /comparable force/);
   assert.match(req.systemInstruction.parts[0].text, /do not make the abuse stronger than the source/i);
+  const savage = buildOutRequest('you are bad', 'Russian', 'savage');
+  assert.match(savage.systemInstruction.parts[0].text, /SAVAGE MODE/);
+  assert.match(savage.systemInstruction.parts[0].text, /extremely aggressive, vulgar, mocking Dota trash talk/);
+  assert.match(savage.systemInstruction.parts[0].text, /Do NOT use protected-class slurs/);
+  assert.equal(savage.generationConfig.temperature, 0.45);
   assert.deepEqual(JSON.parse(req.contents[0].parts[0].text), { text: 'go rosh' });
 });
 
@@ -1438,8 +1443,12 @@ await okAsync('a repeat costs no call, and a failure is not remembered', async (
   assert.equal(calls, 2);
   await say('go rosh', 'Chinese');                 // another language is another line
   assert.equal(calls, 3);
+  await say('go rosh', 'Russian', 'savage');        // same words, different tone mode: never reuse faithful cache
+  assert.equal(calls, 4);
+  await say('go rosh', 'Russian', 'savage');
+  assert.equal(calls, 4);
   await assert.rejects(() => say('   ', 'Russian'), /nothing to translate/);
-  assert.equal(calls, 3);
+  assert.equal(calls, 4);
 });
 
 await okAsync('what was said once is said the same way after a restart, and the file can be corrected by hand', async () => {
@@ -1721,10 +1730,10 @@ ok('keys are sent from ONE place, only with the game in front, and nothing anywh
     child.stdout = new EventEmitter(); child.stdout.setEncoding = () => {};
     child.kill = () => { killed++; };
     const w = startFocusWatch({ onFocus: (on) => heard.push(on), onHotkey: (key) => hotkeys.push(key), parentPid: 42, spawnImpl: (exe, a) => { args = a; return child; } });
-    child.stdout.emit('data', '{"t":"focus","on":1}\n{"t":"hotkey","key":"Control+Enter+1"}\n{"t":"hotkey","key":"Control+Enter"}\n{"t":"fo');
+    child.stdout.emit('data', '{"t":"focus","on":1}\n{"t":"hotkey","key":"Control+Enter+1"}\n{"t":"hotkey","key":"Control+Shift+Enter"}\n{"t":"hotkey","key":"Control+Enter"}\n{"t":"fo');
     child.stdout.emit('data', 'cus","on":0}\nrubbish\n');
     assert.deepEqual(heard, [true, false]);
-    assert.deepEqual(hotkeys, ['Control+Enter+1', 'Control+Enter']);
+    assert.deepEqual(hotkeys, ['Control+Enter+1', 'Control+Shift+Enter', 'Control+Enter']);
     assert.equal(args[args.indexOf('-ParentPid') + 1], '42');
     w.stop();
     assert.equal(killed, 1);
@@ -1744,6 +1753,7 @@ ok('keys are sent from ONE place, only with the game in front, and nothing anywh
     const helper = fs.readFileSync(path.join('src', 'focuswatch.ps1'), 'latin1');
     assert.doesNotMatch(helper, /OpenProcess|ReadProcessMemory|keybd_event|SendInput/);
     assert.match(helper, /GetAsyncKeyState/);
+    assert.match(helper, /Control\+Shift\+Enter/);
   });
 }
 
