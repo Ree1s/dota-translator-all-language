@@ -24,6 +24,7 @@ export const SUPPORTED_LANGUAGES = [
   { code: 'ar', name: 'Arabic', label: 'العربية / Arabic' },
 ];
 
+const UNKNOWN_LANGUAGE = { code: 'und', name: 'Unknown', label: 'Unknown' };
 const byCode = new Map(SUPPORTED_LANGUAGES.map((x) => [x.code, x]));
 const aliases = new Map();
 for (const x of SUPPORTED_LANGUAGES) {
@@ -42,7 +43,7 @@ for (const [a, code] of Object.entries({
 
 export function languageInfo(value, fallback = 'en') {
   const raw = String(value == null ? '' : value).trim().toLowerCase();
-  return aliases.get(raw) || byCode.get(fallback) || byCode.get('en');
+  return aliases.get(raw) || byCode.get(fallback) || (fallback === 'und' ? UNKNOWN_LANGUAGE : byCode.get('en'));
 }
 
 export const canonicalLanguage = (value, fallback = 'English') =>
