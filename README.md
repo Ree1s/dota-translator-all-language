@@ -1,8 +1,14 @@
 # Dota Translator
 
-Translates Russian Dota 2 chat into English, live, on a transparent overlay
-above the game. Free for players, source available, nothing to sign up for:
-download, restart Dota once, play.
+Multilingual fork of Dota Translator. It translates Dota 2 chat live on a
+transparent overlay above the game, with special attention to Chinese,
+Russian/CIS, English and Southeast Asian Dota communication.
+
+Incoming chat can be displayed in English, Simplified Chinese, Russian,
+Ukrainian, Japanese, Korean, Thai, Vietnamese, Indonesian, Malay,
+Filipino/Tagalog, Burmese, Khmer, Lao or Arabic. Source-language detection
+runs locally first; Dota terms such as BKB, TP, rosh, smoke, buyback and
+mid/top/bot are kept in match-appropriate wording.
 
 ```
 [all]  unc status: hello everyone
@@ -45,12 +51,12 @@ What it does do, all of it:
   the app presses select, copy, paste and Enter through Windows, as a macro
   key would ([`src/sendchat.ps1`](src/sendchat.ps1)). `"sayHotkey": ""`
   turns it off.
-- **Sends the chat lines that need translating to this project's own
-  translator** (`translate.dotatranslator.live`), which passes them to
-  Google's Gemini and returns the English. Nothing that is said is logged
-  there; it keeps a short-lived cache of text and translation, with nothing
-  about who said it, and counts how many players used it each day. Lines already in English never leave your PC. There is
-  a fair daily allowance per player that normal play never reaches.
+- **Translation path depends on your display language.** English output can
+  keep using the original project's hosted translator
+  (`translate.dotatranslator.live`). Other output languages use your own
+  Gemini API key directly, because the original hosted protocol guarantees
+  English output only. Language detection happens locally before a request
+  is made.
 
 What nobody can promise you: Valve has not reviewed or approved this app,
 and the Steam Subscriber Agreement does not bless third-party tools in
