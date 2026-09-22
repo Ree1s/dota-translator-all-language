@@ -21,7 +21,7 @@ function fill(s) {
     opt.textContent = label;
     TARGET.appendChild(opt);
   }
-  TARGET.value = s.settings.targetLanguage || 'en';
+  TARGET.value = s.targetLanguage || 'en';
   for (const id of ['showOriginal', 'showHeroes', 'autoUpdate']) $(id).checked = Boolean(s.settings[id]);
   const into = document.querySelector(`input[name=sayInto][value="${s.settings.sayInto === 'english' ? 'english' : 'theirs'}"]`);
   if (into) into.checked = true;
