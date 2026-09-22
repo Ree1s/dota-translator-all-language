@@ -93,6 +93,10 @@ export const DEFAULTS = {
   // Which writing systems to translate. Russian is what this is FOR;
   // Chinese is on as well because so much of what is pasted into chat -
   // voice lines above all - is Chinese (the user, 2026-09-20).
+  // Multilingual mode: detect any supported source language and render it
+  // in this language. "scripts" remains for old configs and the log reader.
+  sourceLanguages: ['auto'],
+  targetLanguage: 'English',
   scripts: ['cyrillic', 'han'],
   // Lines said in the same breath go in one call. 400 was chosen before
   // anybody had played with it; in a fight every tenth of a second shows.
