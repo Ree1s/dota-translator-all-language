@@ -12,7 +12,7 @@
 // decides, and Russian - what this is for - until anything has been seen.
 
 import { askGeminiHedged } from './translate.js';
-import { canonicalLanguage, detectLanguage, dotaPromptNotes } from './languages.js';
+import { canonicalLanguage, detectLanguage, dotaPromptNotes, languageCode } from './languages.js';
 
 // Legacy exports kept for callers that imported these names. Language
 // tracking itself now uses the multilingual detector instead of equating a
@@ -25,7 +25,8 @@ export const SCRIPT_LANGUAGE = {
 export const MAX_SAY = 200;          // a chat line, not a letter
 
 export function scriptOf(text) {
-  return detectLanguage(text).code;
+  const code = detectLanguage(text).code;
+  return ({ ru: 'cyrillic', uk: 'cyrillic', zh: 'han', ja: 'han', ko: 'hangul', th: 'thai', ar: 'arabic', lo: 'lao', my: 'myanmar', km: 'khmer' })[code] || '';
 }
 
 /** Remembers the most recent confidently detected language teammates used. */
@@ -44,7 +45,9 @@ export function createLanguageTracker({ fallback = 'Russian' } = {}) {
 export function targetLanguage(setting, tracker) {
   const s = String(setting || 'auto').trim();
   if (!s || s.toLowerCase() === 'auto') return tracker ? tracker.language : 'Russian';
-  return canonicalLanguage(s, 'Russian');
+  const clean = s.replace(/[^\p{L} ]/gu, '').slice(0, 24).trim();
+  if (!clean) return 'Russian';
+  return languageCode(clean, 'und') === 'und' ? clean : canonicalLanguage(clean, 'Russian');
 }
 
 export function tidySay(text) {
