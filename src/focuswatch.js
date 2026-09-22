@@ -29,7 +29,7 @@ export function startFocusWatch({ onFocus = () => {}, onWindow = () => {}, onHot
         let o = null;
         try { o = JSON.parse(p); } catch { continue; }
         if (o && o.t === 'focus') onFocus(o.on === 1);
-        if (o && o.t === 'hotkey' && /^Control\+Enter(?:\+[0-9])?$/.test(String(o.key || ''))) onHotkey(o.key);
+        if (o && o.t === 'hotkey' && /^(?:Control\+Shift\+Enter|Control\+Enter(?:\+[0-9])?)$/.test(String(o.key || ''))) onHotkey(o.key);
         // Where the inside of the game's window is on the screen, real pixels.
         if (o && o.t === 'window' && [o.x, o.y, o.w, o.h].every(Number.isFinite)) onWindow({ x: o.x, y: o.y, w: o.w, h: o.h });
       }
