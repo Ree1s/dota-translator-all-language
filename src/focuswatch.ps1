@@ -18,7 +18,7 @@
 
 param(
   [int]$ParentPid = 0,
-  [int]$IntervalMs = 250,
+  [int]$IntervalMs = 40,
   [string]$ProcessName = 'dota2'
 )
 
@@ -40,6 +40,7 @@ public static class FrontWindow {
   [DllImport("user32.dll")] static extern bool GetClientRect(IntPtr h, out RECT r);
   [DllImport("user32.dll")] static extern bool ClientToScreen(IntPtr h, ref POINT p);
   [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
+  [DllImport("user32.dll")] static extern short GetAsyncKeyState(int vKey);
   [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }
   [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }
   // "x,y,w,h" of the front window's client area, or "" (minimised, gone).
@@ -54,6 +55,7 @@ public static class FrontWindow {
     int owner; GetWindowThreadProcessId(GetForegroundWindow(), out owner);
     return owner;
   }
+  public static bool KeyDown(int vk) { return (GetAsyncKeyState(vk) & 0x8000) != 0; }
 }
 "@
 
@@ -64,6 +66,7 @@ $lastClient = ''
 $clientAt = [DateTime]::MinValue
 $lastOwner = -1
 $on = -1
+$hotkeyDown = $false
 while ($true) {
   if (($null -ne $parent) -and $parent.HasExited) { exit 0 }
   $owner = [FrontWindow]::OwnerPid()
@@ -80,6 +83,15 @@ while ($true) {
     }
   }
   if ($on -eq 1) {
+    # Electron's globalShortcut can be swallowed by an exclusive-fullscreen
+    # game. Poll the physical key state while Dota owns the foreground
+    # window instead; emit once on the Ctrl+Enter down edge.
+    $down = [FrontWindow]::KeyDown(0x11) -and [FrontWindow]::KeyDown(0x0D)
+    if ($down -and -not $hotkeyDown) {
+      [Console]::Out.WriteLine('{"t":"hotkey","key":"Control+Enter"}')
+      [Console]::Out.Flush()
+    }
+    $hotkeyDown = $down
     $c = [FrontWindow]::Client()
     $due = ([DateTime]::UtcNow - $clientAt).TotalSeconds -ge 5
     if ($c -and (($c -ne $lastClient) -or $due)) {
@@ -89,6 +101,6 @@ while ($true) {
       [Console]::Out.WriteLine('{"t":"window","x":' + $n[0] + ',"y":' + $n[1] + ',"w":' + $n[2] + ',"h":' + $n[3] + '}')
       [Console]::Out.Flush()
     }
-  } else { $lastClient = '' }
+  } else { $lastClient = ''; $hotkeyDown = $false }
   Start-Sleep -Milliseconds $IntervalMs
 }
