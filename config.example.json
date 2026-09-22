@@ -38,5 +38,17 @@
   "sourceLanguages": [
     "auto"
   ],
-  "targetLanguage": "English"
+  "targetLanguage": "English",
+  "sayLanguageHotkeys": [
+    "English",
+    "Russian",
+    "Chinese",
+    "Thai",
+    "Vietnamese",
+    "Indonesian",
+    "Malay",
+    "Filipino",
+    "Ukrainian",
+    "Japanese"
+  ]
 }
