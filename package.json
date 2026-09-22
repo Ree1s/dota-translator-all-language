@@ -1,8 +1,8 @@
 {
   "name": "dota-translator",
-  "version": "0.5.10",
+  "version": "0.6.0",
   "private": true,
-  "description": "Russian Dota 2 chat, in English, live, above the game's own chat.",
+  "description": "Live multilingual Dota 2 chat translation for Chinese, English, Russian and SEA languages.",
   "type": "module",
   "main": "src/main.js",
   "scripts": {
@@ -19,7 +19,7 @@
     "electron-builder": "^26.15.3"
   },
   "productName": "Dota Translator",
-  "author": "Kristjan Ranna",
+  "author": "Kristjan Ranna; multilingual fork by Ree1s",
   "build": {
     "appId": "com.sc0rebreaker.dota-translator",
     "productName": "Dota Translator",
@@ -69,8 +69,8 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "sc0rebreaker",
-        "repo": "dota-translator",
+        "owner": "Ree1s",
+        "repo": "dota-translator-all-language",
         "releaseType": "release"
       }
     ]
