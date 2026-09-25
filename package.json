@@ -14,7 +14,8 @@
     "dist": "electron-builder --win nsis --publish never",
     "release": "electron-builder --win nsis --publish always",
     "start:war3": "electron . --war3",
-    "doctor:war3": "node src/war3doctor.js"
+    "doctor:war3": "node src/war3doctor.js",
+    "dist:war3": "electron-builder --config electron-builder.war3.cjs --win nsis --x64 --publish never"
   },
   "devDependencies": {
     "electron": "^33.0.0",

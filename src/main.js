@@ -24,6 +24,7 @@ import crypto from 'node:crypto';
 import { startFocusWatch } from './focuswatch.js';
 import { discoverWar3 } from './war3discovery.js';
 import { createComposer } from './composer.js';
+import { GAME, PRODUCT_NAME } from './game.js';
 import { languageCode } from './languages.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -31,7 +32,12 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 // start the watcher, rather than caching this at process launch: Save can
 // create it without restarting the Electron process.
 const cfg = loadConfig();
-const game = process.argv.includes('--war3') ? 'war3' : 'dota';
+const game = GAME;
+if (game === 'war3') {
+  app.setName(PRODUCT_NAME);
+  app.setPath('userData', path.join(app.getPath('appData'), PRODUCT_NAME));
+  app.setAppUserModelId('com.ree1s.warcraft-chat-translator');
+}
 const war3Discovery = game === 'war3' ? discoverWar3() : null;
 const captureOnly = game === 'war3' && process.argv.includes('--capture-only');
 const composerMode = game === 'war3' && process.argv.includes('--composer');
@@ -131,7 +137,7 @@ const patchWatch = createPatchWatch({
     send('status', { kind: 'error', text: SLOW_TEXT });
     if (tray) tray.setToolTip('Dota Translator ' + app.getVersion() + ' - slow mode: waiting for a fix for the new Dota build');
   },
-  onFast: () => { if (tray) tray.setToolTip('Dota Translator ' + app.getVersion()); },
+  onFast: () => { if (tray) tray.setToolTip(PRODUCT_NAME + ' ' + app.getVersion()); },
 });
 let faceOf = () => null;
 const withFace = (row) => (cfg.showHeroes && row && row.hero ? { ...row, face: faceOf(row.hero) } : row);
@@ -505,7 +511,7 @@ async function sayKey(forcedLanguage = '', style = 'faithful') {
 // indicator that this copy is up to date). `status`: source (run from
 // source, nothing to check), off (autoUpdate false), checking, latest,
 // downloading, ready (installs when the app quits), error.
-const updateState = { status: app.isPackaged ? (cfg.autoUpdate === false ? 'off' : 'checking') : 'source', version: app.getVersion(), latest: '', checked: 0 };
+const updateState = { status: game === 'war3' ? 'off' : app.isPackaged ? (cfg.autoUpdate === false ? 'off' : 'checking') : 'source', version: app.getVersion(), latest: '', checked: 0 };
 function setUpdate(patch) {
   Object.assign(updateState, patch);
   if (setupWin && !setupWin.isDestroyed()) setupWin.webContents.send('update', updateState);
@@ -593,7 +599,7 @@ function openSetup() {
     // page turns out to need (fitSetup) - a fixed one was a guess, and the
     // guess was short: the window scrolled.
     width: 680, height: 720, useContentSize: true, resizable: false, maximizable: false, fullscreenable: false,
-    title: 'Dota Translator', backgroundColor: '#0a0d10', autoHideMenuBar: true, show: false,
+    title: PRODUCT_NAME, backgroundColor: '#0a0d10', autoHideMenuBar: true, show: false,
     webPreferences: { preload: path.join(here, 'setup-preload.cjs'), contextIsolation: true, sandbox: true },
   });
   setupWin.removeMenu();
@@ -629,12 +635,12 @@ function makeTray() {
   // by tools/makeicons.mjs) - NOT Dota's logo, which is Valve's trademark
   // and not ours to use.
   tray = new Tray(nativeImage.createFromPath(path.join(here, 'tray.png')).resize({ width: 16, height: 16 }));
-  tray.setToolTip('Dota Translator ' + app.getVersion());
+  tray.setToolTip(PRODUCT_NAME + ' ' + app.getVersion());
   tray.setContextMenu(Menu.buildFromTemplate([
     ...(game === 'war3' ? [{ label: '????????? (F7)', click: () => openComposer() }] : []),
     { label: 'Settings and key...', click: openSetup },
     { label: 'Hide or show the translations (Alt+D)', click: toggleHidden },
-    ...(cfg.sayHotkey ? [{ label: cfg.sayHotkey.replace('Control', 'Ctrl') + ' in Dota\'s chat sends it translated', enabled: false }] : []),
+    ...(game === 'war3' ? [{ label: 'F7 / F8: English / Russian; Shift: savage', enabled: false }] : cfg.sayHotkey ? [{ label: cfg.sayHotkey.replace('Control', 'Ctrl') + ' in Dota\'s chat sends it translated', enabled: false }] : []),
     // The way a player says anything back: one big box and an optional
     // e-mail, no account needed. cfg.feedbackUrl (https only) overrides it.
     { label: 'Send feedback, or report a bad translation...', click: () => shell.openExternal(String(cfg.feedbackUrl || '').startsWith('https://') ? cfg.feedbackUrl : FEEDBACK_URL) },
@@ -648,7 +654,7 @@ function makeTray() {
   // new tray icon behind the ^ arrow: say where the app went. A balloon
   // takes no focus, and Windows holds it back itself over a fullscreen game.
   if (storedKey() || hostedOn()) {
-    tray.displayBalloon({ iconType: 'info', title: 'Dota Translator is running', content: 'It sits here by the clock (behind the ^ arrow) and shows translations above the chat in Dota. Click the icon for settings.' });
+    tray.displayBalloon({ iconType: 'info', title: PRODUCT_NAME + ' is running', content: game === 'war3' ? 'Type in Warcraft chat: F7 English, F8 Russian; hold Shift for savage. Own Gemini key required.' : 'It sits here by the clock (behind the ^ arrow) and shows translations above the chat in Dota. Click the icon for settings.' });
     tray.on('balloon-click', openSetup);
   }
 }

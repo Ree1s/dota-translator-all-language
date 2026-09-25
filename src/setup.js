@@ -18,12 +18,13 @@ function fill(s) {
   game = s.game || 'dota';
   TARGET.textContent = '';
   for (const [id, label] of s.languages) {
+    if (game === 'war3' && !['en', 'ru'].includes(id)) continue;
     const opt = document.createElement('option');
     opt.value = id;
     opt.textContent = label;
     TARGET.appendChild(opt);
   }
-  TARGET.value = s.targetLanguage || 'en';
+  TARGET.value = game === 'war3' && !['en', 'ru'].includes(s.targetLanguage) ? 'en' : s.targetLanguage || 'en';
   for (const id of ['showOriginal', 'showHeroes', 'autoUpdate']) $(id).checked = Boolean(s.settings[id]);
   const into = document.querySelector(`input[name=sayInto][value="${s.settings.sayInto === 'english' ? 'english' : 'theirs'}"]`);
   if (into) into.checked = true;
@@ -77,7 +78,26 @@ window.setup.onUpdate(showUpdate);
 
 window.setup.state().then((s) => {
   // Which version this is, where it can be seen: the title bar and the foot.
-  document.title = 'Dota Translator ' + s.version;
+  document.title = (s.game === 'war3' ? 'Warcraft Chat Translator ' : 'Dota Translator ') + s.version;
+  if (s.game === 'war3') {
+    document.querySelector('.brand span').textContent = 'Warcraft Chat Translator';
+    document.querySelector('h1').textContent = 'Warcraft III chat translation';
+    document.querySelector('.brand img').hidden = true;
+    $('key').placeholder = 'Required: your Gemini API key';
+    $('key').style.width = '100%';
+    const languageBlock = TARGET.closest('.sayblock');
+    languageBlock.querySelector('h3').textContent = 'Default outgoing language (F6)';
+    languageBlock.querySelector('.hint').textContent = 'F7 always uses English; F8 always uses Russian. Incoming translation is not available.';
+    document.querySelector('input[name=display]').closest('.mode').style.display = 'none';
+    const outgoingBlock = document.querySelector('input[name=sayInto]').closest('.sayblock');
+    outgoingBlock.querySelector('h3').textContent = 'Translate directly in the Warcraft chat box';
+    outgoingBlock.querySelector('.mode').style.display = 'none';
+    outgoingBlock.querySelector('.hint').firstChild.textContent = 'Type your message in game, then press F7 (English) or F8 (Russian). Hold Shift for savage. Release all keys and wait for automatic sending. No separate input window is needed.';
+    $('more').style.display = 'none';
+    document.querySelector('.trust').textContent = 'Your messages go directly to Gemini using your own key. This prototype translates outgoing chat only. Automatic updates are disabled.';
+    const subtitle = document.querySelector('.sub');
+    if (subtitle) subtitle.textContent = 'Outgoing chat: F7 English, F8 Russian. Hold Shift for savage. Your own Gemini API key is required.';
+  }
   showUpdate(s.update || { status: 'source', version: s.version });
   fill(s);
   const mode = document.querySelector(`input[name=display][value="${s.display === 'box' ? 'box' : 'above'}"]`);

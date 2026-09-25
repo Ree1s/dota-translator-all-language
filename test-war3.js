@@ -105,4 +105,20 @@ await test('War3 selects with End and Shift+Home while Dota retains Ctrl+A', () 
   assert.doesNotMatch(diagnostic, /keys.send|sayIt\(|openComposer\(/);
 });
 
+
+await test('War3 installer selects War3 without arguments and keeps Dota package defaults', async () => {
+  const { selectGame } = await import('./src/game.js');
+  assert.equal(selectGame([], {}), 'dota');
+  assert.equal(selectGame(['--war3'], {}), 'war3');
+  assert.equal(selectGame([], { defaultGame: 'war3' }), 'war3');
+  const { createRequire } = await import('node:module');
+  const require = createRequire(import.meta.url);
+  const build = require('./electron-builder.war3.cjs');
+  assert.equal(build.extraMetadata.defaultGame, 'war3');
+  assert.notEqual(build.appId, require('./package.json').build.appId);
+  assert.equal(build.publish, null);
+  assert.equal(build.nsis.perMachine, false);
+  assert.match(source('config.js'), /'Roaming'\), PRODUCT_NAME/);
+});
+
 console.log(`${passed} War3 groups passed`);

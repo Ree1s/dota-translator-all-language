@@ -1,3 +1,11 @@
+# Windows test installer
+
+Build: `npm.cmd run dist:war3` (never publishes). Output: `dist-war3/Warcraft-Chat-Translator-0.6.0-Setup.exe`, x64 per-user NSIS installer. Uses a distinct app ID, shortcut/product name and `%APPDATA%/Warcraft Chat Translator` data directory. Bundled package metadata selects War3 without command-line arguments. No user key, config or cache is bundled; enter your own Gemini key after installing. Dota builds retain their existing defaults. War3 automatic updates remain disabled.
+
+Validation: 142 baseline tests + 10 War3 groups pass. Built application launched without arguments, selected War3, ran its foreground helper and displayed its first-run key UI; screenshot inspected. Installer signature is NotSigned. Installer install/uninstall and in-game operation of the installed build remain to be tested. Live source-build English and Shift mode were confirmed by the user. Binary and SHA256 sidecar are local only; no release or upload performed.
+
+macOS is not supported yet: the chat keyboard simulation and foreground/hotkey watcher are Win32/PowerShell. A DMG or ZIP alone does not port these features. Implement native macOS adapters and test game-chat selection, paste, exclusive-fullscreen hotkeys and required permissions on a Mac, then build/sign/notarize for distribution. No nonfunctional Mac binary is provided.
+
 # Current War3 shortcuts (English and Russian only)
 
 F7: faithful English; Shift+F7: savage English. F8: faithful Russian; Shift+F8: savage Russian. F6 / Shift+F6 retain the configured default target. F9 / Shift+F9 are ignored. Dota language shortcuts are unchanged.
