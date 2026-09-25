@@ -1,3 +1,7 @@
+# Live capture verified ? 2026-09-25
+
+In a running Battle.net Warcraft III process, three user-triggered F7 captures returned exactly U+5148 U+7EC3 U+7EA7 (???). End ? Shift+Home ? Ctrl+C therefore works for this tested chat input, unlike the original Ctrl+A selection. No OCR is needed for this observed case. Translation, replacement/paste and actual sent output remain the next live check; capture-only did not send anything.
+
 # Separate local development branches
 
 - `dev/dota2`: `C:\Users\User\dota-translator-dota2`, start with `npm.cmd start`. Original Dota code plus the additive safety restriction required by its existing test. All 142 baseline tests pass. Existing config and Dota cache copied locally without committing secrets.
