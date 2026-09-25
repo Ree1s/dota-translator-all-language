@@ -24,6 +24,8 @@ import crypto from 'node:crypto';
 import { startFocusWatch } from './focuswatch.js';
 import { discoverWar3 } from './war3discovery.js';
 import { createComposer } from './composer.js';
+import { execFile } from 'node:child_process';
+import { MAC_HELPER, macHelperArgs } from './mac-helper.js';
 import { GAME, PRODUCT_NAME } from './game.js';
 import { languageCode } from './languages.js';
 
@@ -36,7 +38,7 @@ const game = GAME;
 if (game === 'war3') {
   app.setName(PRODUCT_NAME);
   app.setPath('userData', path.join(app.getPath('appData'), PRODUCT_NAME));
-  app.setAppUserModelId('com.ree1s.warcraft-chat-translator');
+  if (process.platform === 'win32') app.setAppUserModelId('com.ree1s.warcraft-chat-translator');
 }
 const war3Discovery = game === 'war3' ? discoverWar3() : null;
 const captureOnly = game === 'war3' && process.argv.includes('--capture-only');
@@ -47,6 +49,7 @@ let win = null;
 let watcher = null;
 let hidden = false;
 let inFront = true;
+let macHotkeysEnabled = true;
 
 // Where the chat box goes. A corner by default; boxX / boxY, as fractions
 // of the screen (0-1) from its top-left, put it anywhere - which is what
@@ -225,11 +228,17 @@ async function start() {
     console.log('war3 process', JSON.stringify(found.processes), 'configured', processName);
     console.log('war3 outgoing prototype; incoming unavailable; hosted disabled');
     if (!cfg.geminiApiKey && !chatDiagnostic && !captureOnly) { console.error('Warcraft III requires your Gemini API key. Open settings to save it.'); openSetup(); }
-    watcher = startFocusWatch({ processName, game,
+    watcher = startFocusWatch({ processName, game, hotkeysEnabled: macHotkeysEnabled && Boolean(cfg.sayHotkey),
+      onStatus: status => {
+        if (status.kind === 'permissions') {
+          console.log('mac permissions', JSON.stringify(status));
+          if (!status.accessibility || !status.inputMonitoring) console.error('Mac needs Accessibility and Input Monitoring. Use the tray menu: Enable Mac permissions.');
+        } else console.log('war3 helper', status.text);
+      },
       onFocus: on => { inFront = on; setSayHotkey(on); if (DEBUG) console.log('war3 focus', on ? 'on' : 'off'); },
       onHotkey: key => {
         if (!cfg.sayHotkey) return;
-        const forced = ({ F7: 'English', F8: 'Russian' })[key.replace('Shift+', '')] || '';
+        const forced = process.platform === 'darwin' ? 'English' : ({ F7: 'English', F8: 'Russian' })[key.replace('Shift+', '')] || '';
         if (/\+[0-9]$/.test(key) && !forced) return;
         const style = key.includes('Shift+') ? 'savage' : 'faithful';
         if (DEBUG) console.log('war3 hotkey', key, forced || targetLanguage(cfg.replyLanguage, spoken), style);
@@ -494,7 +503,7 @@ async function sayKey(forcedLanguage = '', style = 'faithful') {
         ? 'F-key received, but game chat selection/copy returned no text. Warcraft chat capture is not working; nothing translated or sent.'
         : 'Nothing sent: ' + (r.why || 'unknown failure');
       console.error('war3 outgoing failed:', detail);
-      tray?.displayBalloon({ iconType: 'warning', title: 'Warcraft III translation failed', content: detail });
+      if (process.platform === 'win32') tray?.displayBalloon({ iconType: 'warning', title: 'Warcraft III translation failed', content: detail });
     }
     if (DEBUG) console.log('say', safeDebug(r));
   } finally { saying = false; }
@@ -638,9 +647,13 @@ function makeTray() {
   tray.setToolTip(PRODUCT_NAME + ' ' + app.getVersion());
   tray.setContextMenu(Menu.buildFromTemplate([
     ...(game === 'war3' ? [{ label: '????????? (F7)', click: () => openComposer() }] : []),
+    ...(game === 'war3' && process.platform === 'darwin' ? [
+      { label: 'Enable Mac permissions...', click: () => execFile(MAC_HELPER, [...macHelperArgs('permissions'), '--request'], { timeout: 30000 }, error => { if (error) console.error('Mac permission helper unavailable; run npm run build:mac-helper.'); }) },
+      { label: 'Mac Esc translation enabled', type: 'checkbox', checked: macHotkeysEnabled, click: item => { macHotkeysEnabled = item.checked; restartWatcher(); } },
+    ] : []),
     { label: 'Settings and key...', click: openSetup },
     { label: 'Hide or show the translations (Alt+D)', click: toggleHidden },
-    ...(game === 'war3' ? [{ label: 'F7 / F8: English / Russian; Shift: savage', enabled: false }] : cfg.sayHotkey ? [{ label: cfg.sayHotkey.replace('Control', 'Ctrl') + ' in Dota\'s chat sends it translated', enabled: false }] : []),
+    ...(game === 'war3' ? [{ label: process.platform === 'darwin' ? 'Esc: English; Shift+Esc: savage English' : 'F7 / F8: English / Russian; Shift: savage', enabled: false }] : cfg.sayHotkey ? [{ label: cfg.sayHotkey.replace('Control', 'Ctrl') + ' in Dota\'s chat sends it translated', enabled: false }] : []),
     // The way a player says anything back: one big box and an optional
     // e-mail, no account needed. cfg.feedbackUrl (https only) overrides it.
     { label: 'Send feedback, or report a bad translation...', click: () => shell.openExternal(String(cfg.feedbackUrl || '').startsWith('https://') ? cfg.feedbackUrl : FEEDBACK_URL) },
@@ -653,7 +666,7 @@ function makeTray() {
   // With a key there is no window at all at startup, and Windows hides a
   // new tray icon behind the ^ arrow: say where the app went. A balloon
   // takes no focus, and Windows holds it back itself over a fullscreen game.
-  if (storedKey() || hostedOn()) {
+  if (process.platform === 'win32' && (storedKey() || hostedOn())) {
     tray.displayBalloon({ iconType: 'info', title: PRODUCT_NAME + ' is running', content: game === 'war3' ? 'Type in Warcraft chat: F7 English, F8 Russian; hold Shift for savage. Own Gemini key required.' : 'It sits here by the clock (behind the ^ arrow) and shows translations above the chat in Dota. Click the icon for settings.' });
     tray.on('balloon-click', openSetup);
   }
@@ -665,7 +678,7 @@ function toggleHidden() {
   if (hidden) win.hide(); else if (inFront) win.showInactive();
 }
 
-ipcMain.handle('setup:state', () => ({ game, version: app.getVersion(), update: updateState, hasKey: Boolean(storedKey()), display: cfg.display, targetLanguage: languageCode(cfg.targetLanguage || 'English'), settings: uiSettings(cfg), languages: TARGET_LANGUAGES }));
+ipcMain.handle('setup:state', () => ({ game, platform: process.platform, version: app.getVersion(), update: updateState, hasKey: Boolean(storedKey()), display: cfg.display, targetLanguage: languageCode(cfg.targetLanguage || 'English'), settings: uiSettings(cfg), languages: TARGET_LANGUAGES }));
 ipcMain.handle('setup:folder', () => {
   // The file may not exist yet on a fresh install: make it, so that there
   // is something in the folder to find.

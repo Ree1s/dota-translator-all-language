@@ -5,12 +5,13 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { MAC_HELPER, macHelperArgs } from './mac-helper.js';
 import { POWERSHELL } from './memsource.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const FOCUS_SCRIPT = path.join(HERE, 'focuswatch.ps1').replace('app.asar' + path.sep, 'app.asar.unpacked' + path.sep);
 
-export function startFocusWatch({ onFocus = () => {}, onWindow = () => {}, onHotkey = () => {}, spawnImpl = spawn, parentPid = process.pid, processName, game = 'dota', restartMs = 2000 } = {}) {
+export function startFocusWatch({ onFocus = () => {}, onWindow = () => {}, onHotkey = () => {}, spawnImpl = spawn, parentPid = process.pid, processName, game = 'dota', platform = process.platform, onStatus = () => {}, hotkeysEnabled = true, restartMs = 2000 } = {}) {
   let child = null;
   let stopped = false;
   let buffer = '';
@@ -20,7 +21,7 @@ export function startFocusWatch({ onFocus = () => {}, onWindow = () => {}, onHot
     const args = ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', FOCUS_SCRIPT, '-ParentPid', String(parentPid)];
     if (processName && /^[A-Za-z0-9_ .-]{1,64}$/.test(processName)) args.push('-ProcessName', processName);
     if (game === 'war3') args.push('-Game', 'war3');
-    child = spawnImpl(POWERSHELL, args, { windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] });
+    child = spawnImpl(platform === 'darwin' ? MAC_HELPER : POWERSHELL, platform === 'darwin' ? macHelperArgs('watch', { processName, parentPid, hotkeysEnabled }) : args, { windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] });
     child.stdout.setEncoding('utf8');
     child.stdout.on('data', (chunk) => {
       buffer += chunk;
@@ -29,13 +30,15 @@ export function startFocusWatch({ onFocus = () => {}, onWindow = () => {}, onHot
       for (const p of parts) {
         let o = null;
         try { o = JSON.parse(p); } catch { continue; }
+        if (o && o.t === 'status') onStatus({ kind: 'note', text: o.text });
+        if (o && o.t === 'permissions') onStatus({ kind: 'permissions', ...o });
         if (o && o.t === 'focus') onFocus(o.on === 1);
-        if (o && o.t === 'hotkey' && (game === 'war3' ? /^(?:Shift\+)?F[6-8]$/ : /^Control\+(?:Shift\+)?Enter(?:\+[0-9])?$/).test(String(o.key || ''))) onHotkey(o.key);
+        if (o && o.t === 'hotkey' && (platform === 'darwin' ? /^(?:Shift\+)?Escape$/ : game === 'war3' ? /^(?:Shift\+)?F[6-8]$/ : /^Control\+(?:Shift\+)?Enter(?:\+[0-9])?$/).test(String(o.key || ''))) onHotkey(o.key);
         // Where the inside of the game's window is on the screen, real pixels.
         if (o && o.t === 'window' && [o.x, o.y, o.w, o.h].every(Number.isFinite)) onWindow({ x: o.x, y: o.y, w: o.w, h: o.h });
       }
     });
-    child.on('error', () => { /* no PowerShell: the overlay simply stays up */ });
+    child.on('error', () => { onStatus({ kind: 'error', text: platform === 'darwin' ? 'Mac helper could not start. Run npm run build:mac-helper on a Mac.' : 'Focus helper could not start.' }); });
     child.on('exit', () => {
       child = null;
       if (!stopped) setTimeout(start, restartMs).unref?.();

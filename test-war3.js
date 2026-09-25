@@ -121,4 +121,43 @@ await test('War3 installer selects War3 without arguments and keeps Dota package
   assert.match(source('config.js'), /'Roaming'\), PRODUCT_NAME/);
 });
 
+
+await test('Mac watcher starts native helper and accepts only Esc / Shift+Esc', () => {
+  const c = child(), heard = [], statuses = []; let command, args;
+  const w = startFocusWatch({ game: 'war3', platform: 'darwin', processName: 'Warcraft III', onHotkey: key => heard.push(key), onStatus: value => statuses.push(value), spawnImpl: (p, a) => { command = p; args = a; return c; } });
+  assert.match(command, /war3-helper$/); assert.doesNotMatch(command, /powershell/i);
+  assert.equal(args[args.indexOf('--mode') + 1], 'watch');
+  for (const key of ['Escape','Shift+Escape','F7','F8','Control+Enter','Command+Escape']) c.stdout.emit('data', JSON.stringify({ t: 'hotkey', key }) + '\n');
+  assert.deepEqual(heard, ['Escape','Shift+Escape']);
+  c.stdout.emit('data', '{"t":"permissions","accessibility":false,"inputMonitoring":true}\n');
+  assert.equal(statuses[0].accessibility, false);
+  w.stop();
+});
+await test('Mac sender preserves existing protocol without starting PowerShell', async () => {
+  const c = child(); let command, args, sent;
+  c.stdin.write = value => { sent = value; queueMicrotask(() => c.stdout.emit('data', 'copied\n')); };
+  const sender = createKeySender({ game: 'war3', platform: 'darwin', processName: 'Warcraft III', spawnImpl: (p,a) => { command=p; args=a; return c; } });
+  assert.equal((await sender.copy()).ok, true);
+  assert.equal(sent, 'copy\n'); assert.match(command, /war3-helper$/);
+  assert.equal(args[args.indexOf('--mode')+1], 'send');
+  sender.stop();
+});
+await test('Mac helper options and M1 packaging retain foreground-only native binary', async () => {
+  const { macHelperArgs } = await import('./src/mac-helper.js');
+  const args = macHelperArgs('watch', { processName: 'Warcraft III', hotkeysEnabled: false, env: { DT_MAC_COPY_MODIFIER: 'control', DT_MAC_SELECTION: 'command-arrows', DT_WAR3_BUNDLE_ID: 'test.game' } });
+  assert.equal(args[args.indexOf('--hotkeys')+1], 'false');
+  assert.equal(args[args.indexOf('--copy-modifier')+1], 'control');
+  assert.equal(args[args.indexOf('--selection')+1], 'command-arrows');
+  const { createRequire } = await import('node:module'); const require = createRequire(import.meta.url);
+  const build = require('./electron-builder.war3-mac.cjs');
+  assert.deepEqual(build.mac.target.map(t => t.arch), [['arm64'],['arm64']]);
+  assert.equal(build.publish, null); assert.ok(build.asarUnpack.includes('native/mac/war3-helper'));
+  const swift = fs.readFileSync('native/mac/War3Helper.swift','utf8');
+  assert.match(swift, /guard let current = owner\(\)/);
+  assert.match(swift, /keyboardEventKeycode\) == 53/);
+  assert.match(swift, /return nil \/\/ prevent Esc/);
+  assert.match(swift, /guard AXIsProcessTrusted\(\), front\(pid\)/);
+  assert.doesNotMatch(swift, /task_for_pid|mach_vm_read|CGWindowListCreateImage/);
+});
+
 console.log(`${passed} War3 groups passed`);

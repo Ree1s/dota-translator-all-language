@@ -12,13 +12,15 @@ function say(kind, html) {
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 let game = 'dota';
+let platform = '';
 const TARGET = $('targetLanguage');
 
 function fill(s) {
   game = s.game || 'dota';
+  platform = s.platform || '';
   TARGET.textContent = '';
   for (const [id, label] of s.languages) {
-    if (game === 'war3' && !['en', 'ru'].includes(id)) continue;
+    if (game === 'war3' && !(platform === 'darwin' ? ['en'] : ['en', 'ru']).includes(id)) continue;
     const opt = document.createElement('option');
     opt.value = id;
     opt.textContent = label;
@@ -100,6 +102,11 @@ window.setup.state().then((s) => {
   }
   showUpdate(s.update || { status: 'source', version: s.version });
   fill(s);
+  if (s.game === 'war3' && s.platform === 'darwin') {
+    TARGET.value = 'en'; TARGET.closest('.sayblock').style.display = 'none';
+    document.querySelector('.sub').textContent = 'Mac prototype: Esc translates into English. Shift+Esc uses savage mode. Open game chat and commit Chinese IME text before pressing Esc.';
+    document.querySelector('input[name=sayInto]').closest('.sayblock').querySelector('.hint').firstChild.textContent = 'Enable Accessibility and Input Monitoring from the tray menu. Esc is consumed while Warcraft is foreground, including menus; disable Mac Esc translation in the tray to use normal Esc. Game compatibility still requires testing.';
+  }
   const mode = document.querySelector(`input[name=display][value="${s.display === 'box' ? 'box' : 'above'}"]`);
   if (mode) mode.checked = true;
   window.setup.fit();

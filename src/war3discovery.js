@@ -1,10 +1,16 @@
 ﻿import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { MAC_HELPER, macHelperArgs } from './mac-helper.js';
+import os from 'node:os';
 import { POWERSHELL } from './memsource.js';
 
 // Only Windows process metadata, known folders and Blizzard registry entries.
 export function discoverWar3() {
+  if (process.platform === 'darwin') {
+    try { return JSON.parse(execFileSync(MAC_HELPER, macHelperArgs('discover'), { encoding: 'utf8', timeout: 5000 })); }
+    catch { return { processes: [], roots: [path.join(os.homedir(), 'Documents', 'Warcraft III'), path.join(os.homedir(), 'Library', 'Application Support', 'Blizzard', 'Warcraft III')].filter(p => fs.existsSync(p)), error: 'Build the native helper on a Mac with npm run build:mac-helper' }; }
+  }
   const script = `
 $ErrorActionPreference = 'SilentlyContinue'
 $procs = @(Get-Process | Where-Object { $_.ProcessName -match '^(Warcraft III|war3)$' } | ForEach-Object { @{ name=$_.ProcessName; pid=$_.Id; path=$_.Path } })

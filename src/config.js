@@ -3,6 +3,7 @@
 // a first run works with nothing but a key pasted in.
 
 import fs from 'node:fs';
+import os from 'node:os';
 import { PRODUCT_NAME } from './game.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,7 +21,7 @@ export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 //             beside the archive; see "asarUnpack" in package.json.
 export const PACKAGED = ROOT.includes('app.asar');
 export const DATA_DIR = PACKAGED
-  ? path.join(process.env.APPDATA || path.join(process.env.USERPROFILE || '.', 'AppData', 'Roaming'), PRODUCT_NAME)
+  ? process.platform === 'darwin' ? path.join(os.homedir(), 'Library', 'Application Support', PRODUCT_NAME) : path.join(process.env.APPDATA || path.join(process.env.USERPROFILE || '.', 'AppData', 'Roaming'), PRODUCT_NAME)
   : ROOT;
 if (PACKAGED) { try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch { /* it will say so when it cannot save */ } }
 export const onDisk = (file) => file.replace('app.asar' + path.sep, 'app.asar.unpacked' + path.sep);

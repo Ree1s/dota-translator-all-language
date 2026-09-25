@@ -1,3 +1,7 @@
+# Mac development
+
+Mac native adapter and arm64 DMG/ZIP build scripts are now implemented, but Swift compilation and in-game behavior are not yet verified. See MAC-TEST.md. Mac uses Esc / Shift+Esc for English only, as requested; Windows remains F7/F8.
+
 # Windows test installer
 
 Build: `npm.cmd run dist:war3` (never publishes). Output: `dist-war3/Warcraft-Chat-Translator-0.6.0-Setup.exe`, x64 per-user NSIS installer. Uses a distinct app ID, shortcut/product name and `%APPDATA%/Warcraft Chat Translator` data directory. Bundled package metadata selects War3 without command-line arguments. No user key, config or cache is bundled; enter your own Gemini key after installing. Dota builds retain their existing defaults. War3 automatic updates remain disabled.

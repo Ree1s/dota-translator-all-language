@@ -15,7 +15,12 @@
     "release": "electron-builder --win nsis --publish always",
     "start:war3": "electron . --war3",
     "doctor:war3": "node src/war3doctor.js",
-    "dist:war3": "electron-builder --config electron-builder.war3.cjs --win nsis --x64 --publish never"
+    "dist:war3": "electron-builder --config electron-builder.war3.cjs --win nsis --x64 --publish never",
+    "build:mac-helper": "node tools/build-mac-helper.mjs",
+    "start:war3:mac": "npm run build:mac-helper && electron . --war3",
+    "test:war3:mac": "npm run build:mac-helper && electron . --war3 --capture-only",
+    "doctor:mac": "node src/macdoctor.js",
+    "dist:war3:mac": "npm run build:mac-helper && electron-builder --config electron-builder.war3-mac.cjs --mac --arm64 --publish never"
   },
   "devDependencies": {
     "electron": "^33.0.0",

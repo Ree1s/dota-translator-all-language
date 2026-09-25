@@ -7,6 +7,7 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { MAC_HELPER, macHelperArgs } from './mac-helper.js';
 import { POWERSHELL } from './memsource.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -14,7 +15,7 @@ export const SEND_SCRIPT = path.join(HERE, 'sendchat.ps1').replace('app.asar' + 
 
 const NL = String.fromCharCode(10);
 
-export function createKeySender({ spawnImpl = spawn, script = SEND_SCRIPT, timeoutMs = 4000, processName = 'dota2', game = 'dota', clipboardKeys = 'standard' } = {}) {
+export function createKeySender({ spawnImpl = spawn, script = SEND_SCRIPT, timeoutMs = 4000, processName = 'dota2', game = 'dota', clipboardKeys = 'standard', platform = process.platform } = {}) {
   let child = null, buffer = '', waiting = null, stopped = false;
 
   const settle = (r) => { if (!waiting) return; const w = waiting; waiting = null; clearTimeout(w.timer); w.resolve(r); };
@@ -29,7 +30,8 @@ export function createKeySender({ spawnImpl = spawn, script = SEND_SCRIPT, timeo
     buffer = '';
     try {
       const modeArgs = game === 'war3' ? ['-Game', 'war3', '-ClipboardKeys', clipboardKeys === 'insert' ? 'insert' : 'standard'] : [];
-      const c = spawnImpl(POWERSHELL, ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script, ...modeArgs, '-ProcessName', processName], { windowsHide: true, stdio: ['pipe', 'pipe', 'ignore'] });
+      const args = ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script, ...modeArgs, '-ProcessName', processName];
+      const c = spawnImpl(platform === 'darwin' ? MAC_HELPER : POWERSHELL, platform === 'darwin' ? macHelperArgs('send', { processName }) : args, { windowsHide: true, stdio: ['pipe', 'pipe', 'ignore'] });
       child = c;
       c.stdout.on('data', (d) => {
         buffer += String(d);

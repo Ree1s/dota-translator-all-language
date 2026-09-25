@@ -21,3 +21,7 @@ composer-preview.png
 composer-smoke.log
 war3-capture-verified.log
 dist-war3/
+
+# Native Mac build outputs
+native/mac/war3-helper
+dist-war3-mac/
