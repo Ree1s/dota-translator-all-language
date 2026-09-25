@@ -1,0 +1,5 @@
+
+# Mac launchers and native sources must keep Unix line endings.
+*.command text eol=lf
+*.swift text eol=lf
+*.mjs text eol=lf
