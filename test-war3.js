@@ -56,11 +56,11 @@ await test('PowerShell helper syntax parses', () => {
   execFileSync(POWERSHELL, ['-NoProfile','-Command', script], { windowsHide: true });
 });
 
-await test('War3 accepts only F6-F9 with optional Shift; old Ctrl chords are ignored', () => {
+await test('War3 accepts only F6-F8 with optional Shift; old Ctrl chords are ignored', () => {
   const c = child(), heard = []; let args;
   const watcher = startFocusWatch({ game: 'war3', onHotkey: k => heard.push(k), spawnImpl: (_p, a) => { args = a; return c; } });
-  const expected = ['F6','F7','F8','F9','Shift+F6','Shift+F7','Shift+F8','Shift+F9'];
-  for (const key of [...expected, 'Control+Enter', 'Control+Enter+1', 'Control+Shift+Enter+2', 'F1', 'Control+F7']) c.stdout.emit('data', JSON.stringify({ t: 'hotkey', key }) + '\n');
+  const expected = ['F6','F7','F8','Shift+F6','Shift+F7','Shift+F8'];
+  for (const key of [...expected, 'F9', 'Shift+F9', 'Control+Enter', 'Control+Enter+1', 'Control+Shift+Enter+2', 'F1', 'Control+F7']) c.stdout.emit('data', JSON.stringify({ t: 'hotkey', key }) + '\n');
   assert.deepEqual(heard, expected);
   assert.equal(args[args.indexOf('-Game') + 1], 'war3');
   watcher.stop();

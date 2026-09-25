@@ -95,11 +95,11 @@ while ($true) {
     # Ctrl+Enter. So the plain chord is emitted only when Ctrl+Enter is
     # released without a number; a number is emitted immediately and only once.
     if ($Game -eq 'war3') {
-      # F6 default; F7/F8/F9 English/Russian/Filipino. Shift selects savage.
+      # F6 default; F7/F8 English/Russian. Shift selects savage.
       # Emit on release so a later Shift is included, once per press.
       if ($war3Key -eq 0) {
         if (-not [FrontWindow]::KeyDown(0x11) -and -not [FrontWindow]::KeyDown(0x12)) {
-          for ($vk = 0x75; $vk -le 0x78; $vk++) {
+          for ($vk = 0x75; $vk -le 0x77; $vk++) {
             if ([FrontWindow]::KeyDown($vk)) { $war3Key = $vk; $war3Shift = [FrontWindow]::KeyDown(0x10); break }
           }
         }

@@ -1,3 +1,9 @@
+# Current War3 shortcuts (English and Russian only)
+
+F7: faithful English; Shift+F7: savage English. F8: faithful Russian; Shift+F8: savage Russian. F6 / Shift+F6 retain the configured default target. F9 / Shift+F9 are ignored. Dota language shortcuts are unchanged.
+
+Live user confirmation: F7 translated Chinese and sent English in the game's own chat, without switching windows. Russian and savage still require live confirmation. To test savage, type a gameplay criticism, hold Shift, press and release F7 (or F8), then release Shift; wait without pressing Enter. Compare the same source with and without Shift. Different cache entries do not guarantee every short input will yield different wording.
+
 # Live capture verified ? 2026-09-25
 
 In a running Battle.net Warcraft III process, three user-triggered F7 captures returned exactly U+5148 U+7EC3 U+7EA7 (???). End ? Shift+Home ? Ctrl+C therefore works for this tested chat input, unlike the original Ctrl+A selection. No OCR is needed for this observed case. Translation, replacement/paste and actual sent output remain the next live check; capture-only did not send anything.

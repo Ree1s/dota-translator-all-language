@@ -223,7 +223,7 @@ async function start() {
       onFocus: on => { inFront = on; setSayHotkey(on); if (DEBUG) console.log('war3 focus', on ? 'on' : 'off'); },
       onHotkey: key => {
         if (!cfg.sayHotkey) return;
-        const forced = ({ F7: 'English', F8: 'Russian', F9: 'Filipino' })[key.replace('Shift+', '')] || '';
+        const forced = ({ F7: 'English', F8: 'Russian' })[key.replace('Shift+', '')] || '';
         if (/\+[0-9]$/.test(key) && !forced) return;
         const style = key.includes('Shift+') ? 'savage' : 'faithful';
         if (DEBUG) console.log('war3 hotkey', key, forced || targetLanguage(cfg.replyLanguage, spoken), style);
@@ -378,7 +378,7 @@ let composerWin = null;
 let composerState = { language: 'English', style: 'faithful' };
 function openComposer(language = 'English', style = 'faithful') {
   if (game !== 'war3') return;
-  composerState = { language: ['English', 'Russian', 'Filipino'].includes(language) ? language : 'English', style };
+  composerState = { language: ['English', 'Russian'].includes(language) ? language : 'English', style };
   if (composerWin && !composerWin.isDestroyed()) {
     composerWin.webContents.send('composer:open', composerState);
     surface(composerWin);
