@@ -169,3 +169,13 @@ export function dotaPromptNotes(targetLanguage) {
   if (code === 'ja' || code === 'ko') return 'Use concise game-chat wording and preserve standard Dota abbreviations where players normally do.';
   return 'Keep standard Dota shorthand concise and natural for in-game chat.';
 }
+
+export function gamePromptNotes(game, targetLanguage) {
+  if (game !== 'war3') return dotaPromptNotes(targetLanguage);
+  return [
+    'This is Warcraft III / Warcraft III: Reforged in-game chat, often typed originally in Chinese.',
+    'Preserve established local hero, unit, race and item names; keep natural abbreviations and slang: gg, glhf, creep/creeping, expand/expo, rush, tower rush, harass, tech, TP/Town Portal, gold, lumber, upkeep, lvl/level, base, main, shop, tavern, altar, ally/allies, feed, focus, surround, micro.',
+    'Do not invent concepts from other games unless the source literally mentions them.',
+    'Russian should sound like actual Russian-speaking Warcraft III players. Filipino should allow natural Tagalog-English code switching. English should be concise multiplayer chat.'
+  ].join('\n');
+}

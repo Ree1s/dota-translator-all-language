@@ -21,6 +21,9 @@ import { createOutgoing, createLanguageTracker, targetLanguage, languageFromHotk
 import { createKeySender, sayTranslated } from './sendchat.js';
 import { createHosted, hashId } from './hosted.js';
 import crypto from 'node:crypto';
+import { startFocusWatch } from './focuswatch.js';
+import { discoverWar3 } from './war3discovery.js';
+import { createComposer } from './composer.js';
 import { languageCode } from './languages.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -28,6 +31,12 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 // start the watcher, rather than caching this at process launch: Save can
 // create it without restarting the Electron process.
 const cfg = loadConfig();
+const game = process.argv.includes('--war3') ? 'war3' : 'dota';
+const war3Discovery = game === 'war3' ? discoverWar3() : null;
+const captureOnly = game === 'war3' && process.argv.includes('--capture-only');
+const composerMode = game === 'war3' && process.argv.includes('--composer');
+const chatDiagnostic = game === 'war3' && process.argv.includes('--chat-test');
+const processName = game === 'war3' ? (process.env.DT_WAR3_PROCESS || cfg.war3ProcessName || war3Discovery.processes[0]?.name || 'Warcraft III') : 'dota2';
 let win = null;
 let watcher = null;
 let hidden = false;
@@ -188,8 +197,13 @@ function onLayout(l) {
   send('layout', { rows: l.rows.map((r) => ({ ...r, height: r.height * dip, width: r.width * dip })), scale: l.scale * dip });
 }
 
+function safeDebug(value) {
+  const text = JSON.stringify(value);
+  return cfg.geminiApiKey ? text.split(cfg.geminiApiKey).join('[REDACTED]') : text;
+}
+
 function send(channel, payload) {
-  if (DEBUG && channel !== 'seen' && (channel !== 'status' || payload.text)) console.log(new Date().toISOString().slice(11, 23), channel, JSON.stringify(payload));
+  if (DEBUG && channel !== 'seen' && (channel !== 'status' || payload.text)) console.log(new Date().toISOString().slice(11, 23), channel, safeDebug(payload));
   if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
 }
 
@@ -199,6 +213,28 @@ function restartWatcher() {
 }
 
 async function start() {
+  if (game === 'war3') {
+    cfg.geminiApiKey = storedKey();
+    const found = discoverWar3();
+    console.log('war3 process', JSON.stringify(found.processes), 'configured', processName);
+    console.log('war3 outgoing prototype; incoming unavailable; hosted disabled');
+    if (!cfg.geminiApiKey && !chatDiagnostic && !captureOnly) { console.error('Warcraft III requires your Gemini API key. Open settings to save it.'); openSetup(); }
+    watcher = startFocusWatch({ processName, game,
+      onFocus: on => { inFront = on; setSayHotkey(on); if (DEBUG) console.log('war3 focus', on ? 'on' : 'off'); },
+      onHotkey: key => {
+        if (!cfg.sayHotkey) return;
+        const forced = ({ F7: 'English', F8: 'Russian', F9: 'Filipino' })[key.replace('Shift+', '')] || '';
+        if (/\+[0-9]$/.test(key) && !forced) return;
+        const style = key.includes('Shift+') ? 'savage' : 'faithful';
+        if (DEBUG) console.log('war3 hotkey', key, forced || targetLanguage(cfg.replyLanguage, spoken), style);
+        if (captureOnly) captureWar3();
+        else if (composerMode) openComposer(forced || targetLanguage(cfg.replyLanguage, spoken), style);
+        else sayKey(forced, style);
+      }
+    });
+    win?.hide();
+    return;
+  }
   // A few seconds at most, and never fatal: see src/offsets.js.
   if (!cfg.offsets) cfg.offsets = await loadOffsets({ url: cfg.offsetsUrl });
   ({ chatLeft: CHAT_LEFT, chatBottom: CHAT_BOTTOM, chatHigh: CHAT_HIGH, textLeft: TEXT_LEFT } = cfg.offsets.layout);
@@ -246,12 +282,12 @@ async function start() {
     // while dota2.exe owns the foreground window.
     onHotkey: (key) => {
       const forced = languageFromHotkey(key, cfg.sayLanguageHotkeys || []);
-      const numbered = /^Control\+Enter\+[0-9]$/.test(String(key || ''));
+      const numbered = /^Control\+(?:Shift\+)?Enter\+[0-9]$/.test(String(key || ''));
       if (numbered && !forced) {
         if (DEBUG) console.log('hotkey', key, 'unmapped');
         return;
       }
-      const style = key === 'Control+Shift+Enter' ? 'savage' : 'faithful';
+      const style = key.includes('Shift+') ? 'savage' : 'faithful';
       if (DEBUG) console.log('hotkey', key, forced || 'default', style);
       sayKey(forced || '', style);
     },
@@ -304,7 +340,7 @@ async function start() {
 // only with hostedUrl blank - SEEN: a key saved by an older version sent the
 // user's own copy to Google's free tier during one of its bad spells, past
 // the server that was answering fine.
-const hostedOn = () => /^(https:\/\/[^\s]+|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/\S*)?)$/.test(String(cfg.hostedUrl || ''));
+const hostedOn = () => game !== 'war3' && /^(https:\/\/[^\s]+|http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/\S*)?)$/.test(String(cfg.hostedUrl || ''));
 let playerId = '';
 function installHash() {
   if (!/^[a-f0-9]{32}$/.test(String(cfg.installId || ''))) {
@@ -329,15 +365,62 @@ function heartbeat(on) {
 const spoken = createLanguageTracker({ fallback: cfg.targetLanguage || 'Russian' });
 // What has been said before is said the same way again: said.json, beside
 // the settings, English -> what was sent. The player can read and correct it.
-const SAID_PATH = path.join(DATA_DIR, 'said.json');
+const SAID_PATH = path.join(DATA_DIR, game === 'war3' ? 'said-war3.json' : 'said.json');
 const sayIt = createOutgoing({
+  game,
   apiKey: () => cfg.geminiApiKey, model: cfg.model,
   remote: () => (hostedOn() ? (text, into) => hosted.say(text, into) : null),
   store: { read: () => JSON.parse(fs.readFileSync(SAID_PATH, 'utf8')), write: (all) => fs.writeFileSync(SAID_PATH, JSON.stringify(all, null, 2)) },
 });
-const keys = createKeySender();
+const keys = createKeySender({ processName, game, clipboardKeys: process.env.DT_WAR3_CLIPBOARD_KEYS });
+const composer = createComposer({ translate: (text, language, style) => sayIt(text, language, style), clipboard });
+let composerWin = null;
+let composerState = { language: 'English', style: 'faithful' };
+function openComposer(language = 'English', style = 'faithful') {
+  if (game !== 'war3') return;
+  composerState = { language: ['English', 'Russian', 'Filipino'].includes(language) ? language : 'English', style };
+  if (composerWin && !composerWin.isDestroyed()) {
+    composerWin.webContents.send('composer:open', composerState);
+    surface(composerWin);
+    return;
+  }
+  composerWin = new BrowserWindow({ width: 680, height: 740, minWidth: 620, minHeight: 700,
+    title: 'Warcraft III ? ????', backgroundColor: '#171b1c', autoHideMenuBar: true, show: false,
+    webPreferences: { preload: path.join(here, 'composer-preload.cjs'), contextIsolation: true, sandbox: true },
+  });
+  composerWin.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  composerWin.webContents.on('will-navigate', e => e.preventDefault());
+  composerWin.loadFile(path.join(here, 'composer.html'));
+  composerWin.once('ready-to-show', () => surface(composerWin));
+  composerWin.on('closed', () => { composerWin = null; });
+}
+for (const [name, fn] of Object.entries({
+  state: () => composerState,
+  translate: payload => composer.translate(payload),
+  copy: () => { const ok = composer.copy(); if (ok) composerWin.hide(); return ok; },
+  restore: () => composer.restore(),
+  hide: () => composerWin.hide(),
+})) ipcMain.handle('composer:' + name, (event, payload) => {
+  if (game !== 'war3' || !composerWin || event.sender !== composerWin.webContents) throw new Error('Invalid composer sender');
+  return fn(payload);
+});
+
 let sayKeyOn = false;
 let saying = false;
+async function captureWar3() {
+  if (saying) return;
+  saying = true;
+  const before = clipboard.readText();
+  try {
+    clipboard.writeText('');
+    const result = await keys.copy();
+    const typed = result.ok ? clipboard.readText() : '';
+    console.log('war3 capture-only', JSON.stringify({ simulated: result.ok, why: result.why, captured: Boolean(typed), text: typed }));
+    // Audible feedback without taking focus; no paste, Enter or Gemini request.
+    shell.beep();
+  } finally { clipboard.writeText(before); saying = false; }
+}
+
 // WHO the player is, learnt from the game: a line that comes back out of
 // the chat with the words the app has just sent for them is THEIR line,
 // and carries their name, colour slot and hero. Known from their first
@@ -355,7 +438,7 @@ function setSayHotkey(on) {
     // GSI mode has a Windows key watcher that works in exclusive fullscreen
     // and can distinguish Ctrl+Enter+number. Registering Electron's plain
     // Ctrl+Enter as well would fire before the number can choose a language.
-    if (cfg.source === 'gsi') {
+    if (game === 'war3' || cfg.source === 'gsi') {
       sayKeyOn = Boolean(on);
       if (on) keys.warm();
       return;
@@ -373,16 +456,16 @@ function setSayHotkey(on) {
 // so changing it in the setup window needs no restart.
 async function sayKey(forcedLanguage = '', style = 'faithful') {
   if (saying) return;
-  if (style === 'savage' && !cfg.geminiApiKey) {
-    send('status', { kind: 'error', text: 'Ctrl+Shift+Enter savage mode needs your Gemini API key.' });
+  if (!chatDiagnostic && style === 'savage' && !cfg.geminiApiKey) {
+    send('status', { kind: 'error', text: 'Savage mode needs your Gemini API key.' });
     return;
   }
-  if (!hostedOn() && !cfg.geminiApiKey) return;
+  if (!chatDiagnostic && !hostedOn() && !cfg.geminiApiKey) { console.error('A Gemini API key is required; nothing sent.'); return; }
   saying = true;
   try {
     const into = forcedLanguage || targetLanguage(cfg.replyLanguage, spoken);
     const r = await sayTranslated({
-      keys, clipboard, into, explain: explainModelError,
+      keys, clipboard, into, restoreOnFailure: game === 'war3', debug: (...args) => { if (DEBUG) console.log(game, ...args); }, explain: explainModelError,
       // The line comes back out of the chat within a moment: it means what was typed.
       learned: (out, typed) => {
         // SEEN 2026-09-22: Russian pasted and sent with this key goes out
@@ -393,10 +476,21 @@ async function sayKey(forcedLanguage = '', style = 'faithful') {
         if (sentForMe.size > 50) sentForMe.delete(sentForMe.values().next().value);
       },
       who: () => me,
-      translate: (typed) => sayIt(typed, into, style),
+      translate: async (typed) => {
+        if (chatDiagnostic) { console.log('war3 diagnostic captured', JSON.stringify(typed)); return { out: typed }; }
+        if (DEBUG) console.log(game, 'Gemini request start', into, style);
+        try { return await sayIt(typed, into, style); } finally { if (DEBUG) console.log(game, 'Gemini request end'); }
+      },
       note: (s) => send('status', withFace(s)),
     });
-    if (DEBUG) console.log('say', JSON.stringify(r));
+    if (game === 'war3' && !r.said) {
+      const detail = r.why === 'nothing typed'
+        ? 'F-key received, but game chat selection/copy returned no text. Warcraft chat capture is not working; nothing translated or sent.'
+        : 'Nothing sent: ' + (r.why || 'unknown failure');
+      console.error('war3 outgoing failed:', detail);
+      tray?.displayBalloon({ iconType: 'warning', title: 'Warcraft III translation failed', content: detail });
+    }
+    if (DEBUG) console.log('say', safeDebug(r));
   } finally { saying = false; }
 }
 
@@ -418,7 +512,7 @@ function setUpdate(patch) {
 }
 let lookForUpdate = () => {};
 function checkForUpdates() {
-  if (!app.isPackaged || cfg.autoUpdate === false) return;
+  if (game === 'war3' || !app.isPackaged || cfg.autoUpdate === false) return;
   const { autoUpdater } = updater;
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
@@ -455,6 +549,7 @@ app.whenReady().then(() => {
   // Alt+D hides and shows it, for a screenshot or a clear view of a fight.
   globalShortcut.register('Alt+D', toggleHidden);
   makeTray();
+  if (composerMode) openComposer();
   globalShortcut.register('Alt+Shift+D', quitApp);});
 
 // ---- THE SETUP WINDOW ------------------------------------------------
@@ -536,6 +631,7 @@ function makeTray() {
   tray = new Tray(nativeImage.createFromPath(path.join(here, 'tray.png')).resize({ width: 16, height: 16 }));
   tray.setToolTip('Dota Translator ' + app.getVersion());
   tray.setContextMenu(Menu.buildFromTemplate([
+    ...(game === 'war3' ? [{ label: '????????? (F7)', click: () => openComposer() }] : []),
     { label: 'Settings and key...', click: openSetup },
     { label: 'Hide or show the translations (Alt+D)', click: toggleHidden },
     ...(cfg.sayHotkey ? [{ label: cfg.sayHotkey.replace('Control', 'Ctrl') + ' in Dota\'s chat sends it translated', enabled: false }] : []),
@@ -563,7 +659,7 @@ function toggleHidden() {
   if (hidden) win.hide(); else if (inFront) win.showInactive();
 }
 
-ipcMain.handle('setup:state', () => ({ version: app.getVersion(), update: updateState, hasKey: Boolean(storedKey()), display: cfg.display, targetLanguage: languageCode(cfg.targetLanguage || 'English'), settings: uiSettings(cfg), languages: TARGET_LANGUAGES }));
+ipcMain.handle('setup:state', () => ({ game, version: app.getVersion(), update: updateState, hasKey: Boolean(storedKey()), display: cfg.display, targetLanguage: languageCode(cfg.targetLanguage || 'English'), settings: uiSettings(cfg), languages: TARGET_LANGUAGES }));
 ipcMain.handle('setup:folder', () => {
   // The file may not exist yet on a fresh install: make it, so that there
   // is something in the folder to find.
@@ -611,7 +707,7 @@ ipcMain.handle('setup:save', async (_e, payload) => {
   // a key typed by an old page, or in config.json by hand, still works.
   if (!typed) {
     const nextTarget = patch.targetLanguage || cfg.targetLanguage || 'English';
-    if (languageCode(nextTarget) !== 'en' && !storedKey()) {
+    if ((game === 'war3' || languageCode(nextTarget) !== 'en') && !storedKey()) {
       return { ok: false, why: 'A Gemini API key is required when the display language is not English. The original hosted translator only guarantees English output.' };
     }
     saveConfig({ display, ...patch });

@@ -11,9 +11,11 @@ function say(kind, html) {
 }
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+let game = 'dota';
 const TARGET = $('targetLanguage');
 
 function fill(s) {
+  game = s.game || 'dota';
   TARGET.textContent = '';
   for (const [id, label] of s.languages) {
     const opt = document.createElement('option');
@@ -27,7 +29,7 @@ function fill(s) {
   if (into) into.checked = true;
   $('fontSize').value = s.settings.fontSize;
   $('fontSizeOut').textContent = s.settings.fontSize + 'px';
-  $('keyState').textContent = s.hasKey ? 'A Gemini key is already saved on this PC.' : 'English display can use the original hosted translator. Other display languages need your own Gemini API key.';
+  $('keyState').textContent = game === 'war3' ? (s.hasKey ? 'Warcraft III: own Gemini key saved. Incoming translation unavailable.' : 'Warcraft III requires your Gemini key. Hosted translation is disabled.') : s.hasKey ? 'A Gemini key is already saved on this PC.' : 'English display can use the original hosted translator. Other display languages need your own Gemini API key.';
 }
 
 const settingsNow = () => ({
@@ -93,7 +95,7 @@ save.addEventListener('click', async () => {
   save.disabled = false;
   if (r.ok) {
     $('key').value = '';
-    say('ok', '<b>Saved.</b> Incoming Dota chat will use your selected display language. You can close this window; the translator keeps running in the tray.');
+    say('ok', game === 'war3' ? '<b>Saved.</b> Warcraft III outgoing prototype is ready. Incoming translation is unavailable.' : '<b>Saved.</b> Incoming Dota chat will use your selected display language. You can close this window; the translator keeps running in the tray.');
   } else {
     say('bad', '<b>Not saved.</b> ' + esc(r.why));
   }

@@ -10,7 +10,7 @@ import { POWERSHELL } from './memsource.js';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const FOCUS_SCRIPT = path.join(HERE, 'focuswatch.ps1').replace('app.asar' + path.sep, 'app.asar.unpacked' + path.sep);
 
-export function startFocusWatch({ onFocus = () => {}, onWindow = () => {}, onHotkey = () => {}, spawnImpl = spawn, parentPid = process.pid, processName, restartMs = 2000 } = {}) {
+export function startFocusWatch({ onFocus = () => {}, onWindow = () => {}, onHotkey = () => {}, spawnImpl = spawn, parentPid = process.pid, processName, game = 'dota', restartMs = 2000 } = {}) {
   let child = null;
   let stopped = false;
   let buffer = '';
@@ -18,7 +18,8 @@ export function startFocusWatch({ onFocus = () => {}, onWindow = () => {}, onHot
   function start() {
     if (stopped) return;
     const args = ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', FOCUS_SCRIPT, '-ParentPid', String(parentPid)];
-    if (processName && /^[A-Za-z0-9_.-]{1,64}$/.test(processName)) args.push('-ProcessName', processName);
+    if (processName && /^[A-Za-z0-9_ .-]{1,64}$/.test(processName)) args.push('-ProcessName', processName);
+    if (game === 'war3') args.push('-Game', 'war3');
     child = spawnImpl(POWERSHELL, args, { windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] });
     child.stdout.setEncoding('utf8');
     child.stdout.on('data', (chunk) => {
@@ -29,7 +30,7 @@ export function startFocusWatch({ onFocus = () => {}, onWindow = () => {}, onHot
         let o = null;
         try { o = JSON.parse(p); } catch { continue; }
         if (o && o.t === 'focus') onFocus(o.on === 1);
-        if (o && o.t === 'hotkey' && /^(?:Control\+Shift\+Enter|Control\+Enter(?:\+[0-9])?)$/.test(String(o.key || ''))) onHotkey(o.key);
+        if (o && o.t === 'hotkey' && (game === 'war3' ? /^(?:Shift\+)?F[6-9]$/ : /^Control\+(?:Shift\+)?Enter(?:\+[0-9])?$/).test(String(o.key || ''))) onHotkey(o.key);
         // Where the inside of the game's window is on the screen, real pixels.
         if (o && o.t === 'window' && [o.x, o.y, o.w, o.h].every(Number.isFinite)) onWindow({ x: o.x, y: o.y, w: o.w, h: o.h });
       }

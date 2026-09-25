@@ -12,7 +12,9 @@
     "demo": "node src/demo.js",
     "doctor": "node src/doctor.js",
     "dist": "electron-builder --win nsis --publish never",
-    "release": "electron-builder --win nsis --publish always"
+    "release": "electron-builder --win nsis --publish always",
+    "start:war3": "electron . --war3",
+    "doctor:war3": "node src/war3doctor.js"
   },
   "devDependencies": {
     "electron": "^33.0.0",

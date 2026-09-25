@@ -12,3 +12,10 @@ gsiprobe.log
 grabs/
 grabs-*/
 hosted-state.json
+
+# Local Warcraft prototype state and diagnostic artifacts
+said-war3.json
+*-runtime*.log
+war3-test-result.txt
+composer-preview.png
+composer-smoke.log

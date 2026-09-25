@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'self'">
+<title>Warcraft III · 聊天翻译</title>
+<style>
+:root{color-scheme:dark;--gold:#e6bd73;--muted:#aaa79f}*{box-sizing:border-box}body{margin:0;background:#171b1c;color:#f0eee7;font:15px 'Microsoft YaHei UI','Segoe UI',sans-serif;padding:20px 26px}header{border-bottom:1px solid #424440;padding-bottom:16px;display:flex;justify-content:space-between;align-items:center}.brand{color:var(--gold);font:13px Georgia,serif;letter-spacing:2px}h1{font-size:24px;font-weight:500;margin:8px 0 0}.tag{font-size:12px;color:var(--muted)}.row{display:flex;gap:16px;margin:14px 0}label{display:block;font-size:13px;color:var(--muted);flex:1}select,textarea,button{font:inherit}select{display:block;width:100%;margin-top:8px;padding:9px;background:#222829;color:#eee;border:1px solid #515550;border-radius:4px}textarea{display:block;width:100%;resize:vertical;min-height:80px;padding:13px;margin-top:9px;background:#101415;color:#fff;border:1px solid #515550;border-radius:4px;line-height:1.7}textarea:focus,select:focus,button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}.actions{display:flex;gap:10px;align-items:center;margin-top:14px}button{cursor:pointer;padding:10px 16px;border:1px solid #62665e;border-radius:4px;background:transparent;color:#eee}.primary{background:var(--gold);color:#211b10;border-color:var(--gold);font-weight:600}button:disabled{opacity:.45;cursor:default}.hint{color:var(--muted);font-size:12px;line-height:1.8}.output{border-top:1px solid #424440;margin-top:16px;padding-top:12px}#status{min-height:24px;margin:12px 0 0;color:var(--gold);font-size:13px}#count{margin-left:auto;color:var(--muted);font-size:12px}footer{margin-top:12px;color:var(--muted);font-size:12px;line-height:1.8}
+</style>
+</head>
+<body>
+<header><div><div class="brand">WARCRAFT III</div><h1>把想说的话，译成队友的语言。</h1></div><span class="tag">独立输入 · 自有密钥</span></header>
+<div class="row"><label>目标语言<select id="language"><option value="English">英语</option><option value="Russian">俄语</option><option value="Filipino">菲律宾语 / Tagalog</option></select></label><label>表达风格<select id="style"><option value="faithful">忠实原意</option><option value="savage">狠话模式</option></select></label></div>
+<label for="input">想说的话</label><textarea id="input" maxlength="200" placeholder="例如：先练级，然后开分矿" autofocus></textarea>
+<div class="actions"><button id="translate" class="primary">翻译</button><span class="hint">Ctrl+Enter 翻译 · Esc 隐藏</span><span id="count">0 / 200</span></div>
+<p id="status" role="status" aria-live="polite">在这里输入中文，无需先打开游戏聊天框。</p>
+<section class="output"><label for="output">译文</label><textarea id="output" readonly placeholder="翻译结果会出现在这里"></textarea><div class="actions"><button id="copy" disabled class="primary">复制译文并隐藏</button><button id="restore">恢复之前的剪贴板</button></div></section>
+<footer>复制后 Alt+Tab 回到游戏 → 打开聊天框 → Ctrl+V → Enter。<br>War3 粘贴兼容性仍待验证；此窗口不会自动向游戏发送按键。</footer>
+<script src="composer-ui.js"></script>
+</body></html>

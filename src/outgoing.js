@@ -12,7 +12,7 @@
 // decides, and Russian - what this is for - until anything has been seen.
 
 import { askGeminiHedged } from './translate.js';
-import { canonicalLanguage, detectLanguage, dotaPromptNotes, languageCode } from './languages.js';
+import { canonicalLanguage, detectLanguage, gamePromptNotes, languageCode } from './languages.js';
 
 // Legacy exports kept for callers that imported these names. Language
 // tracking itself now uses the multilingual detector instead of equating a
@@ -26,7 +26,7 @@ export const MAX_SAY = 200;          // a chat line, not a letter
 export const HOTKEY_DIGITS = ['1','2','3'];
 
 export function languageFromHotkey(key, languages = []) {
-  const m = /^Control\+Enter\+([0-9])$/.exec(String(key || ''));
+  const m = /^Control\+(?:Shift\+)?Enter\+([0-9])$/.exec(String(key || ''));
   if (!m) return '';
   const at = HOTKEY_DIGITS.indexOf(m[1]);
   if (at < 0 || at >= languages.length) return '';
@@ -64,8 +64,10 @@ export function tidySay(text) {
   return String(text == null ? '' : text).replace(/\s+/g, ' ').trim().slice(0, MAX_SAY);
 }
 
-export function outSystem(language, style = 'faithful') {
+export function outSystem(language, style = 'faithful', game = 'dota') {
   const target = canonicalLanguage(language, 'Russian');
+  const title = game === 'war3' ? 'Warcraft III / Warcraft III: Reforged' : 'Dota 2';
+  const short = game === 'war3' ? 'Warcraft III' : 'Dota';
   const savage = style === 'savage';
   const toneRules = savage ? [
     '- SAVAGE MODE: keep the core meaning/gameplay point, but rewrite it as extremely aggressive, vulgar, mocking Dota trash talk in the target language.',
@@ -74,6 +76,7 @@ export function outSystem(language, style = 'faithful') {
     '- You may intensify ordinary insults and sexual profanity for maximum punch. Do not sanitize, soften, euphemize, or add politeness.',
     '- Nationality, country, and regional mockery is allowed if it is the kind of trash talk players of that language commonly use.',
     '- Do NOT use threats of real-world physical violence, encouragement of self-harm, detailed sexual-violence or rape descriptions, doxxing, or private personal information.',
+    '- Do NOT use protected-class slurs or attacks on protected identities; keep mockery about gameplay and behavior.',
     '- Do not invent factual accusations about a real person. Keep it as game trash talk.',
   ] : [
     '- Keep the tone and intent faithful. Friendly stays friendly; blunt stays blunt; hostile stays hostile.',
@@ -81,27 +84,27 @@ export function outSystem(language, style = 'faithful') {
     '- Do not censor, sanitize, euphemize, or add politeness. Also do not make the abuse stronger than the source, invent new personal attacks, or introduce slurs/protected-class references that were not present.',
   ];
   return [
-    `You translate what a Dota 2 player wants to type in the in-game chat, from whatever language they wrote it in (usually Chinese, English or Russian, sometimes code-switched), into ${target}.`,
+    `You translate what a ${title} player wants to type in the in-game chat, from whatever language they wrote it in (usually Chinese, English or Russian, sometimes code-switched), into ${target}.`,
     'The input is JSON: {"text": "..."}. Answer with JSON: {"out": "..."}.',
     'Rules:',
-    `- Write it the way a ${target}-speaking Dota player would actually type it in a match: short, informal, no formal register.`,
+    `- Write it the way a ${target}-speaking ${short} player would actually type it in a match: short, informal, no formal register.`,
     '- Everyday neutral words stay plain and common. Do not force slang into normal friendly lines.',
-    `- Game terms are different: use the Dota slang that players of that language really use. Hero, item and ability names as those players write them; leave a name in Latin letters when they would.`,
-    '- top, mid and bot are places on the map: say exactly that lane. Never turn one into "safe lane", "off lane" or "hard lane".',
-    ...toneRules,
+    `- Game terms are different: use the ${short} slang that players of that language really use. Hero, item and ability names as those players write them; leave a name in Latin letters when they would.`,
+    ...(game === 'war3' ? [] : ['- top, mid and bot are places on the map: say exactly that lane. Never turn one into "safe lane", "off lane" or "hard lane".']),
+    ...toneRules.map(rule => game === 'war3' ? rule.replace('Dota trash talk', 'Warcraft III trash talk') : rule),
     '- Numbers, timings and item counts stay exactly as typed.',
     '- One line, no line breaks, no quotation marks, no notes, no transliteration, no explanation.',
     ...(savage
       ? [`- If the text is already in ${target}, still rewrite it in SAVAGE MODE rather than returning it unchanged.`]
       : [`- If the text is already in ${target}, return it unchanged.`]),
-    dotaPromptNotes(target),
+    gamePromptNotes(game, target),
   ].join('\n');
 }
 
-export function buildOutRequest(text, language, style = 'faithful') {
+export function buildOutRequest(text, language, style = 'faithful', game = 'dota') {
   const savage = style === 'savage';
   return {
-    systemInstruction: { parts: [{ text: outSystem(language, style) }] },
+    systemInstruction: { parts: [{ text: outSystem(language, style, game) }] },
     contents: [{ role: 'user', parts: [{ text: JSON.stringify({ text: tidySay(text) }) }] }],
     generationConfig: {
       temperature: savage ? 0.45 : 0,
@@ -137,7 +140,7 @@ export function outFrom(replyText) {
 // What comes back from anywhere is made one chat line before it is pasted.
 const tidyOut = (s) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim().slice(0, 400);
 
-export function createOutgoing({ apiKey, model, ask = askGeminiHedged, cacheSize = 500, store = null, remote = null } = {}) {
+export function createOutgoing({ apiKey, model, ask = askGeminiHedged, cacheSize = 500, game = 'dota', store = null, remote = null } = {}) {
   const cache = new Map();
   if (store) {
     try {
@@ -149,6 +152,8 @@ export function createOutgoing({ apiKey, model, ask = askGeminiHedged, cacheSize
   }
   const keep = () => { if (store) { try { store.write(Object.fromEntries(cache)); } catch { /* a read-only disk costs the memory, not the line */ } } };
   return async function say(text, language, style = 'faithful') {
+    const ownKey = typeof apiKey === 'function' ? apiKey() : apiKey;
+    if (game === 'war3' && !ownKey) throw new Error('Warcraft III requires your Gemini API key; hosted translation is disabled.');
     const clean = tidySay(text);
     const mode = style === 'savage' ? 'savage' : 'faithful';
     if (!clean) throw new Error('nothing to translate');
@@ -167,10 +172,10 @@ export function createOutgoing({ apiKey, model, ask = askGeminiHedged, cacheSize
     // key of the player's own): it is sent the line, never a prompt.
     // The hosted service only knows the normal faithful prompt. Savage mode
     // must use the player's own Gemini key so the style instruction is honored.
-    const hosted = mode === 'faithful' && remote ? remote() : null;
+    const hosted = game !== 'war3' && mode === 'faithful' && remote ? remote() : null;
     const out = hosted
       ? tidyOut(await hosted(clean, language))
-      : outFrom(await ask({ apiKey: typeof apiKey === 'function' ? apiKey() : apiKey, model, request: buildOutRequest(clean, language, mode) }, { attempts: 2 }));
+      : outFrom(await ask({ apiKey: typeof apiKey === 'function' ? apiKey() : apiKey, model, request: buildOutRequest(clean, language, mode, game) }, { attempts: 2 }));
     if (!out) throw new Error('the model gave no translation');
     cache.set(key, out);
     if (cache.size > cacheSize) cache.delete(cache.keys().next().value);

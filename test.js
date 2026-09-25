@@ -2079,3 +2079,5 @@ console.log('multilingual Dota');
 }
 
 console.log('\n' + passed + ' passed');
+
+await import('./test-war3.js');

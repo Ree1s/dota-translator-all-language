@@ -28,6 +28,7 @@ export const onDisk = (file) => file.replace('app.asar' + path.sep, 'app.asar.un
 export const CONFIG_PATH = process.env.DT_CONFIG || path.join(DATA_DIR, 'config.json');
 
 export const DEFAULTS = {
+  war3ProcessName: '', // override with the verified Windows ProcessName
   geminiApiKey: '',
   // The same key as the setup window saves it: encrypted by Windows for
   // this user (Electron safeStorage, which is DPAPI), base64. Only the app

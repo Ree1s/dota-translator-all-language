@@ -19,7 +19,8 @@
 param(
   [int]$ParentPid = 0,
   [int]$IntervalMs = 40,
-  [string]$ProcessName = 'dota2'
+  [string]$ProcessName = 'dota2',
+  [ValidateSet('dota', 'war3')][string]$Game = 'dota'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -66,6 +67,8 @@ $lastClient = ''
 $clientAt = [DateTime]::MinValue
 $lastOwner = -1
 $on = -1
+$war3Key = 0
+$war3Shift = $false
 $hotkeyArmed = $false
 $hotkeySent = $false
 $hotkeyShifted = $false
@@ -91,6 +94,29 @@ while ($true) {
     # A numbered chord (Ctrl+Enter+1 etc.) must not first fire plain
     # Ctrl+Enter. So the plain chord is emitted only when Ctrl+Enter is
     # released without a number; a number is emitted immediately and only once.
+    if ($Game -eq 'war3') {
+      # F6 default; F7/F8/F9 English/Russian/Filipino. Shift selects savage.
+      # Emit on release so a later Shift is included, once per press.
+      if ($war3Key -eq 0) {
+        if (-not [FrontWindow]::KeyDown(0x11) -and -not [FrontWindow]::KeyDown(0x12)) {
+          for ($vk = 0x75; $vk -le 0x78; $vk++) {
+            if ([FrontWindow]::KeyDown($vk)) { $war3Key = $vk; $war3Shift = [FrontWindow]::KeyDown(0x10); break }
+          }
+        }
+      } else {
+        if ([FrontWindow]::KeyDown(0x10)) { $war3Shift = $true }
+        if (-not [FrontWindow]::KeyDown($war3Key)) {
+          if (-not [FrontWindow]::KeyDown(0x11) -and -not [FrontWindow]::KeyDown(0x12)) {
+            $key = 'F' + ($war3Key - 0x6F)
+            if ($war3Shift) { $key = 'Shift+' + $key }
+            [Console]::Out.WriteLine('{"t":"hotkey","key":"' + $key + '"}')
+            [Console]::Out.Flush()
+          }
+          $war3Key = 0
+          $war3Shift = $false
+        }
+      }
+    } else {
     $down = [FrontWindow]::KeyDown(0x11) -and [FrontWindow]::KeyDown(0x0D)
     if ($down -and -not $hotkeyArmed) {
       $hotkeyArmed = $true
@@ -105,7 +131,8 @@ while ($true) {
       }
       if (-not $digit -and [FrontWindow]::KeyDown(0x30)) { $digit = '0' }
       if ($digit) {
-        [Console]::Out.WriteLine('{"t":"hotkey","key":"Control+Enter+' + $digit + '"}')
+        $key = if ($hotkeyShifted) { 'Control+Shift+Enter' } else { 'Control+Enter' }
+        [Console]::Out.WriteLine('{"t":"hotkey","key":"' + $key + '+' + $digit + '"}')
         [Console]::Out.Flush()
         $hotkeySent = $true
       }
@@ -120,6 +147,7 @@ while ($true) {
       $hotkeySent = $false
       $hotkeyShifted = $false
     }
+    }
     $c = [FrontWindow]::Client()
     $due = ([DateTime]::UtcNow - $clientAt).TotalSeconds -ge 5
     if ($c -and (($c -ne $lastClient) -or $due)) {
@@ -129,6 +157,6 @@ while ($true) {
       [Console]::Out.WriteLine('{"t":"window","x":' + $n[0] + ',"y":' + $n[1] + ',"w":' + $n[2] + ',"h":' + $n[3] + '}')
       [Console]::Out.Flush()
     }
-  } else { $lastClient = ''; $hotkeyArmed = $false; $hotkeySent = $false; $hotkeyShifted = $false }
+  } else { $war3Key = 0; $war3Shift = $false; $lastClient = ''; $hotkeyArmed = $false; $hotkeySent = $false; $hotkeyShifted = $false }
   Start-Sleep -Milliseconds $IntervalMs
 }

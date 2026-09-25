@@ -14,7 +14,7 @@ export const SEND_SCRIPT = path.join(HERE, 'sendchat.ps1').replace('app.asar' + 
 
 const NL = String.fromCharCode(10);
 
-export function createKeySender({ spawnImpl = spawn, script = SEND_SCRIPT, timeoutMs = 4000 } = {}) {
+export function createKeySender({ spawnImpl = spawn, script = SEND_SCRIPT, timeoutMs = 4000, processName = 'dota2', game = 'dota', clipboardKeys = 'standard' } = {}) {
   let child = null, buffer = '', waiting = null, stopped = false;
 
   const settle = (r) => { if (!waiting) return; const w = waiting; waiting = null; clearTimeout(w.timer); w.resolve(r); };
@@ -28,7 +28,8 @@ export function createKeySender({ spawnImpl = spawn, script = SEND_SCRIPT, timeo
     if (child || stopped) return;
     buffer = '';
     try {
-      const c = spawnImpl(POWERSHELL, ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script], { windowsHide: true, stdio: ['pipe', 'pipe', 'ignore'] });
+      const modeArgs = game === 'war3' ? ['-Game', 'war3', '-ClipboardKeys', clipboardKeys === 'insert' ? 'insert' : 'standard'] : [];
+      const c = spawnImpl(POWERSHELL, ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script, ...modeArgs, '-ProcessName', processName], { windowsHide: true, stdio: ['pipe', 'pipe', 'ignore'] });
       child = c;
       c.stdout.on('data', (d) => {
         buffer += String(d);
@@ -69,14 +70,16 @@ export function createKeySender({ spawnImpl = spawn, script = SEND_SCRIPT, timeo
  * copy what is in the chat field -> translate -> put it back and send.
  * The player's clipboard is theirs and is put back whatever happens.
  */
-export async function sayTranslated({ keys, clipboard, translate, into = '', explain = (m) => m, learned = () => {}, who = null, note = () => {}, wait = (ms) => new Promise((r) => setTimeout(r, ms)) }) {
+export async function sayTranslated({ keys, clipboard, translate, into = '', explain = (m) => m, learned = () => {}, who = null, note = () => {}, restoreOnFailure = false, debug = () => {}, wait = (ms) => new Promise((r) => setTimeout(r, ms)) }) {
   const before = clipboard.readText();
   const restore = () => clipboard.writeText(before);
   // Emptied first: an empty clipboard afterwards means nothing was copied -
   // the chat was not open, or had nothing in it.
   clipboard.writeText('');
   const copied = await keys.copy();
+  debug('copy keys', copied.ok ? 'simulated; checking clipboard' : 'failure');
   const typed = copied.ok ? String(clipboard.readText() || '').trim() : '';
+  debug('captured', Boolean(typed));
   if (!typed) { restore(); return { said: false, why: copied.ok ? 'nothing typed' : copied.why }; }
   const ARROW = String.fromCharCode(0x2192), DOTS = String.fromCharCode(0x2026);
   const gone = () => note({ kind: 'note', text: '' });
@@ -103,7 +106,9 @@ export async function sayTranslated({ keys, clipboard, translate, into = '', exp
   try { learned(out, typed); } catch { /* the line is still said */ }
   clipboard.writeText(out);
   const sent = await keys.send();
+  debug('send', sent.ok ? 'success' : 'failure');
   if (!sent.ok) {
+    if (restoreOnFailure) { restore(); gone(); return { said: false, why: sent.why, out }; }
     // Left on the clipboard on purpose: the player can still paste it.
     note({ kind: 'note', text: out, more: '- copied: Ctrl+V pastes it' });
     return { said: false, why: sent.why, out };

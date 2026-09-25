@@ -22,7 +22,7 @@
 # would select, overwrite and SEND in it, and that could be a chat with a
 # real person.
 
-param([string]$ProcessName = 'dota2')
+param([string]$ProcessName = 'dota2', [ValidateSet('dota','war3')][string]$Game = 'dota', [ValidateSet('standard','insert')][string]$ClipboardKeys = 'standard')
 
 $ErrorActionPreference = 'Stop'
 
@@ -39,12 +39,13 @@ public static class SayKeys {
   [DllImport("user32.dll")] static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
 
   const uint KEYUP = 2;
-  public const byte ENTER = 0x0D, SHIFT = 0x10, CTRL = 0x11, ALT = 0x12, A = 0x41, C = 0x43, V = 0x56;
+  public const byte ENTER = 0x0D, SHIFT = 0x10, CTRL = 0x11, ALT = 0x12, A = 0x41, C = 0x43, V = 0x56, HOME = 0x24, END = 0x23, INSERT = 0x2D;
 
   // The scan code goes with the virtual key: a game reading raw input
   // sees the scan code and would ignore a key that has none.
-  static void Down(byte vk) { keybd_event(vk, (byte)MapVirtualKey(vk, 0), 0, UIntPtr.Zero); }
-  static void Up(byte vk) { keybd_event(vk, (byte)MapVirtualKey(vk, 0), KEYUP, UIntPtr.Zero); }
+  static uint Extended(byte vk) { return vk == HOME || vk == END || vk == INSERT ? 1u : 0u; }
+  static void Down(byte vk) { keybd_event(vk, (byte)MapVirtualKey(vk, 0), Extended(vk), UIntPtr.Zero); }
+  static void Up(byte vk) { keybd_event(vk, (byte)MapVirtualKey(vk, 0), KEYUP | Extended(vk), UIntPtr.Zero); }
   public static void Tap(byte vk) { Down(vk); Thread.Sleep(30); Up(vk); }
   public static void Chord(byte mod, byte vk) { Down(mod); Thread.Sleep(30); Tap(vk); Thread.Sleep(30); Up(mod); }
 
@@ -84,15 +85,25 @@ while ($true) {
     if ($id -eq 0 -or -not [SayKeys]::InFront($id)) { Write-Output 'NOT DONE: the game is not in front'; continue }
     if (-not [SayKeys]::WaitReleased(1500)) { Write-Output 'NOT DONE: keys are still held'; continue }
     if (-not [SayKeys]::InFront($id)) { Write-Output 'NOT DONE: the game is not in front'; continue }
-    [SayKeys]::Chord([SayKeys]::CTRL, [SayKeys]::A)
+    if ($Game -eq 'war3') {
+      [SayKeys]::Tap([SayKeys]::END)
+      Start-Sleep -Milliseconds 60
+      if (-not [SayKeys]::InFront($id)) { Write-Output 'NOT DONE: the game lost focus'; continue }
+      [SayKeys]::Chord([SayKeys]::SHIFT, [SayKeys]::HOME)
+    } else {
+      [SayKeys]::Chord([SayKeys]::CTRL, [SayKeys]::A)
+    }
     Start-Sleep -Milliseconds 60
+    if (-not [SayKeys]::InFront($id)) { Write-Output 'NOT DONE: the game lost focus'; continue }
     if ($word -eq 'copy') {
-      [SayKeys]::Chord([SayKeys]::CTRL, [SayKeys]::C)
+      if ($ClipboardKeys -eq 'insert') { [SayKeys]::Chord([SayKeys]::CTRL, [SayKeys]::INSERT) }
+      else { [SayKeys]::Chord([SayKeys]::CTRL, [SayKeys]::C) }
       Start-Sleep -Milliseconds 80
       Write-Output 'copied'
       continue
     }
-    [SayKeys]::Chord([SayKeys]::CTRL, [SayKeys]::V)
+    if ($ClipboardKeys -eq 'insert') { [SayKeys]::Chord([SayKeys]::SHIFT, [SayKeys]::INSERT) }
+    else { [SayKeys]::Chord([SayKeys]::CTRL, [SayKeys]::V) }
     Start-Sleep -Milliseconds 120
     # Asked again: Enter in the wrong window SENDS something.
     if (-not [SayKeys]::InFront($id)) { Write-Output 'NOT DONE: the game lost focus'; continue }
