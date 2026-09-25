@@ -1,3 +1,10 @@
+# Separate local development branches
+
+- `dev/dota2`: `C:\Users\User\dota-translator-dota2`, start with `npm.cmd start`. Original Dota code plus the additive safety restriction required by its existing test. All 142 baseline tests pass. Existing config and Dota cache copied locally without committing secrets.
+- `experiment/war3-translator`: `C:\Users\User\dota-translator-all-language`, continue the experiment here. Run `npm.cmd run start:war3 -- --capture-only` for the current controlled test.
+
+Both branches start from the original local commit and preserve the pre-existing dependency lockfile change. No remote fetch, reset or push was used. The worktrees share the installed node_modules through a local junction; source and configuration files are separate. Quit the currently running translator before switching applications because the Electron single-instance lock is shared.
+
 # Current direction: in-game chat, no focus switch
 
 The independent composer is now optional (`--composer`), not the normal War3 workflow. Normal F6?F9 call the in-game translator again. War3 selection uses End then Shift+Home (with extended-key flags), followed by Ctrl+C and Ctrl+V. Dota retains Ctrl+A. This selection alternative is experimental until live capture has been observed; the earlier blank Ctrl+A/C result did not establish that copying itself is unsupported.

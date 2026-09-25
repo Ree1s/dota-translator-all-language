@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { EventEmitter } from 'node:events';
 import { execFileSync } from 'node:child_process';
@@ -55,7 +55,7 @@ await test('PowerShell helper syntax parses', () => {
   const script = `$bad = 0; foreach ($f in @('src/focuswatch.ps1','src/sendchat.ps1')) { $tokens=$null; $errors=$null; [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $f),[ref]$tokens,[ref]$errors); if ($errors.Count) { $bad++; Write-Output $errors } }; exit $bad`;
   execFileSync(POWERSHELL, ['-NoProfile','-Command', script], { windowsHide: true });
 });
-console.log(`${passed} War3 groups passed`);
+
 await test('War3 accepts only F6-F9 with optional Shift; old Ctrl chords are ignored', () => {
   const c = child(), heard = []; let args;
   const watcher = startFocusWatch({ game: 'war3', onHotkey: k => heard.push(k), spawnImpl: (_p, a) => { args = a; return c; } });
@@ -104,3 +104,5 @@ await test('War3 selects with End and Shift+Home while Dota retains Ctrl+A', () 
   assert.match(diagnostic, /finally \{ clipboard.writeText\(before\)/);
   assert.doesNotMatch(diagnostic, /keys.send|sayIt\(|openComposer\(/);
 });
+
+console.log(`${passed} War3 groups passed`);
