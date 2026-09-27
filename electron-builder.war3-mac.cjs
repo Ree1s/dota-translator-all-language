@@ -5,6 +5,7 @@ module.exports = {
   files: [...base.files, 'native/mac/war3-helper', '!src/*.ps1'],
   asarUnpack: ['native/mac/war3-helper', 'docs/**/*'],
   mac: {
+    icon: 'build/icon-mac.png',
     target: [{ target: 'dmg', arch: ['arm64'] }, { target: 'zip', arch: ['arm64'] }],
     category: 'public.app-category.utilities',
     minimumSystemVersion: '11.0',
