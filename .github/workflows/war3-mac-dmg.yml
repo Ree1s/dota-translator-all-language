@@ -1,0 +1,59 @@
+name: Warcraft Mac DMG (M1)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [experiment/war3-translator]
+    paths:
+      - '.github/workflows/war3-mac-dmg.yml'
+      - 'native/mac/**'
+      - 'src/**'
+      - 'tools/build-mac-helper.mjs'
+      - 'electron-builder.war3*.cjs'
+      - 'build/entitlements.mac.plist'
+      - 'package*.json'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      DT_MAC_ARCH: arm64
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Check JavaScript and OCR logic
+        run: |
+          node --check src/main.js
+          node test-war3ocr.js
+      - name: Compile helper and build DMG
+        run: npm run dist:war3:mac
+      - name: Verify packaged native helper and disk image
+        shell: bash
+        run: |
+          set -euo pipefail
+          helper="dist-war3-mac/mac-arm64/Warcraft Chat Translator.app/Contents/Resources/app.asar.unpacked/native/mac/war3-helper"
+          test -x "$helper"
+          lipo -archs "$helper" | grep -w arm64
+          "$helper" --mode discover
+          for dmg in dist-war3-mac/*.dmg; do
+            hdiutil verify "$dmg"
+            shasum -a 256 "$dmg" > "$dmg.sha256"
+          done
+      - name: Save downloadable test installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: Warcraft-Mac-M1-DMG
+          path: |
+            dist-war3-mac/*.dmg
+            dist-war3-mac/*.dmg.sha256
+          if-no-files-found: error
+          retention-days: 30
