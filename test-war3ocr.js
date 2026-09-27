@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import { createOcrTracker } from './src/war3ocr.js';
+const track = createOcrTracker({ ttl: 1000 });
+assert.deepEqual(track(['Tower: hello'], 0), []);
+assert.equal(track(['Tower: hello'], 500)[0].text, 'hello');
+assert.deepEqual(track(['Tower: hello'], 1000), []);
+assert.deepEqual(track(['Tower: hello', 'Other: defend base'], 1200), []);
+assert.equal(track(['Tower: hello', 'Other: defend base'], 1700)[0].name, 'Other');
+assert.deepEqual(track(['Menu', '50 gold', 'Tower: h3llo'], 1800), []);
+track([], 3000);
+assert.deepEqual(track(['Tower: hello'], 3500), []);
+assert.equal(track(['Tower: hello'], 4000).length, 1);
+const channels = createOcrTracker();
+channels(['[All] Tower: time: 12:30'], 0);
+assert.equal(channels(['[All] Tower: time: 12:30'], 500)[0].text, 'time: 12:30');
+console.log('OCR stabilization, scrolling deduplication, expiry, noise and colon handling passed');

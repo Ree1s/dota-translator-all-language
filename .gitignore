@@ -25,3 +25,6 @@ dist-war3/
 # Native Mac build outputs
 native/mac/war3-helper
 dist-war3-mac/
+
+war3-ocr-region.json
+war3-ocr.log

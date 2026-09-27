@@ -20,7 +20,9 @@
     "start:war3:mac": "npm run build:mac-helper && electron . --war3",
     "test:war3:mac": "npm run build:mac-helper && electron . --war3 --capture-only",
     "doctor:mac": "node src/macdoctor.js",
-    "dist:war3:mac": "npm run build:mac-helper && electron-builder --config electron-builder.war3-mac.cjs --mac --arm64 --publish never"
+    "dist:war3:mac": "npm run build:mac-helper && electron-builder --config electron-builder.war3-mac.cjs --mac --arm64 --publish never",
+    "start:war3:ocr": "electron . --war3 --ocr",
+    "test:war3:ocr": "electron . --war3 --ocr-preview"
   },
   "devDependencies": {
     "electron": "^33.0.0",

@@ -26,6 +26,7 @@ import { discoverWar3 } from './war3discovery.js';
 import { createComposer } from './composer.js';
 import { execFile } from 'node:child_process';
 import { MAC_HELPER, macHelperArgs } from './mac-helper.js';
+import { startWar3Ocr, runOcrHelper } from './war3ocr.js';
 import { GAME, PRODUCT_NAME } from './game.js';
 import { languageCode } from './languages.js';
 
@@ -47,6 +48,45 @@ const chatDiagnostic = game === 'war3' && process.argv.includes('--chat-test');
 const processName = game === 'war3' ? (process.env.DT_WAR3_PROCESS || cfg.war3ProcessName || war3Discovery.processes[0]?.name || 'Warcraft III') : 'dota2';
 let win = null;
 let watcher = null;
+let ocrWatch = null;
+let ocrSelector = null;
+let ocrGameBounds = null;
+function positionOcrOverlay() {
+  if (!ocrRegion || !win || win.isDestroyed()) return;
+  const b = ocrGameBounds || screen.getPrimaryDisplay().bounds;
+  const top = Math.round(b.y + ocrRegion[1] * b.height);
+  const gap = 8;
+  const height = Math.max(1, Math.min(40 + cfg.maxLines * 52, top - b.y - gap));
+  const width = Math.min(b.width, Math.max(240, Math.round(ocrRegion[2] * b.width)));
+  win.setBounds({ x: Math.round(Math.min(b.x + b.width - width, b.x + ocrRegion[0] * b.width)), y: Math.max(b.y, top - gap - height), width, height });
+}
+let ocrEnabled = game === 'war3' && process.platform === 'win32' && (process.argv.includes('--ocr') || process.argv.includes('--ocr-preview'));
+const ocrPreview = process.argv.includes('--ocr-preview');
+const ocrRegionPath = path.join(DATA_DIR, 'war3-ocr-region.json');
+let ocrRegion = null;
+try { ocrRegion = JSON.parse(fs.readFileSync(ocrRegionPath, 'utf8')); } catch {}
+function stopOcr() { ocrWatch?.stop(); ocrWatch = null; }
+function startOcr() {
+  stopOcr();
+  if (!ocrEnabled || !ocrRegion) return;
+  win.setContentProtection(true);
+  positionOcrOverlay();
+  send('config', { display: 'box', position: 'bottom-left', showOriginal: true });
+  ocrWatch = startWar3Ocr({ region: ocrRegion, preview: ocrPreview,
+    language: process.env.DT_WAR3_OCR_LANGUAGE || 'en-US',
+    translate: text => sayIt(text, 'Chinese', 'faithful'),
+    onRow: row => { spoken.saw(row.text); send('line', row); if (inFront && !hidden) win.showInactive(); },
+    onStatus: text => { console.error(text); send('status', { kind: 'error', text }); },
+    log: event => { console.log('war3-ocr', JSON.stringify(event)); try { fs.appendFileSync(path.join(DATA_DIR, 'war3-ocr.log'), JSON.stringify({ at: new Date().toISOString(), ...event }) + '\n'); } catch {} },
+  });
+}
+function selectOcrRegion() {
+  stopOcr(); ocrSelector?.stop(); win?.hide();
+  ocrSelector = runOcrHelper(['-SelectRegion'], event => {
+    if (event.kind === 'region') { ocrRegion = event.region; fs.writeFileSync(ocrRegionPath, JSON.stringify(ocrRegion)); ocrEnabled = true; startOcr(); }
+    else console.log('war3-ocr', JSON.stringify(event));
+  }, text => console.error('war3-ocr', text));
+}
 let hidden = false;
 let inFront = true;
 let macHotkeysEnabled = true;
@@ -226,16 +266,21 @@ async function start() {
     cfg.geminiApiKey = storedKey();
     const found = discoverWar3();
     console.log('war3 process', JSON.stringify(found.processes), 'configured', processName);
-    console.log('war3 outgoing prototype; incoming unavailable; hosted disabled');
-    if (!cfg.geminiApiKey && !chatDiagnostic && !captureOnly) { console.error('Warcraft III requires your Gemini API key. Open settings to save it.'); openSetup(); }
+    console.log('war3 outgoing; optional experimental OCR incoming; hosted disabled');
+    if (!cfg.geminiApiKey && !chatDiagnostic && !captureOnly && !ocrPreview) { console.error('Warcraft III requires your Gemini API key. Open settings to save it.'); openSetup(); }
     watcher = startFocusWatch({ processName, game, hotkeysEnabled: macHotkeysEnabled && Boolean(cfg.sayHotkey),
+      onWindow: w => {
+        const px = { x: w.x, y: w.y, width: w.w, height: w.h };
+        ocrGameBounds = screen.screenToDipRect ? screen.screenToDipRect(null, px) : px;
+        if (ocrEnabled) positionOcrOverlay();
+      },
       onStatus: status => {
         if (status.kind === 'permissions') {
           console.log('mac permissions', JSON.stringify(status));
           if (!status.accessibility || !status.inputMonitoring) console.error('Mac needs Accessibility and Input Monitoring. Use the tray menu: Enable Mac permissions.');
         } else console.log('war3 helper', status.text);
       },
-      onFocus: on => { inFront = on; setSayHotkey(on); if (DEBUG) console.log('war3 focus', on ? 'on' : 'off'); },
+      onFocus: on => { inFront = on; setSayHotkey(on); if (ocrEnabled && ocrRegion && on && !hidden) win?.showInactive(); else win?.hide(); if (DEBUG) console.log('war3 focus', on ? 'on' : 'off'); },
       onHotkey: key => {
         if (!cfg.sayHotkey) return;
         const forced = process.platform === 'darwin' ? 'English' : ({ F7: 'English', F8: 'Russian' })[key.replace('Shift+', '')] || '';
@@ -248,6 +293,7 @@ async function start() {
       }
     });
     win?.hide();
+    startOcr();
     return;
   }
   // A few seconds at most, and never fatal: see src/offsets.js.
@@ -660,6 +706,10 @@ function makeTray() {
     { label: 'Support the developer (Ko-fi)', click: () => shell.openExternal('https://ko-fi.com/sc0rebreaker') },
     { label: 'Version ' + app.getVersion(), enabled: false },
     { type: 'separator' },
+    ...(game === 'war3' && process.platform === 'win32' ? [
+      { label: 'OCR: select chat area (switch to game in 5s)', click: selectOcrRegion },
+      { label: 'OCR: stop incoming translation', click: () => { ocrEnabled = false; stopOcr(); win?.hide(); } },
+    ] : []),
     { label: 'Quit', click: quitApp },
   ]));
   tray.on('click', openSetup);
@@ -750,6 +800,7 @@ ipcMain.handle('setup:save', async (_e, payload) => {
 });
 
 app.on('will-quit', () => {
+  stopOcr(); ocrSelector?.stop();
   globalShortcut.unregisterAll();
   keys.stop();
   if (watcher) watcher.stop();
