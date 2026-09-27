@@ -3,10 +3,20 @@ import { createInterface } from 'node:readline';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { POWERSHELL } from './memsource.js';
+import { MAC_HELPER, macHelperArgs } from './mac-helper.js';
 
 const script = path.join(path.dirname(fileURLToPath(import.meta.url)), 'war3ocr.ps1').replace('app.asar' + path.sep, 'app.asar.unpacked' + path.sep);
+export function ocrCommand(args, platform = process.platform) {
+  if (platform !== 'darwin') return { command: POWERSHELL, args: ['-NoProfile', '-Sta', '-ExecutionPolicy', 'Bypass', '-File', script, ...args] };
+  const value = key => args[args.indexOf(key) + 1];
+  const nativeArgs = macHelperArgs(args.includes('-SelectRegion') ? 'ocr-select' : 'ocr');
+  if (args.includes('-Region')) nativeArgs.push('--region', value('-Region'));
+  if (args.includes('-Language')) nativeArgs.push('--language', value('-Language'));
+  return { command: MAC_HELPER, args: nativeArgs };
+}
 export function runOcrHelper(args, onEvent, onError = () => {}) {
-  const child = spawn(POWERSHELL, ['-NoProfile', '-Sta', '-ExecutionPolicy', 'Bypass', '-File', script, ...args], { windowsHide: true });
+  const command = ocrCommand(args);
+  const child = spawn(command.command, command.args, { windowsHide: true });
   const lines = createInterface({ input: child.stdout });
   let stopped = false, errors = '';
   lines.on('line', line => { try { onEvent(JSON.parse(line)); } catch {} });
@@ -39,7 +49,7 @@ export function createOcrTracker({ ttl = 60000 } = {}) {
   };
 }
 
-export function startWar3Ocr({ region, language = 'en-US', translate, preview = false, onRow, onStatus, log = () => {} }) {
+export function startWar3Ocr({ region, language = 'en-US', translate, preview = false, onRow, onStatus, onWindow = () => {}, log = () => {} }) {
   const track = createOcrTracker();
   let stopped = false, busy = false, sequence = 0;
   let lastFrame = '', lastPreview = '';
@@ -63,6 +73,7 @@ export function startWar3Ocr({ region, language = 'en-US', translate, preview = 
   const helper = runOcrHelper(['-ParentId', String(process.pid), '-Region', region.join(','), '-Language', language], event => {
     if (stopped) return;
     if (event.kind !== 'frame') { log(event); if (event.kind === 'error') onStatus(event.text); return; }
+    if (event.window) onWindow(event.window);
     const frame = JSON.stringify(event.lines || []);
     if (frame !== lastFrame) {
       log({ kind: 'raw-frame', lines: event.lines || [], ocrMs: event.ocrMs });

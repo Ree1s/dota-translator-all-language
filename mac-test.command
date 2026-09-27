@@ -13,7 +13,11 @@ if [ ! -d node_modules ]; then npm ci; fi
 npm run build:mac-helper
 npm run doctor:mac
 export DT_DEBUG=1
-if [ "${1:-}" = "--translate" ]; then
+if [ "${1:-}" = "--ocr" ]; then
+  npm run start:war3 -- --ocr
+elif [ "${1:-}" = "--ocr-preview" ]; then
+  npm run start:war3 -- --ocr-preview
+elif [ "${1:-}" = "--translate" ]; then
   npm run start:war3
 else
   echo 'Capture-only: type in Warcraft chat, commit the IME text, then Esc. Nothing will be sent.'

@@ -60,7 +60,7 @@ function positionOcrOverlay() {
   const width = Math.min(b.width, Math.max(240, Math.round(ocrRegion[2] * b.width)));
   win.setBounds({ x: Math.round(Math.min(b.x + b.width - width, b.x + ocrRegion[0] * b.width)), y: Math.max(b.y, top - gap - height), width, height });
 }
-let ocrEnabled = game === 'war3' && process.platform === 'win32' && (process.argv.includes('--ocr') || process.argv.includes('--ocr-preview'));
+let ocrEnabled = game === 'war3' && ['win32', 'darwin'].includes(process.platform) && (process.argv.includes('--ocr') || process.argv.includes('--ocr-preview'));
 const ocrPreview = process.argv.includes('--ocr-preview');
 const ocrRegionPath = path.join(DATA_DIR, 'war3-ocr-region.json');
 let ocrRegion = null;
@@ -74,6 +74,7 @@ function startOcr() {
   send('config', { display: 'box', position: 'bottom-left', showOriginal: true });
   ocrWatch = startWar3Ocr({ region: ocrRegion, preview: ocrPreview,
     language: process.env.DT_WAR3_OCR_LANGUAGE || 'en-US',
+    onWindow: bounds => { if (process.platform === 'darwin') { ocrGameBounds = bounds; positionOcrOverlay(); } },
     translate: text => sayIt(text, 'Chinese', 'faithful'),
     onRow: row => { spoken.saw(row.text); send('line', row); if (inFront && !hidden) win.showInactive(); },
     onStatus: text => { console.error(text); send('status', { kind: 'error', text }); },
@@ -271,7 +272,7 @@ async function start() {
     watcher = startFocusWatch({ processName, game, hotkeysEnabled: macHotkeysEnabled && Boolean(cfg.sayHotkey),
       onWindow: w => {
         const px = { x: w.x, y: w.y, width: w.w, height: w.h };
-        ocrGameBounds = screen.screenToDipRect ? screen.screenToDipRect(null, px) : px;
+        ocrGameBounds = process.platform === 'win32' && screen.screenToDipRect ? screen.screenToDipRect(null, px) : px;
         if (ocrEnabled) positionOcrOverlay();
       },
       onStatus: status => {
@@ -706,7 +707,7 @@ function makeTray() {
     { label: 'Support the developer (Ko-fi)', click: () => shell.openExternal('https://ko-fi.com/sc0rebreaker') },
     { label: 'Version ' + app.getVersion(), enabled: false },
     { type: 'separator' },
-    ...(game === 'war3' && process.platform === 'win32' ? [
+    ...(game === 'war3' && ['win32', 'darwin'].includes(process.platform) ? [
       { label: 'OCR: select chat area (switch to game in 5s)', click: selectOcrRegion },
       { label: 'OCR: stop incoming translation', click: () => { ocrEnabled = false; stopOcr(); win?.hide(); } },
     ] : []),

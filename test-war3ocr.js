@@ -1,5 +1,11 @@
 import assert from 'node:assert/strict';
-import { createOcrTracker } from './src/war3ocr.js';
+import { createOcrTracker, ocrCommand } from './src/war3ocr.js';
+const mac = ocrCommand(['-Region', '0.1,0.2,0.5,0.3', '-Language', 'en-US'], 'darwin');
+assert.ok(mac.command.endsWith('war3-helper'));
+assert.equal(mac.args[mac.args.indexOf('--mode') + 1], 'ocr');
+assert.equal(mac.args[mac.args.indexOf('--region') + 1], '0.1,0.2,0.5,0.3');
+assert.equal(ocrCommand(['-SelectRegion'], 'darwin').args[1], 'ocr-select');
+assert.equal(ocrCommand([], 'win32').command, 'powershell.exe');
 const track = createOcrTracker({ ttl: 1000 });
 assert.deepEqual(track(['Tower: hello'], 0), []);
 assert.equal(track(['Tower: hello'], 500)[0].text, 'hello');

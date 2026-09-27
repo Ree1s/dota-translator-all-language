@@ -157,6 +157,7 @@ func selectLine(_ pid: pid_t) -> Bool {
     }
     return tap(119, [], pid) && tap(115, .maskShift, pid) // End, Shift+Home
 }
+if mode == "ocr" || mode == "ocr-select" { runMacOcr() }
 if mode != "send" { fputs("Unsupported helper mode\n", stderr); exit(2) }
 print("ready"); fflush(stdout)
 while let command = readLine() {
